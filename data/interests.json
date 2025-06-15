@@ -1,0 +1,229 @@
+{
+  "categories": {
+    "faith_spirituality": {
+      "name": "Faith & Spirituality",
+      "icon": "☪️",
+      "interests": [
+        "Quran study",
+        "Islamic history",
+        "Hadith study",
+        "Mosque activities",
+        "Islamic calligraphy",
+        "Dhikr and meditation",
+        "Islamic finance",
+        "Halal lifestyle",
+        "Pilgrimage (Hajj/Umrah)",
+        "Islamic art",
+        "Community service",
+        "Charity work"
+      ]
+    },
+    "education_career": {
+      "name": "Education & Career",
+      "icon": "🎓",
+      "interests": [
+        "Technology",
+        "Medicine",
+        "Engineering",
+        "Teaching",
+        "Business",
+        "Law",
+        "Research",
+        "Healthcare",
+        "Finance",
+        "Marketing",
+        "Design",
+        "Writing",
+        "Entrepreneurship",
+        "Public speaking"
+      ]
+    },
+    "hobbies_activities": {
+      "name": "Hobbies & Activities",
+      "icon": "🎨",
+      "interests": [
+        "Reading",
+        "Writing",
+        "Photography",
+        "Painting",
+        "Calligraphy",
+        "Cooking",
+        "Baking",
+        "Gardening",
+        "Crafts",
+        "Music (halal)",
+        "Poetry",
+        "Board games",
+        "Puzzles",
+        "Collecting"
+      ]
+    },
+    "sports_fitness": {
+      "name": "Sports & Fitness",
+      "icon": "⚽",
+      "interests": [
+        "Soccer",
+        "Basketball",
+        "Tennis",
+        "Swimming",
+        "Running",
+        "Hiking",
+        "Cycling",
+        "Yoga",
+        "Martial arts",
+        "Gym workouts",
+        "Rock climbing",
+        "Badminton",
+        "Table tennis",
+        "Walking"
+      ]
+    },
+    "travel_culture": {
+      "name": "Travel & Culture",
+      "icon": "✈️",
+      "interests": [
+        "Travel",
+        "Cultural exploration",
+        "Languages",
+        "History",
+        "Museums",
+        "Architecture",
+        "Local cuisine",
+        "International relations",
+        "Geography",
+        "Anthropology",
+        "World religions",
+        "Cultural festivals"
+      ]
+    },
+    "family_relationships": {
+      "name": "Family & Relationships",
+      "icon": "👨‍👩‍👧‍👦",
+      "interests": [
+        "Family time",
+        "Parenting",
+        "Child development",
+        "Family traditions",
+        "Relationship building",
+        "Communication",
+        "Conflict resolution",
+        "Marriage counseling",
+        "Extended family",
+        "Genealogy",
+        "Family planning",
+        "Home management"
+      ]
+    },
+    "nature_environment": {
+      "name": "Nature & Environment",
+      "icon": "🌱",
+      "interests": [
+        "Nature walks",
+        "Environmental conservation",
+        "Sustainability",
+        "Organic farming",
+        "Wildlife",
+        "Astronomy",
+        "Weather",
+        "Geology",
+        "Marine life",
+        "Bird watching",
+        "Camping",
+        "National parks"
+      ]
+    },
+    "food_nutrition": {
+      "name": "Food & Nutrition",
+      "icon": "🍽️",
+      "interests": [
+        "Halal cooking",
+        "Healthy eating",
+        "Nutrition",
+        "International cuisine",
+        "Food photography",
+        "Recipe development",
+        "Meal planning",
+        "Food science",
+        "Dietary restrictions",
+        "Organic foods",
+        "Food culture",
+        "Restaurant exploration"
+      ]
+    },
+    "technology_innovation": {
+      "name": "Technology & Innovation",
+      "icon": "💻",
+      "interests": [
+        "Software development",
+        "Web3/Blockchain",
+        "Artificial intelligence",
+        "Mobile apps",
+        "Cybersecurity",
+        "Data science",
+        "Gaming",
+        "Robotics",
+        "IoT devices",
+        "Tech startups",
+        "Digital marketing",
+        "Social media"
+      ]
+    },
+    "volunteering_service": {
+      "name": "Volunteering & Service",
+      "icon": "🤝",
+      "interests": [
+        "Community volunteering",
+        "Charity work",
+        "Homeless assistance",
+        "Food banks",
+        "Disaster relief",
+        "Environmental cleanup",
+        "Animal welfare",
+        "Youth mentoring",
+        "Elderly care",
+        "Hospital volunteering",
+        "Educational support",
+        "Refugee assistance"
+      ]
+    }
+  },
+  "popularInterests": [
+    "Family time",
+    "Travel",
+    "Cooking",
+    "Reading",
+    "Technology",
+    "Community service",
+    "Hiking",
+    "Photography",
+    "Healthy eating",
+    "Islamic history",
+    "Soccer",
+    "Volunteering",
+    "Nature walks",
+    "Business",
+    "Writing"
+  ],
+  "interestCompatibility": {
+    "high_compatibility": [
+      ["Quran study", "Islamic history", "Hadith study"],
+      ["Technology", "Software development", "Web3/Blockchain"],
+      ["Cooking", "Healthy eating", "Nutrition"],
+      ["Travel", "Cultural exploration", "Languages"],
+      ["Family time", "Parenting", "Child development"],
+      ["Community service", "Charity work", "Volunteering"],
+      ["Nature walks", "Hiking", "Environmental conservation"],
+      ["Reading", "Writing", "Poetry"]
+    ],
+    "complementary_pairs": [
+      ["Cooking", "Food photography"],
+      ["Travel", "Photography"],
+      ["Technology", "Entrepreneurship"],
+      ["Medicine", "Community service"],
+      ["Art", "Islamic calligraphy"],
+      ["Business", "Public speaking"],
+      ["Teaching", "Youth mentoring"],
+      ["Fitness", "Healthy eating"]
+    ]
+  }
+}

@@ -5,7 +5,7 @@ import { useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { Play, Pause, Trash2, UserX, Reply } from "lucide-react"
+import { User, Camera, Heart, Search } from "lucide-react"
 
 export function MobileHero() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -21,43 +21,9 @@ export function MobileHero() {
   // Add these state variables after the existing useState declarations:
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [playingAudio, setPlayingAudio] = useState<number | null>(null)
-  const [audioProgress, setAudioProgress] = useState<{[key: number]: number}>({})
-  const audioRefs = useRef<{[key: number]: HTMLAudioElement}>({})
+  const [profileSetupStep, setProfileSetupStep] = useState(0)
 
-  // Audio control functions
-  const toggleAudio = (index: number, audioUrl: string) => {
-    const audio = audioRefs.current[index]
-
-    if (!audio) {
-      const newAudio = new Audio(audioUrl)
-      audioRefs.current[index] = newAudio
-
-      newAudio.addEventListener('timeupdate', () => {
-        const progress = (newAudio.currentTime / newAudio.duration) * 100
-        setAudioProgress(prev => ({ ...prev, [index]: progress }))
-      })
-
-      newAudio.addEventListener('ended', () => {
-        setPlayingAudio(null)
-        setAudioProgress(prev => ({ ...prev, [index]: 0 }))
-      })
-    }
-
-    if (playingAudio === index) {
-      audioRefs.current[index].pause()
-      setPlayingAudio(null)
-    } else {
-      // Pause any currently playing audio
-      if (playingAudio !== null && audioRefs.current[playingAudio]) {
-        audioRefs.current[playingAudio].pause()
-      }
-      audioRefs.current[index].play()
-      setPlayingAudio(index)
-    }
-  }
-
-  const { connected } = useWallet()
+  const { connected, publicKey } = useWallet()
 
   const features = [
     {
@@ -191,48 +157,14 @@ export function MobileHero() {
     <div ref={containerRef} className="min-h-screen relative">
       <div className="relative z-10 min-h-screen">
         {connected ? (
-          // Logged in version - Audio/Video Messages
+          // Logged in version - Profile Setup
           <>
-            {/* Connections Header - Full Width Edge to Edge */}
+            {/* Profile Setup Header - Full Width Edge to Edge */}
             <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
               <div className="flex items-center justify-center p-4">
-                <div className="text-center">
-                  <h1 className="text-xl font-bold text-slate-800 font-qurova">Connections</h1>
-                  <p className="text-sm text-slate-600 font-queensides">Your audio & video messages</p>
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div className="flex px-4 pb-4">
-                <div className="grid grid-cols-2 gap-2 p-2 bg-white/10 backdrop-blur-sm rounded-2xl border border-indigo-200/20 w-full">
-                  <button
-                    onClick={() => setActiveTab(0)}
-                    className={`relative p-3 rounded-xl transition-all duration-300 ${
-                      activeTab === 0
-                        ? "bg-gradient-to-br from-indigo-400/20 to-purple-400/20 border border-indigo-300/40 shadow-lg"
-                        : "hover:bg-white/10 border border-transparent"
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">🎵</div>
-                    <div className="text-xs font-queensides text-slate-600 leading-tight">Audio</div>
-                    {activeTab === 0 && (
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-indigo-400 rounded-full"></div>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab(1)}
-                    className={`relative p-3 rounded-xl transition-all duration-300 ${
-                      activeTab === 1
-                        ? "bg-gradient-to-br from-purple-400/20 to-indigo-400/20 border border-purple-300/40 shadow-lg"
-                        : "hover:bg-white/10 border border-transparent"
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">🎥</div>
-                    <div className="text-xs font-queensides text-slate-600 leading-tight">Video</div>
-                    {activeTab === 1 && (
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-purple-400 rounded-full"></div>
-                    )}
-                  </button>
+                <div className="text-center pt-3">
+                  <h1 className="text-xl font-bold text-slate-800 font-qurova">Welcome to Samaa</h1>
+                  <p className="text-sm text-slate-600 font-queensides">Let's set up your profile</p>
                 </div>
               </div>
             </div>
@@ -241,281 +173,131 @@ export function MobileHero() {
             <div className="p-4 pb-32">
               <div className="max-w-lg mx-auto">
 
-            {/* Audio Messages - Clean Design */}
-            {activeTab === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="space-y-6"
-              >
-                {[
-                  {
-                    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-                    audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav", // Sample audio
-                    duration: "2:34",
-                    time: "2h ago",
-                  },
-                  {
-                    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-                    audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav", // Sample audio
-                    duration: "1:45",
-                    time: "5h ago",
-                  },
-                  {
-                    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-                    audioUrl: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav", // Sample audio
-                    duration: "3:12",
-                    time: "1d ago",
-                  },
-                ].map((message, index) => (
+                {/* Profile Setup Flow */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="space-y-6"
+                >
+                  {/* Welcome Message */}
+                  <div className="text-center mb-8">
+                    <motion.div
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.2, duration: 0.6 }}
+                      className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                    >
+                      <span className="text-4xl">✨</span>
+                    </motion.div>
+                    <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-4">
+                      Wallet Connected!
+                    </h2>
+
+                    {/* Wallet Address Card */}
+                    <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 mb-4 shadow-sm">
+                      <div className="text-center">
+                        <p className="text-xs text-slate-500 font-queensides mb-1">Your Wallet Address</p>
+                        <p className="text-lg font-bold text-slate-800 font-mono tracking-wider">
+                          {publicKey ? `${publicKey.toString().slice(0, 6)}...${publicKey.toString().slice(-6)}` : 'Wallet Address'}
+                        </p>
+                        <div className="flex items-center justify-center space-x-2 mt-2">
+                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                          <span className="text-xs text-green-600 font-queensides font-medium">Connected</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Profile Setup Instructions */}
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-4 mb-6">
+                      <div className="text-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <User className="w-6 h-6 text-white" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Ready to Find Your Match?</h3>
+                        <p className="text-slate-700 font-queensides leading-relaxed">
+                          Click the <span className="font-semibold text-indigo-600">profile icon</span> in the bottom menu to set up your profile and start connecting
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* New to Crypto Section */}
                   <motion.div
-                    key={index}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1, duration: 0.5 }}
-                    className="flex flex-col items-center space-y-3"
+                    transition={{ delay: 0.4, duration: 0.6 }}
+                    className="relative rounded-2xl p-6 border border-indigo-200/50 hover:border-indigo-300/60 transition-all duration-300 overflow-hidden bg-gradient-to-br from-white/90 to-indigo-50/80 backdrop-blur-sm shadow-lg mb-6"
                   >
-                    {/* Audio Player with Profile */}
-                    <div className="flex items-center space-x-4">
-                      {/* Audio Player with Arabic Borders */}
-                      <div className="relative bg-white/80 backdrop-blur-sm border border-indigo-200/40 rounded-full px-4 py-2 flex items-center space-x-3 shadow-sm">
-                        {/* Arabic corner decorations */}
-                        <div className="absolute top-1 left-2 w-2 h-2 border-l border-t border-indigo-300/60 rounded-tl-sm"></div>
-                        <div className="absolute top-1 right-2 w-2 h-2 border-r border-t border-indigo-300/60 rounded-tr-sm"></div>
-                        <div className="absolute bottom-1 left-2 w-2 h-2 border-l border-b border-indigo-300/60 rounded-bl-sm"></div>
-                        <div className="absolute bottom-1 right-2 w-2 h-2 border-r border-b border-indigo-300/60 rounded-br-sm"></div>
+                    {/* Arabic-inspired corner decorations */}
+                    <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
+                    <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
+                    <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
+                    <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
 
-                        {/* Subtle geometric pattern */}
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-200/30 rounded-full"></div>
+                    {/* Subtle background pattern */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/10 to-purple-50/10 opacity-50"></div>
 
-                        <button
-                          onClick={() => toggleAudio(index, message.audioUrl)}
-                          className="relative z-10 w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform shadow-sm"
-                        >
-                          {playingAudio === index ? (
-                            <Pause className="w-3 h-3 text-white" />
-                          ) : (
-                            <Play className="w-3 h-3 text-white ml-0.5" />
-                          )}
-                        </button>
-                        <div className="relative z-10 w-20 h-1 bg-slate-200/60 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full transition-all duration-300"
-                            style={{ width: `${audioProgress[index] || 0}%` }}
-                          ></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-xl">🚀</span>
                         </div>
-                        <span className="relative z-10 text-xs text-slate-600 font-queensides">{message.duration}</span>
+                        <h3 className="text-xl font-bold text-slate-800 font-qurova">New to Crypto?</h3>
                       </div>
 
-                      {/* Profile Image */}
-                      <div className="relative">
-                        <div className="w-16 h-16 rounded-full border-2 border-white shadow-lg overflow-hidden">
-                          <img
-                            src={message.avatar}
-                            alt="Profile"
-                            className="w-full h-full object-cover"
-                          />
+                      <div className="space-y-3 text-slate-600 font-queensides">
+                        <p className="leading-relaxed">
+                          You just logged in the <span className="font-semibold text-indigo-600">Web3 way</span> - no emails or passwords needed, just your wallet address.
+                        </p>
+
+                        <p className="leading-relaxed">
+                          Your wallet address can receive <span className="font-semibold text-purple-600">Solana</span> or <span className="font-semibold text-indigo-600">SAMAA tokens</span> from anyone, anywhere in the world.
+                        </p>
+                      </div>
+
+                      {/* Crypto Benefits */}
+                      <div className="grid grid-cols-2 gap-3 mt-5">
+                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 border border-indigo-200/50 shadow-sm hover:shadow-md transition-all duration-200">
+                          <div className="text-center">
+                            <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                              <span className="text-white text-sm">🔐</span>
+                            </div>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">Secure</p>
+                          </div>
                         </div>
-                        {/* Online indicator */}
-                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
+                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200/50 shadow-sm hover:shadow-md transition-all duration-200">
+                          <div className="text-center">
+                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                              <span className="text-white text-sm">🌍</span>
+                            </div>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">Global</p>
+                          </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200/50 shadow-sm hover:shadow-md transition-all duration-200">
+                          <div className="text-center">
+                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                              <span className="text-white text-sm">⚡</span>
+                            </div>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">Fast</p>
+                          </div>
+                        </div>
+                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200/50 shadow-sm hover:shadow-md transition-all duration-200">
+                          <div className="text-center">
+                            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                              <span className="text-white text-sm">🔓</span>
+                            </div>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">No Passwords</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action Card */}
-                    <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/30 rounded-xl px-4 py-2 flex items-center justify-between space-x-4 shadow-sm">
-                      <span className="text-xs text-slate-500 font-queensides">{message.time}</span>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          className="w-7 h-7 bg-indigo-100/80 hover:bg-indigo-200/80 rounded-full flex items-center justify-center transition-colors border border-indigo-200/40"
-                          title="Reply"
-                        >
-                          <Reply className="w-3 h-3 text-indigo-600" />
-                        </button>
-                        <button
-                          className="w-7 h-7 bg-purple-100/80 hover:bg-purple-200/80 rounded-full flex items-center justify-center transition-colors border border-purple-200/40"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3 h-3 text-purple-600" />
-                        </button>
-                        <button
-                          className="w-7 h-7 bg-slate-100/80 hover:bg-slate-200/80 rounded-full flex items-center justify-center transition-colors border border-slate-200/40"
-                          title="Block"
-                        >
-                          <UserX className="w-3 h-3 text-slate-600" />
-                        </button>
-                      </div>
-                    </div>
+                    {/* Center decorative element */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-400/30 rounded-full opacity-50"></div>
                   </motion.div>
-                ))}
-              </motion.div>
-            )}
-
-            {/* Video Messages - Redesigned */}
-            {activeTab === 1 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="space-y-6"
-              >
-                {[
-                  {
-                    name: "Maryam S.",
-                    age: 25,
-                    location: "Riyadh, SA",
-                    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
-                    thumbnail: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=200&fit=crop",
-                    duration: "1:23",
-                    time: "3h ago",
-                    isPlaying: false,
-                  },
-                  {
-                    name: "Layla H.",
-                    age: 27,
-                    location: "Cairo, EG",
-                    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face",
-                    thumbnail: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=300&h=200&fit=crop",
-                    duration: "2:15",
-                    time: "1d ago",
-                    isPlaying: false,
-                  },
-                  {
-                    name: "Amina R.",
-                    age: 24,
-                    location: "Istanbul, TR",
-                    avatar: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=150&h=150&fit=crop&crop=face",
-                    thumbnail: "https://images.unsplash.com/photo-1573496774426-fe5c29db6833?w=300&h=200&fit=crop",
-                    duration: "0:58",
-                    time: "2d ago",
-                    isPlaying: false,
-                  },
-                ].map((message, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.1, duration: 0.5 }}
-                    className="relative"
-                  >
-                    {/* Video Card */}
-                    <div className="bg-gradient-to-br from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-200/40 rounded-3xl overflow-hidden shadow-lg">
-                      {/* Video Thumbnail */}
-                      <div className="relative aspect-video">
-                        <img
-                          src={message.thumbnail}
-                          alt="Video thumbnail"
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-
-                        {/* Play Button */}
-                        <button className="absolute inset-0 flex items-center justify-center group">
-                          <div className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                            <div className="text-2xl ml-1">▶️</div>
-                          </div>
-                        </button>
-
-                        {/* Duration */}
-                        <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded-full font-queensides">
-                          {message.duration}
-                        </div>
-
-                        {/* Profile Image Overlay */}
-                        <div className="absolute bottom-3 left-3">
-                          <div className="w-12 h-12 rounded-full border-3 border-white shadow-lg overflow-hidden">
-                            <img
-                              src={message.avatar}
-                              alt={message.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
-                        </div>
-                      </div>
-
-                      {/* Message Info */}
-                      <div className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h3 className="font-bold text-slate-800 font-queensides">{message.name}</h3>
-                            <p className="text-sm text-slate-600 font-queensides">{message.age} • {message.location}</p>
-                          </div>
-                          <span className="text-xs text-slate-500 font-queensides">{message.time}</span>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex justify-center space-x-4">
-                          <button className="w-10 h-10 bg-red-100/80 hover:bg-red-200/80 rounded-full flex items-center justify-center transition-colors border border-red-200/40 shadow-sm">
-                            <div className="text-sm">❌</div>
-                          </button>
-                          <button className="w-10 h-10 bg-blue-100/80 hover:bg-blue-200/80 rounded-full flex items-center justify-center transition-colors border border-blue-200/40 shadow-sm">
-                            <div className="text-sm">💬</div>
-                          </button>
-                          <button className="w-10 h-10 bg-green-100/80 hover:bg-green-200/80 rounded-full flex items-center justify-center transition-colors border border-green-200/40 shadow-sm">
-                            <div className="text-sm">�</div>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-            {/* Elegant Divider */}
-            <motion.div
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ delay: 0.5, duration: 0.8, ease: "easeOut" }}
-              className="flex items-center justify-center my-8"
-            >
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
-              <div className="mx-8 flex items-center space-x-3">
-                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                <div className="w-6 h-6 border-2 border-indigo-400/50 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full"></div>
-                </div>
-                <div className="w-1 h-8 bg-gradient-to-b from-indigo-400/60 to-purple-400/60"></div>
-                <div className="w-6 h-6 border-2 border-purple-400/50 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-500 to-purple-400 rounded-full"></div>
-                </div>
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full transform rotate-45"></div>
-              </div>
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300/40 to-transparent"></div>
-            </motion.div>
-            {/* Card Explainer */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="relative group mb-6 mt-6"
-            >
-              <div className="relative rounded-2xl p-6 border border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5">
-                {/* Arabic-inspired corner decorations */}
-                <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
-                <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
-                <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
-                <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
-
-                {/* Subtle background pattern */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/10 to-purple-50/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-
-                <div className="relative z-10 text-center">
-                  <h1 className="text-2xl font-bold text-slate-800 font-queensides mb-2">Connections, Not Swipes</h1>
-                  <p className="text-slate-600 font-queensides leading-relaxed">
-                    You'll never know if they can make you laugh with swipes.
-                    <br />
-                    <span className="font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                      If they like you, they should say something.
-                    </span>
-                  </p>
-                </div>
-
-                {/* Center decorative element */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-400/30 rounded-full opacity-50"></div>
-              </div>
-            </motion.div>
+                
+                </motion.div>
               </div>
             </div>
           </>

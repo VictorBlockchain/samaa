@@ -1,0 +1,112 @@
+{
+  "conversations": [
+    {
+      "id": "conv_1",
+      "participants": ["user_3", "user_4"],
+      "lastMessage": "msg_3",
+      "lastActivity": "2024-06-15T11:30:00Z",
+      "isActive": true
+    },
+    {
+      "id": "conv_2",
+      "participants": ["user_1", "user_2"],
+      "lastMessage": "msg_1",
+      "lastActivity": "2024-06-15T08:15:00Z",
+      "isActive": true
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_1",
+      "conversationId": "conv_2",
+      "senderId": "user_2",
+      "recipientId": "user_1",
+      "type": "audio",
+      "content": {
+        "audioUrl": "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+        "duration": 45,
+        "transcript": "Assalamu alaikum Aisha, I hope you're doing well. I saw your profile and would love to get to know you better. I'm Omar, and I work as a doctor here in LA. Looking forward to hearing from you insha'Allah."
+      },
+      "isRead": false,
+      "isPlaying": false,
+      "sentAt": "2024-06-15T08:15:00Z",
+      "readAt": null,
+      "metadata": {
+        "fileSize": "2.1MB",
+        "format": "mp3",
+        "quality": "high"
+      }
+    },
+    {
+      "id": "msg_2",
+      "conversationId": "conv_1",
+      "senderId": "user_4",
+      "recipientId": "user_3",
+      "type": "video",
+      "content": {
+        "videoUrl": "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
+        "thumbnailUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=300&fit=crop",
+        "duration": 60,
+        "transcript": "Assalamu alaikum Fatima, I'm Ahmed. I really admire your artwork and would love to learn more about your calligraphy. I'm a business owner here in Houston and I think we might have a lot in common."
+      },
+      "isRead": true,
+      "isPlaying": false,
+      "sentAt": "2024-06-14T20:30:00Z",
+      "readAt": "2024-06-15T09:00:00Z",
+      "metadata": {
+        "fileSize": "8.5MB",
+        "format": "mp4",
+        "quality": "720p"
+      }
+    },
+    {
+      "id": "msg_3",
+      "conversationId": "conv_1",
+      "senderId": "user_3",
+      "recipientId": "user_4",
+      "type": "audio",
+      "content": {
+        "audioUrl": "https://www.soundjay.com/misc/sounds/bell-ringing-04.wav",
+        "duration": 38,
+        "transcript": "Wa alaikum assalam Ahmed, thank you for your kind message. I'd love to share more about my art with you. Your business sounds interesting too. Maybe we can talk more about our passions and goals."
+      },
+      "isRead": false,
+      "isPlaying": false,
+      "sentAt": "2024-06-15T11:30:00Z",
+      "readAt": null,
+      "metadata": {
+        "fileSize": "1.8MB",
+        "format": "mp3",
+        "quality": "high"
+      }
+    },
+    {
+      "id": "msg_4",
+      "conversationId": "conv_2",
+      "senderId": "user_1",
+      "recipientId": "user_2",
+      "type": "audio",
+      "content": {
+        "audioUrl": "https://www.soundjay.com/misc/sounds/bell-ringing-03.wav",
+        "duration": 42,
+        "transcript": "Wa alaikum assalam Omar, it's nice to meet you! I'm doing well alhamdulillah. I saw that you're a doctor - that's such noble work. I'd love to learn more about you and your interests."
+      },
+      "isRead": false,
+      "isPlaying": false,
+      "sentAt": "2024-06-15T12:00:00Z",
+      "readAt": null,
+      "metadata": {
+        "fileSize": "2.0MB",
+        "format": "mp3",
+        "quality": "high"
+      }
+    }
+  ],
+  "messageStats": {
+    "totalMessages": 4,
+    "audioMessages": 3,
+    "videoMessages": 1,
+    "averageDuration": 46.25,
+    "totalDuration": 185
+  }
+}

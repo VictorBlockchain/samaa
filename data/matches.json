@@ -1,0 +1,98 @@
+{
+  "matches": [
+    {
+      "id": "match_1",
+      "userId": "user_1",
+      "matchedUserId": "user_2",
+      "compatibilityScore": 0.85,
+      "status": "pending",
+      "matchType": "algorithm",
+      "createdAt": "2024-06-15T08:00:00Z",
+      "updatedAt": "2024-06-15T08:00:00Z",
+      "distance": 2445.5,
+      "commonInterests": ["technology", "travel"],
+      "matchReason": "High compatibility based on shared values and interests"
+    },
+    {
+      "id": "match_2",
+      "userId": "user_3",
+      "matchedUserId": "user_4",
+      "compatibilityScore": 0.78,
+      "status": "accepted",
+      "matchType": "mutual_like",
+      "createdAt": "2024-06-14T15:30:00Z",
+      "updatedAt": "2024-06-14T16:45:00Z",
+      "distance": 1087.2,
+      "commonInterests": ["community", "travel"],
+      "matchReason": "Both expressed interest in each other"
+    },
+    {
+      "id": "match_3",
+      "userId": "user_1",
+      "matchedUserId": "user_5",
+      "compatibilityScore": 0.72,
+      "status": "pending",
+      "matchType": "algorithm",
+      "createdAt": "2024-06-15T10:15:00Z",
+      "updatedAt": "2024-06-15T10:15:00Z",
+      "distance": 1092.8,
+      "commonInterests": ["volunteering"],
+      "matchReason": "Similar values and life goals"
+    },
+    {
+      "id": "match_4",
+      "userId": "user_2",
+      "matchedUserId": "user_3",
+      "compatibilityScore": 0.81,
+      "status": "pending",
+      "matchType": "algorithm",
+      "createdAt": "2024-06-15T09:20:00Z",
+      "updatedAt": "2024-06-15T09:20:00Z",
+      "distance": 1745.3,
+      "commonInterests": ["family", "volunteering"],
+      "matchReason": "Strong compatibility in family values"
+    }
+  ],
+  "userLikes": [
+    {
+      "id": "like_1",
+      "userId": "user_1",
+      "likedUserId": "user_2",
+      "createdAt": "2024-06-15T07:30:00Z"
+    },
+    {
+      "id": "like_2",
+      "userId": "user_3",
+      "likedUserId": "user_4",
+      "createdAt": "2024-06-14T14:20:00Z"
+    },
+    {
+      "id": "like_3",
+      "userId": "user_4",
+      "likedUserId": "user_3",
+      "createdAt": "2024-06-14T16:10:00Z"
+    },
+    {
+      "id": "like_4",
+      "userId": "user_5",
+      "likedUserId": "user_1",
+      "createdAt": "2024-06-15T09:00:00Z"
+    }
+  ],
+  "userPasses": [
+    {
+      "id": "pass_1",
+      "userId": "user_1",
+      "passedUserId": "user_4",
+      "reason": "distance_too_far",
+      "createdAt": "2024-06-14T12:00:00Z"
+    },
+    {
+      "id": "pass_2",
+      "userId": "user_2",
+      "passedUserId": "user_5",
+      "reason": "different_interests",
+      "createdAt": "2024-06-14T18:30:00Z"
+    }
+  ]
+}

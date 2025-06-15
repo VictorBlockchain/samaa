@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, X, Bell, Settings, Clock } from "lucide-react"
+import { Menu, X, Bell, Settings, Clock, LogOut } from "lucide-react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePrayerTimes } from "@/app/hooks/use-prayer-times"
-import { VoiceButton } from "@/components/ui/voice-button"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { useRouter } from "next/navigation"
 
 export function MobileNavigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [showNav, setShowNav] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useState(false) // This would come from your auth context in a real app
+  const { connected, disconnect } = useWallet()
   const { nextPrayer, timeToNext, isLoading: prayerLoading } = usePrayerTimes()
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,11 +65,12 @@ export function MobileNavigation() {
               </motion.div>
             )}
 
-            {isLoggedIn && (
+            {connected && (
               <>
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   whileTap={{ scale: 0.9 }}
+                  onClick={() => router.push('/notifications')}
                   className="p-3 rounded-2xl glass-button focus-ring relative overflow-hidden group"
                 >
                   <Bell className="w-5 h-5 text-indigo-600 relative z-10" />
@@ -82,18 +85,16 @@ export function MobileNavigation() {
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 5 }}
                   whileTap={{ scale: 0.9 }}
+                  onClick={() => router.push('/settings')}
                   className="p-3 rounded-2xl glass-button focus-ring relative overflow-hidden group"
                 >
                   <Settings className="w-5 h-5 text-indigo-600 relative z-10" />
                   <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.button>
-
-                {/* Voice Button */}
-                <VoiceButton size="sm" />
               </>
             )}
 
-            {!isLoggedIn && <WalletButton />}
+            {!connected && <WalletButton />}
 
             <motion.button
               onClick={() => setIsOpen(!isOpen)}
@@ -152,45 +153,88 @@ export function MobileNavigation() {
 
               {/* Inner border glow */}
               <div className="absolute inset-0 rounded-3xl border border-indigo-100/30 pointer-events-none" />
-              <div className="relative p-8 space-y-2">
-                {[
-                  { title: "How It Works", icon: "🔄" },
-                  { title: "Success Stories", icon: "💕" },
-                  { title: "Safety & Privacy", icon: "🛡️" },
-                  { title: "Islamic Guidelines", icon: "☪️" },
-                ].map((item, index) => (
-                  <motion.a
-                    key={item.title}
-                    href="#"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1, duration: 0.4 }}
-                    className="flex items-center space-x-4 py-4 px-6 rounded-2xl hover:bg-gradient-to-r hover:from-indigo-50 hover:to-purple-50 transition-all duration-300 font-medium text-slate-700 hover:text-indigo-600 focus-ring group font-qurova"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <div className="relative">
-                      <span className="text-2xl group-hover:scale-110 transition-transform duration-300">
-                        {item.icon}
-                      </span>
-                      {/* Subtle glow effect on hover */}
-                      <div className="absolute inset-0 bg-indigo-400/20 rounded-full scale-0 group-hover:scale-150 transition-transform duration-300 blur-sm" />
-                    </div>
-                    <span className="font-medium tracking-wide text-lg font-qurova">{item.title}</span>
-                    <motion.div
-                      className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                      whileHover={{ x: 4 }}
+              <div className="relative">
+                {/* Navigation Header */}
+                <div className="px-6 py-4 border-b border-indigo-100/30">
+                  <h2 className="text-lg font-bold text-slate-800 font-qurova">Navigation</h2>
+                  <p className="text-sm text-slate-600 font-queensides">Explore Samaa features</p>
+                </div>
+                
+                {/* Navigation Items */}
+                <div className="py-2">
+                  {[
+                    { title: "About Us", icon: "ℹ️", category: "info" },
+                    { title: "Why Web3/Crypto", icon: "🚀", category: "info" },
+                    { title: "Dowry/Purse Wallets", icon: "💰", category: "info" },
+                    { title: "Get Started w/Crypto", icon: "🎓", category: "info" },
+                    { title: "Support Center", icon: "💬", category: "info" },
+                  ].map((item, index) => (
+                    <motion.a
+                      key={item.title}
+                      href="#"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.4 }}
+                      className="flex items-center space-x-4 py-3 px-6 hover:bg-indigo-50/50 transition-all duration-200 group"
+                      onClick={() => setIsOpen(false)}
                     >
+                      <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                        <span className="text-lg">{item.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-medium text-slate-700 font-queensides group-hover:text-indigo-600 transition-colors duration-200">
+                          {item.title}
+                        </span>
+                      </div>
                       <svg
-                        className="w-4 h-4 text-indigo-400 group-hover:text-indigo-600 transition-colors duration-300"
+                        className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                    </motion.div>
-                  </motion.a>
-                ))}
+                    </motion.a>
+                  ))}
+                </div>
+
+                {/* Account Section - Only show if connected */}
+                {connected && (
+                  <>
+                    <div className="px-6 py-3 border-t border-indigo-100/30">
+                      <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Account</h3>
+                    </div>
+                    <div className="pb-2">
+                      <motion.button
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4, duration: 0.4 }}
+                        className="flex items-center space-x-4 py-3 px-6 hover:bg-red-50/50 transition-all duration-200 group w-full text-left"
+                        onClick={() => {
+                          disconnect()
+                          setIsOpen(false)
+                        }}
+                      >
+                        <div className="w-10 h-10 bg-gradient-to-br from-red-100 to-orange-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                          <span className="text-lg">🔌</span>
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium text-slate-700 font-queensides group-hover:text-red-600 transition-colors duration-200">
+                            Disconnect Wallet
+                          </span>
+                        </div>
+                        <svg
+                          className="w-4 h-4 text-slate-400 group-hover:text-red-500 transition-colors duration-200"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                      </motion.button>
+                    </div>
+                  </>
+                )}
 
                 {/* Beautiful footer with celestial touch */}
                 <motion.div

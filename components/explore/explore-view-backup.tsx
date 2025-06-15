@@ -194,8 +194,8 @@ const mockSuitors: Suitor[] = [
   },
 ]
 
-export function ExploreView() {
-  const [activeTab, setActiveTab] = useState<"wants-you" | "potentials" | "you-want-them">("potentials")
+export function ExploreViewBackup() {
+  const [activeTab, setActiveTab] = useState<"visited" | "favourited" | "passed">("favourited")
   const [playingMedia, setPlayingMedia] = useState<{ id: string; type: "video" | "audio" } | null>(null)
   const [showHeader, setShowHeader] = useState(true)
   const [lastScrollY, setLastScrollY] = useState(0)
@@ -209,9 +209,9 @@ export function ExploreView() {
       const currentScrollY = window.scrollY
 
       if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setShowHeader(false) // Hide on scroll down
+        setShowHeader(false)
       } else {
-        setShowHeader(true)  // Show on scroll up
+        setShowHeader(true)
       }
 
       setLastScrollY(currentScrollY)
@@ -308,44 +308,44 @@ export function ExploreView() {
           <div className="flex px-4 pb-4">
             <div className="grid grid-cols-3 gap-2 p-2 bg-white/10 backdrop-blur-sm rounded-2xl border border-indigo-200/20 w-full">
               <button
-                onClick={() => setActiveTab("wants-you")}
+                onClick={() => setActiveTab("visited")}
                 className={`relative p-3 rounded-xl transition-all duration-300 ${
-                  activeTab === "wants-you"
+                  activeTab === "visited"
                     ? "bg-gradient-to-br from-indigo-400/20 to-purple-400/20 border border-indigo-300/40 shadow-lg"
                     : "hover:bg-white/10 border border-transparent"
                 }`}
               >
-                <div className="text-2xl mb-1">💌</div>
-                <div className="text-xs font-queensides text-slate-600 leading-tight">Wants You</div>
-                {activeTab === "wants-you" && (
+                <div className="text-2xl mb-1">👁️</div>
+                <div className="text-xs font-queensides text-slate-600 leading-tight">Visited you</div>
+                {activeTab === "visited" && (
                   <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-indigo-400 rounded-full"></div>
                 )}
               </button>
               <button
-                onClick={() => setActiveTab("potentials")}
+                onClick={() => setActiveTab("favourited")}
                 className={`relative p-3 rounded-xl transition-all duration-300 ${
-                  activeTab === "potentials"
+                  activeTab === "favourited"
                     ? "bg-gradient-to-br from-indigo-400/20 to-purple-400/20 border border-indigo-300/40 shadow-lg"
                     : "hover:bg-white/10 border border-transparent"
                 }`}
               >
-                <div className="text-2xl mb-1">🔍</div>
-                <div className="text-xs font-queensides text-slate-600 leading-tight">Potentials</div>
-                {activeTab === "potentials" && (
+                <div className="text-2xl mb-1">💖</div>
+                <div className="text-xs font-queensides text-slate-600 leading-tight">Favourited</div>
+                {activeTab === "favourited" && (
                   <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-indigo-400 rounded-full"></div>
                 )}
               </button>
               <button
-                onClick={() => setActiveTab("you-want-them")}
+                onClick={() => setActiveTab("passed")}
                 className={`relative p-3 rounded-xl transition-all duration-300 ${
-                  activeTab === "you-want-them"
+                  activeTab === "passed"
                     ? "bg-gradient-to-br from-indigo-400/20 to-purple-400/20 border border-indigo-300/40 shadow-lg"
                     : "hover:bg-white/10 border border-transparent"
                 }`}
               >
-                <div className="text-2xl mb-1">💕</div>
-                <div className="text-xs font-queensides text-slate-600 leading-tight">You Want Them</div>
-                {activeTab === "you-want-them" && (
+                <div className="text-2xl mb-1">👋</div>
+                <div className="text-xs font-queensides text-slate-600 leading-tight">Passed</div>
+                {activeTab === "passed" && (
                   <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-indigo-400 rounded-full"></div>
                 )}
               </button>

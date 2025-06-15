@@ -19,7 +19,7 @@ export default function ExplorePage() {
       {isMobile ? <MobileNavigation /> : <DesktopNavigation />}
 
       {/* Main Content */}
-      <div className={`${isMobile ? "pt-16 pb-20" : "pt-24"}`}>
+      <div className="relative z-10">
         <ExploreView />
       </div>
 

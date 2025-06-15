@@ -1,0 +1,204 @@
+{
+  "users": [
+    {
+      "id": "user_1",
+      "name": "Aisha",
+      "age": 26,
+      "bio": "Software engineer who loves hiking and reading Quran. Looking for someone who shares my values and passion for technology.",
+      "location": {
+        "city": "New York",
+        "state": "NY",
+        "country": "USA",
+        "coordinates": {
+          "lat": 40.7128,
+          "lng": -74.0060
+        }
+      },
+      "interests": ["technology", "hiking", "reading", "cooking", "travel"],
+      "religion": "Islam",
+      "sect": "Sunni",
+      "education": "Masters",
+      "occupation": "Software Engineer",
+      "photos": [
+        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop&crop=face"
+      ],
+      "bioRating": 92,
+      "isVerified": true,
+      "walletAddress": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgHU",
+      "hasDowryWallet": false,
+      "hasPurseWallet": true,
+      "purseBalance": 150.50,
+      "isOnline": true,
+      "lastActive": "2024-06-15T10:30:00Z",
+      "joinedDate": "2024-05-01T00:00:00Z",
+      "preferences": {
+        "ageRange": { "min": 24, "max": 35 },
+        "maxDistance": 50,
+        "education": ["Bachelors", "Masters", "PhD"],
+        "occupation": ["Engineer", "Doctor", "Teacher"],
+        "sect": ["Sunni"]
+      }
+    },
+    {
+      "id": "user_2",
+      "name": "Omar",
+      "age": 29,
+      "bio": "Doctor passionate about helping others. Love playing soccer and spending time with family. Seeking a life partner who values faith and family.",
+      "location": {
+        "city": "Los Angeles",
+        "state": "CA",
+        "country": "USA",
+        "coordinates": {
+          "lat": 34.0522,
+          "lng": -118.2437
+        }
+      },
+      "interests": ["medicine", "soccer", "family", "volunteering", "photography"],
+      "religion": "Islam",
+      "sect": "Sunni",
+      "education": "PhD",
+      "occupation": "Doctor",
+      "photos": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=600&fit=crop&crop=face"
+      ],
+      "bioRating": 95,
+      "isVerified": true,
+      "walletAddress": "9WzDXwBbmkg8ZTbNMqUxvQRAb9jnUuHhQNqWNKTgga5v",
+      "hasDowryWallet": true,
+      "hasPurseWallet": false,
+      "dowryBalance": 2500.00,
+      "isOnline": false,
+      "lastActive": "2024-06-15T08:15:00Z",
+      "joinedDate": "2024-04-15T00:00:00Z",
+      "preferences": {
+        "ageRange": { "min": 22, "max": 30 },
+        "maxDistance": 75,
+        "education": ["Bachelors", "Masters", "PhD"],
+        "occupation": ["Engineer", "Doctor", "Teacher", "Nurse"],
+        "sect": ["Sunni"]
+      }
+    },
+    {
+      "id": "user_3",
+      "name": "Fatima",
+      "age": 24,
+      "bio": "Teacher who loves art and calligraphy. Enjoy creating beautiful Islamic art and spending time in nature. Looking for someone who appreciates creativity.",
+      "location": {
+        "city": "Chicago",
+        "state": "IL",
+        "country": "USA",
+        "coordinates": {
+          "lat": 41.8781,
+          "lng": -87.6298
+        }
+      },
+      "interests": ["art", "calligraphy", "teaching", "nature", "books"],
+      "religion": "Islam",
+      "sect": "Sunni",
+      "education": "Bachelors",
+      "occupation": "Teacher",
+      "photos": [
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=600&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400&h=600&fit=crop&crop=face"
+      ],
+      "bioRating": 88,
+      "isVerified": true,
+      "walletAddress": "4vJ9JU1bJJE96FWSJKvHsmmFADCg4gpZQff4P3bkLKi",
+      "hasDowryWallet": false,
+      "hasPurseWallet": true,
+      "purseBalance": 75.25,
+      "isOnline": true,
+      "lastActive": "2024-06-15T11:00:00Z",
+      "joinedDate": "2024-05-20T00:00:00Z",
+      "preferences": {
+        "ageRange": { "min": 25, "max": 35 },
+        "maxDistance": 40,
+        "education": ["Bachelors", "Masters"],
+        "occupation": ["Engineer", "Doctor", "Teacher", "Artist"],
+        "sect": ["Sunni"]
+      }
+    },
+    {
+      "id": "user_4",
+      "name": "Ahmed",
+      "age": 31,
+      "bio": "Business owner with a passion for entrepreneurship and community service. Love traveling and learning about different cultures.",
+      "location": {
+        "city": "Houston",
+        "state": "TX",
+        "country": "USA",
+        "coordinates": {
+          "lat": 29.7604,
+          "lng": -95.3698
+        }
+      },
+      "interests": ["business", "travel", "community", "fitness", "cooking"],
+      "religion": "Islam",
+      "sect": "Sunni",
+      "education": "Masters",
+      "occupation": "Business Owner",
+      "photos": [
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=600&fit=crop&crop=face"
+      ],
+      "bioRating": 91,
+      "isVerified": true,
+      "walletAddress": "8HvwkN2AAAC3HGPiPEHWqSjcfxK3YqSjcfxK3YqSjcfx",
+      "hasDowryWallet": true,
+      "hasPurseWallet": false,
+      "dowryBalance": 5000.00,
+      "isOnline": false,
+      "lastActive": "2024-06-14T22:30:00Z",
+      "joinedDate": "2024-03-10T00:00:00Z",
+      "preferences": {
+        "ageRange": { "min": 23, "max": 32 },
+        "maxDistance": 100,
+        "education": ["Bachelors", "Masters", "PhD"],
+        "occupation": ["Engineer", "Doctor", "Teacher", "Business"],
+        "sect": ["Sunni"]
+      }
+    },
+    {
+      "id": "user_5",
+      "name": "Zara",
+      "age": 27,
+      "bio": "Nurse who cares deeply about helping others. Enjoy yoga, meditation, and spending time with family. Seeking a kind and compassionate partner.",
+      "location": {
+        "city": "Miami",
+        "state": "FL",
+        "country": "USA",
+        "coordinates": {
+          "lat": 25.7617,
+          "lng": -80.1918
+        }
+      },
+      "interests": ["healthcare", "yoga", "meditation", "family", "volunteering"],
+      "religion": "Islam",
+      "sect": "Sunni",
+      "education": "Bachelors",
+      "occupation": "Nurse",
+      "photos": [
+        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=600&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=600&fit=crop&crop=face"
+      ],
+      "bioRating": 89,
+      "isVerified": true,
+      "walletAddress": "6GCctAuqYLoKfy25HNjwRgPDiVtokqBPzk8QGBaHUcCX",
+      "hasDowryWallet": false,
+      "hasPurseWallet": true,
+      "purseBalance": 200.75,
+      "isOnline": true,
+      "lastActive": "2024-06-15T09:45:00Z",
+      "joinedDate": "2024-04-25T00:00:00Z",
+      "preferences": {
+        "ageRange": { "min": 26, "max": 38 },
+        "maxDistance": 60,
+        "education": ["Bachelors", "Masters", "PhD"],
+        "occupation": ["Engineer", "Doctor", "Teacher", "Nurse"],
+        "sect": ["Sunni"]
+      }
+    }
+  ]
+}

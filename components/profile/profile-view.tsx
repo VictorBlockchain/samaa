@@ -189,38 +189,7 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             {isOwnProfile ? (
               // Own profile - encourage to create profile
               <div className="w-full max-w-md space-y-8">
-                {/* Welcome Header Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="pt-16" // Golden ratio spacing from nav
-                >
-                  <Card className="arabic-border bg-white/20 backdrop-blur-xl border-white/30">
-                    <CardContent className="px-8 py-16 text-center">
-                      {/* Islamic Divider */}
-                      <div className="flex items-center justify-center mb-10">
-                        <div className="flex items-center space-x-3">
-                          <Star className="w-4 h-4 text-indigo-400" />
-                          <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent" />
-                          <Moon className="w-4 h-4 text-purple-400" />
-                          <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
-                          <Sparkles className="w-4 h-4 text-blue-400" />
-                        </div>
-                      </div>
-
-                      {/* Icon */}
-                      <div className="w-24 h-24 bg-gradient-to-br from-indigo-100/80 to-purple-100/80 rounded-full flex items-center justify-center mx-auto mb-10 backdrop-blur-sm">
-                        <UserPlus className="w-12 h-12 text-indigo-600" />
-                      </div>
-
-                      <h2 className="text-3xl font-bold text-slate-800 font-qurova mb-6">Welcome to Samaa</h2>
-
-                      <p className="text-slate-700 font-queensides mb-10 leading-relaxed text-lg max-w-sm mx-auto">
-                        Begin your journey to find your perfect match by creating your Islamic profile.
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+ 
 
                 {/* Profile Setup Card */}
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
