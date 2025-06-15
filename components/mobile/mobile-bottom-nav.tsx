@@ -92,7 +92,7 @@ export function MobileBottomNav({ currentTab, setCurrentTab }: MobileBottomNavPr
                 onClick={() => handleTabClick(tab.id)}
                 whileHover={{ scale: isCenter ? 1 : 1.1 }}
                 whileTap={{ scale: isCenter ? 1 : 0.95 }}
-                className={`flex flex-col items-center justify-center transition-all duration-300 focus-ring ${
+                className={`flex flex-col items-center justify-center transition-all duration-300 focus:outline-none ${
                   isCenter ? "relative -mt-6" : ""
                 }`}
               >

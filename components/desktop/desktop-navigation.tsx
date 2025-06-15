@@ -13,7 +13,7 @@ export function DesktopNavigation() {
             </span>
           </div>
 
-          <div className="hidden md:flex items-center space-x-8">
+          {/* <div className="hidden md:flex items-center space-x-8">
             <a
               href="#"
               className="text-gray-700 hover:text-indigo-700 transition-colors duration-200 relative group font-qurova"
@@ -42,10 +42,10 @@ export function DesktopNavigation() {
               Islamic Guidelines
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 group-hover:w-full transition-all duration-300" />
             </a>
-          </div>
+          </div> */}
 
           <div className="flex items-center">
-            <WalletMultiButton />
+            {/* <WalletMultiButton /> */}
           </div>
         </div>
       </div>

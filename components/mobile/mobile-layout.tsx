@@ -12,9 +12,9 @@ function MobileLayoutContent() {
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative">
-      <CelestialBackground intensity="medium" />
+      <CelestialBackground intensity="heavy" />
       <MobileNavigation />
-
+      
       <div className="pb-24">
         {" "}
         {/* Add padding to account for bottom nav */}

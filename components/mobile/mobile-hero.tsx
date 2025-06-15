@@ -189,8 +189,7 @@ export function MobileHero() {
 
   return (
     <div ref={containerRef} className="min-h-screen relative">
-      <CelestialBackground intensity="medium" />
-      <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen">
+      <div className="relative z-10 min-h-screen">
         {connected ? (
           // Logged in version - Audio/Video Messages
           <>

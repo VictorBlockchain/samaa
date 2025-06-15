@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { HeartIcon } from "@/components/ui/heart-icon"
 import { X, Smartphone } from "lucide-react"
+import { CelestialBackground } from "@/components/ui/celestial-background"
 
 export function DesktopHero() {
   const [isVisible, setIsVisible] = useState(false)
@@ -137,7 +138,7 @@ export function DesktopHero() {
   }
 
   return (
-    <div className="relative min-h-screen pt-24 overflow-hidden">
+    <div className="relative min-h-screen pt-24 overflow-hidden">      
       <div className="relative z-10 px-6">
         <div className="max-w-2xl mx-auto" style={{ marginTop: "70px" }}>
           <motion.div
