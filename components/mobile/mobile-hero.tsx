@@ -67,13 +67,13 @@ export function MobileHero() {
       price: "$0",
       priceSubtext: "Forever",
       description:
-        "While others charge $30-50/month, Samaa is completely free. No buying likes, no premium features, no hidden costs.",
+        "We want connections, marriage & families. No monthly fees, no hidden costs. Just pure love.",
       color: "indigo",
     },
     {
       id: 1,
       icon: "💬",
-      title: "Real Conversations",
+      title: "Real Connections",
       description: "No mindless swiping. Start meaningful conversations with your potential life partner from day one.",
       color: "purple",
     },
@@ -100,7 +100,7 @@ export function MobileHero() {
       icon: "🪙",
       title: "Samaa Token",
       description:
-        "Our native cryptocurrency that powers the entire ecosystem. Earn tokens through engagement and use them across all platform features.",
+        "Our native cryptocurrency that powers the entire ecosystem. Accept payments, build your business, and more.",
       color: "indigo",
     },
     {
@@ -116,7 +116,7 @@ export function MobileHero() {
       icon: "👛",
       title: "Purses",
       description:
-        "Personal digital purses for everyday transactions. Manage your Samaa tokens securely with Islamic finance principles.",
+        "Muslima's can create a purse to showcase their crypto financial independence.",
       color: "blue",
     },
     {
@@ -124,7 +124,7 @@ export function MobileHero() {
       icon: "🛍️",
       title: "Shop",
       description:
-        "Create your own shop to sell items and accept payments in Samaa tokens. Build your halal business within our community.",
+        "Create your own shop to sell items and accept payments in Samaa tokens or solana. Build your halal business within our community.",
       color: "green",
     },
   ]
@@ -523,7 +523,7 @@ export function MobileHero() {
         ) : (
           // Original hero content for non-logged in users
           <div className="p-4 pb-32 pt-24">
-            <div className="max-w-lg mx-auto" style={{ marginTop: "40px" }}>
+            <div className="max-w-lg mx-auto" style={{ marginTop: "21px" }}>
             {/* Keep all the existing hero content here */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
@@ -590,7 +590,7 @@ export function MobileHero() {
 
                 <div className="relative z-10 text-center">
                   <p className="text-lg text-slate-600 font-queensides leading-relaxed">
-                    Samaa is the marriage site for
+                    Samaa is the marriage for
                     <br />
                     <span className="font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent text-xl">
                       Muslim futurists
