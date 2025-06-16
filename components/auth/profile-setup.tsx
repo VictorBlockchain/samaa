@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +41,10 @@ interface ProfileData {
   lastName: string
   age: string
   gender: string
+  maritalStatus: string
+  hasChildren: string
+  wantChildren: string
+  bioTagline: string
 
   // Location & Education
   location: string
@@ -54,6 +58,11 @@ interface ProfileData {
   prayerFrequency: string
   hijabPreference: string
   marriageIntention: string
+  isRevert: string
+  alcohol: string
+  smoking: string
+  psychedelics: string
+  halalFood: string
 
   // Photos & Bio
   bio: string
@@ -93,6 +102,10 @@ export function ProfileSetup() {
     lastName: "",
     age: "",
     gender: "",
+    maritalStatus: "",
+    hasChildren: "",
+    wantChildren: "",
+    bioTagline: "",
     location: "",
     education: "",
     profession: "",
@@ -100,6 +113,11 @@ export function ProfileSetup() {
     prayerFrequency: "",
     hijabPreference: "",
     marriageIntention: "",
+    isRevert: "",
+    alcohol: "",
+    smoking: "",
+    psychedelics: "",
+    halalFood: "",
     bio: "",
     interests: [],
     profilePhoto: null,
@@ -121,9 +139,66 @@ export function ProfileSetup() {
   const [bioFeedback, setBioFeedback] = useState<string>("")
   const [showAiRating, setShowAiRating] = useState<boolean>(false)
   const [aiRatingComplete, setAiRatingComplete] = useState<boolean>(false)
+  const [bioHasBeenEdited, setBioHasBeenEdited] = useState<boolean>(false)
 
   const isMobile = useIsMobile()
   const [currentTab, setCurrentTab] = useState("home")
+
+  // Load existing profile data if available
+  useEffect(() => {
+    if (connected && publicKey) {
+      const existingProfile = localStorage.getItem(`profile_${publicKey.toString()}`)
+      if (existingProfile) {
+        try {
+          const profileData = JSON.parse(existingProfile)
+          // Pre-fill the form with existing data
+          setProfileData({
+            firstName: profileData.firstName || "",
+            lastName: profileData.lastName || "",
+            age: profileData.age || "",
+            gender: profileData.gender || "",
+            maritalStatus: profileData.maritalStatus || "",
+            hasChildren: profileData.hasChildren || profileData.children || "",
+            wantChildren: profileData.wantChildren || "",
+            bioTagline: profileData.bioTagline || "",
+            location: profileData.currentLocation || profileData.location || "",
+            education: profileData.education || "",
+            profession: profileData.profession || "",
+            religiosity: profileData.religiousPractice || "",
+            prayerFrequency: profileData.prayerFrequency || "",
+            hijabPreference: profileData.hijabPreference || "",
+            marriageIntention: profileData.marriageTimeline || "",
+            isRevert: profileData.isRevert || "",
+            alcohol: profileData.alcohol || "",
+            smoking: profileData.smoking || "",
+            psychedelics: profileData.psychedelics || "",
+            halalFood: profileData.halalFood || "",
+            bio: profileData.bio || "",
+            interests: profileData.interests || [],
+            profilePhoto: null, // Can't pre-fill file inputs
+          })
+
+          // Set location data if available
+          if (profileData.latitude && profileData.longitude) {
+            setLocationData({
+              latitude: profileData.latitude,
+              longitude: profileData.longitude,
+              address: profileData.currentLocation || profileData.location || "",
+            })
+          }
+
+          // Set bio rating if available
+          if (profileData.bioRating) {
+            setBioRating(profileData.bioRating)
+            setAiRatingComplete(true)
+            setBioHasBeenEdited(false) // User hasn't edited the existing bio yet
+          }
+        } catch (error) {
+          console.error("Error loading existing profile:", error)
+        }
+      }
+    }
+  }, [connected, publicKey])
 
   const updateProfileData = (field: keyof ProfileData, value: any) => {
     setProfileData((prev) => ({ ...prev, [field]: value }))
@@ -131,34 +206,28 @@ export function ProfileSetup() {
 
   const analyzeBio = (bio: string) => {
     const wordCount = bio.trim().split(/\s+/).length
-    const sentences = bio.split(/[.!?]+/).filter((s) => s.trim().length > 0).length
     const hasPersonalDetails = /\b(love|enjoy|passionate|dream|goal|value)\b/i.test(bio)
     const hasSpecifics = /\b(travel|cook|read|work|study|volunteer)\b/i.test(bio)
 
-    let rating = 0
     let feedback = ""
 
     if (wordCount < 20) {
-      rating = 2
       feedback = "Your bio is too short. Add more details about yourself!"
     } else if (wordCount < 50) {
-      rating = 4
       feedback = "Good start! Add more about your values and interests."
     } else if (wordCount < 100) {
-      rating = hasPersonalDetails && hasSpecifics ? 8 : 6
       feedback =
         hasPersonalDetails && hasSpecifics
           ? "Great bio! Very engaging and informative."
           : "Good length! Add more personal touches and specific interests."
     } else {
-      rating = hasPersonalDetails && hasSpecifics ? 10 : 7
       feedback =
         hasPersonalDetails && hasSpecifics
           ? "Excellent bio! Perfect balance of personal and specific details."
           : "Good detail! Make sure to include personal values and specific interests."
     }
 
-    setBioRating(rating)
+    // Only set feedback for preview, don't affect progression
     setBioFeedback(feedback)
   }
 
@@ -233,15 +302,44 @@ export function ProfileSetup() {
   }
 
   const handleSubmit = () => {
+    // Generate placeholder media URLs for development
+    const placeholderMedia = {
+      photos: [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
+      ],
+      videoIntro: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      voiceNote: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+      audioMessages: [
+        "https://www.soundjay.com/misc/sounds/bell-ringing-01.wav",
+        "https://www.soundjay.com/misc/sounds/bell-ringing-02.wav"
+      ]
+    }
+
     // Save profile data associated with wallet address
     const profileWithWallet = {
       ...profileData,
       walletAddress: publicKey?.toString(),
       createdAt: new Date().toISOString(),
+      media: placeholderMedia,
+      profileComplete: true,
+      isVerified: false,
+      bioRating: bioRating || 0,
+      lastActive: new Date().toISOString(),
+      matchingEnabled: true
     }
 
     // In production, this would be saved to blockchain/IPFS
     localStorage.setItem(`profile_${publicKey?.toString()}`, JSON.stringify(profileWithWallet))
+
+    // Also save to a general profiles list for matching
+    const existingProfiles = JSON.parse(localStorage.getItem('allProfiles') || '[]')
+    const updatedProfiles = existingProfiles.filter((p: any) => p.walletAddress !== publicKey?.toString())
+    updatedProfiles.push(profileWithWallet)
+    localStorage.setItem('allProfiles', JSON.stringify(updatedProfiles))
 
     // Redirect to profile page
     window.location.href = `/profile/${publicKey?.toString()}`
@@ -261,78 +359,79 @@ export function ProfileSetup() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative">
-      <CelestialBackground intensity="light" />
-
-      {/* Mobile Navigation */}
-      <div className="md:hidden">
-        <MobileNavigation />
-      </div>
-
-      {/* Desktop Navigation */}
-      <div className="hidden md:block">
-        <DesktopNavigation />
-      </div>
-
-      <div className={`py-8 px-4 pt-24`}>
-        <div className="max-w-2xl mx-auto relative z-10">
-          {/* Header */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 bg-clip-text text-transparent font-qurova mb-2">
-              Complete Your Profile
-            </h1>
-            <p className="text-slate-600 font-queensides">Let's create your Samaa profile to find your perfect match</p>
-
-            {/* Wallet Address Display */}
-            <div className="mt-4 p-3 bg-white/50 rounded-xl border border-indigo-200/50">
-              <p className="text-xs text-slate-500 font-queensides mb-1">Connected Wallet</p>
-              <code className="text-sm font-mono text-indigo-700">
-                {publicKey.toString().slice(0, 8)}...{publicKey.toString().slice(-8)}
-              </code>
+    <div className="min-h-screen relative">
+      <CelestialBackground />
+      <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen">
+        {/* Header - Same style as explore page */}
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
+          <div className="flex items-center justify-between p-4">
+            <button onClick={() => window.history.back()} className="p-2 hover:bg-indigo-50 rounded-xl transition-colors">
+              <ArrowLeft className="w-6 h-6 text-indigo-600" />
+            </button>
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-slate-800 font-qurova">Profile Setup</h1>
+              <p className="text-sm text-slate-600 font-queensides">Step {currentStep} of {steps.length}</p>
             </div>
-          </motion.div>
+            <div className="w-10" /> {/* Spacer */}
+          </div>
 
-          {/* Progress Steps */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-8"
-          >
-            <div className="flex items-center justify-between">
+          {/* Progress Steps - Same style as explore page tabs */}
+          <div className="flex px-4 pb-4">
+            <div className="grid grid-cols-6 gap-1 p-2 bg-white/10 backdrop-blur-sm rounded-2xl border border-indigo-200/20 w-full">
               {steps.map((step, index) => (
-                <div key={step.id} className="flex items-center">
-                  <div
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300",
-                      currentStep >= step.id
-                        ? "bg-gradient-to-r from-indigo-400 to-purple-500 border-indigo-400 text-white"
-                        : "bg-white border-slate-300 text-slate-400",
+                <button
+                  key={step.id}
+                  onClick={() => setCurrentStep(step.id)}
+                  className={`relative p-2 rounded-xl transition-all duration-300 ${
+                    currentStep === step.id
+                      ? "bg-gradient-to-br from-indigo-400/20 to-purple-400/20 border border-indigo-300/40 shadow-lg"
+                      : currentStep > step.id
+                      ? "bg-gradient-to-br from-green-400/20 to-emerald-400/20 border border-green-300/40"
+                      : "hover:bg-white/10 border border-transparent"
+                  }`}
+                >
+                  <div className="text-lg mb-1">
+                    {currentStep > step.id ? (
+                      <Check className="w-4 h-4 mx-auto text-green-600" />
+                    ) : (
+                      <step.icon className="w-4 h-4 mx-auto" />
                     )}
-                  >
-                    {currentStep > step.id ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
                   </div>
-                  {index < steps.length - 1 && (
-                    <div
-                      className={cn(
-                        "w-16 h-0.5 mx-2 transition-all duration-300",
-                        currentStep > step.id ? "bg-indigo-400" : "bg-slate-300",
-                      )}
-                    />
+                  <div className="text-xs font-queensides font-bold text-slate-700 leading-tight text-center">
+                    {step.title.split(" ")[0]}
+                  </div>
+                  {currentStep === step.id && (
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-indigo-400 rounded-full"></div>
                   )}
-                </div>
+                  {currentStep > step.id && (
+                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-green-400 rounded-full"></div>
+                  )}
+                </button>
               ))}
             </div>
-            <div className="flex justify-between mt-2">
-              {steps.map((step) => (
-                <p key={step.id} className="text-xs text-slate-500 font-queensides w-20 text-center">
-                  {step.title}
-                </p>
-              ))}
-            </div>
-          </motion.div>
+          </div>
+        </div>
 
-          {/* Step Content */}
+        {/* Content */}
+        <div className="p-4 pb-32">
+          <div className="max-w-2xl mx-auto relative z-10">
+            {/* Wallet Address Display */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+              <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 shadow-sm">
+                <div className="text-center">
+                  <p className="text-xs text-slate-500 font-queensides mb-1">Connected Wallet</p>
+                  <p className="text-lg font-bold text-slate-800 font-mono tracking-wider">
+                    {publicKey.toString().slice(0, 6)}...{publicKey.toString().slice(-6)}
+                  </p>
+                  <div className="flex items-center justify-center space-x-2 mt-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <span className="text-xs text-green-600 font-queensides font-medium">Connected</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Step Content */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -365,130 +464,252 @@ export function ProfileSetup() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Step 1: Basic Information */}
+                  {/* Step 1: Basic Information - Single Column Layout */}
                   {currentStep === 1 && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="firstName" className="font-queensides">
-                            First Name
-                          </Label>
-                          <Input
-                            id="firstName"
-                            value={profileData.firstName}
-                            onChange={(e) => updateProfileData("firstName", e.target.value)}
-                            className="mt-1"
-                            placeholder="Enter your first name"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="lastName" className="font-queensides">
-                            Last Name
-                          </Label>
-                          <Input
-                            id="lastName"
-                            value={profileData.lastName}
-                            onChange={(e) => updateProfileData("lastName", e.target.value)}
-                            className="mt-1"
-                            placeholder="Enter your last name"
-                          />
-                        </div>
+                    <div className="space-y-6">
+                      <div>
+                        <Label htmlFor="firstName" className="font-queensides text-sm font-semibold text-slate-700 mb-2 block">
+                          <User className="w-4 h-4 inline mr-2" />
+                          First Name
+                        </Label>
+                        <Input
+                          id="firstName"
+                          value={profileData.firstName}
+                          onChange={(e) => updateProfileData("firstName", e.target.value)}
+                          className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                          placeholder="Enter your first name"
+                        />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="age" className="font-queensides">
-                            Age
-                          </Label>
-                          <Select value={profileData.age} onValueChange={(value) => updateProfileData("age", value)}>
-                            <SelectTrigger className="mt-1">
-                              <SelectValue placeholder="Select age" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Array.from({ length: 43 }, (_, i) => i + 18).map((age) => (
-                                <SelectItem key={age} value={age.toString()}>
-                                  {age}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label className="font-queensides">Gender</Label>
-                          <RadioGroup
-                            value={profileData.gender}
-                            onValueChange={(value) => updateProfileData("gender", value)}
-                            className="flex gap-6 mt-2"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="male" id="male" />
-                              <Label htmlFor="male" className="font-queensides">
-                                Male
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="female" id="female" />
-                              <Label htmlFor="female" className="font-queensides">
-                                Female
-                              </Label>
-                            </div>
-                          </RadioGroup>
-                        </div>
+                      <div>
+                        <Label htmlFor="lastName" className="font-queensides text-sm font-semibold text-slate-700 mb-2 block">
+                          <User className="w-4 h-4 inline mr-2" />
+                          Last Name
+                        </Label>
+                        <Input
+                          id="lastName"
+                          value={profileData.lastName}
+                          onChange={(e) => updateProfileData("lastName", e.target.value)}
+                          className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                          placeholder="Enter your last name"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="age" className="font-queensides text-sm font-semibold text-slate-700 mb-2 block">
+                          <span className="inline-block w-4 h-4 mr-2 text-center">🎂</span>
+                          Age
+                        </Label>
+                        <Select value={profileData.age} onValueChange={(value) => updateProfileData("age", value)}>
+                          <SelectTrigger className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides">
+                            <SelectValue placeholder="Select your age" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 43 }, (_, i) => i + 18).map((age) => (
+                              <SelectItem key={age} value={age.toString()}>
+                                {age} years old
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides text-sm font-semibold text-slate-700 mb-3 block">
+                          <span className="inline-block w-4 h-4 mr-2 text-center">⚧️</span>
+                          Gender
+                        </Label>
+                        <RadioGroup
+                          value={profileData.gender}
+                          onValueChange={(value) => updateProfileData("gender", value)}
+                          className="grid grid-cols-2 gap-4"
+                        >
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="male" id="male" />
+                            <Label htmlFor="male" className="font-queensides font-medium cursor-pointer">
+                              Male
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="female" id="female" />
+                            <Label htmlFor="female" className="font-queensides font-medium cursor-pointer">
+                              Female
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides text-sm font-semibold text-slate-700 mb-3 block">
+                          <span className="inline-block w-4 h-4 mr-2 text-center">💍</span>
+                          Marital Status
+                        </Label>
+                        <Select value={profileData.maritalStatus} onValueChange={(value) => updateProfileData("maritalStatus", value)}>
+                          <SelectTrigger className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides">
+                            <SelectValue placeholder="Select marital status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="never-married">Never Married</SelectItem>
+                            <SelectItem value="divorced">Divorced</SelectItem>
+                            <SelectItem value="widowed">Widowed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides text-sm font-semibold text-slate-700 mb-3 block">
+                          <span className="inline-block w-4 h-4 mr-2 text-center">👶</span>
+                          Do you have children?
+                        </Label>
+                        <RadioGroup
+                          value={profileData.hasChildren}
+                          onValueChange={(value) => updateProfileData("hasChildren", value)}
+                          className="grid grid-cols-2 gap-4"
+                        >
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="no" id="no-children" />
+                            <Label htmlFor="no-children" className="font-queensides font-medium cursor-pointer">
+                              No children
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="yes" id="has-children" />
+                            <Label htmlFor="has-children" className="font-queensides font-medium cursor-pointer">
+                              Yes, I have children
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides text-sm font-semibold text-slate-700 mb-3 block">
+                          <span className="inline-block w-4 h-4 mr-2 text-center">❤️</span>
+                          Do you want children?
+                        </Label>
+                        <RadioGroup
+                          value={profileData.wantChildren}
+                          onValueChange={(value) => updateProfileData("wantChildren", value)}
+                          className="space-y-3"
+                        >
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="yes" id="want-children" />
+                            <Label htmlFor="want-children" className="font-queensides font-medium cursor-pointer">
+                              Yes, I want children
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="no" id="no-want-children" />
+                            <Label htmlFor="no-want-children" className="font-queensides font-medium cursor-pointer">
+                              No, I don't want children
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-3 p-4 bg-white/60 border border-indigo-200/50 rounded-xl hover:bg-indigo-50/50 transition-colors">
+                            <RadioGroupItem value="maybe" id="maybe-children" />
+                            <Label htmlFor="maybe-children" className="font-queensides font-medium cursor-pointer">
+                              Maybe/Undecided
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="bioTagline" className="font-queensides text-sm font-semibold text-slate-700 mb-2 block">
+                          <span className="inline-block w-4 h-4 mr-2 text-center">✨</span>
+                          Bio Tagline (Words you live by)
+                        </Label>
+                        <Input
+                          id="bioTagline"
+                          value={profileData.bioTagline}
+                          onChange={(e) => updateProfileData("bioTagline", e.target.value)}
+                          className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                          placeholder="e.g., 'Trust in Allah and tie your camel'"
+                        />
                       </div>
                     </div>
                   )}
 
                   {/* Step 2: Location & Education */}
                   {currentStep === 2 && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       <div>
-                        <Label htmlFor="location" className="font-queensides">
-                          Location
+                        <Label className="font-queensides text-sm font-semibold text-slate-700 mb-3 block">
+                          <MapPin className="w-4 h-4 inline mr-2" />
+                          Your Location
                         </Label>
-                        <div className="flex gap-2 mt-1">
-                          <Input
-                            id="location"
-                            value={profileData.location}
-                            onChange={(e) => {
-                              updateProfileData("location", e.target.value)
-                              // Trigger location search suggestions
-                              if (e.target.value.length > 2) {
-                                searchLocations(e.target.value)
-                              }
-                            }}
-                            className="flex-1"
-                            placeholder="Start typing your city or address..."
-                            list="location-suggestions"
-                          />
-                          <datalist id="location-suggestions">
-                            {locationSuggestions.map((suggestion, index) => (
-                              <option key={index} value={suggestion.display_name} />
-                            ))}
-                          </datalist>
-                          <Button
-                            type="button"
-                            onClick={getUserLocation}
-                            disabled={isGettingLocation}
-                            variant="outline"
-                            className="px-4 whitespace-nowrap"
-                          >
-                            {isGettingLocation ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                                Getting...
-                              </>
-                            ) : (
-                              <>
-                                <MapPin className="w-4 h-4 mr-2" />
-                                Detect Location
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                        {locationData.latitude && locationData.longitude && (
-                          <p className="text-xs text-green-600 mt-1 font-queensides">
-                            ✓ Location captured: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
-                          </p>
+
+                        {/* Location Display or Detection */}
+                        {profileData.location ? (
+                          <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-lg font-semibold text-slate-800 font-queensides">
+                                  {profileData.location}
+                                </p>
+                                {locationData.latitude && locationData.longitude && (
+                                  <p className="text-xs text-green-600 mt-1 font-queensides">
+                                    ✓ GPS coordinates: {locationData.latitude.toFixed(4)}, {locationData.longitude.toFixed(4)}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                <span className="text-xs text-green-600 font-queensides font-medium">Located</span>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              onClick={getUserLocation}
+                              disabled={isGettingLocation}
+                              variant="outline"
+                              size="sm"
+                              className="mt-3 font-queensides"
+                            >
+                              {isGettingLocation ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-2"></div>
+                                  Updating...
+                                </>
+                              ) : (
+                                <>
+                                  <MapPin className="w-3 h-3 mr-2" />
+                                  Update Location
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-6">
+                            <div className="text-center">
+                              <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <MapPin className="w-8 h-8 text-white" />
+                              </div>
+                              <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Detect Your Location</h3>
+                              <p className="text-slate-600 font-queensides mb-4 leading-relaxed">
+                                We'll use your location to find matches nearby and show your city to potential partners
+                              </p>
+                              <Button
+                                type="button"
+                                onClick={getUserLocation}
+                                disabled={isGettingLocation}
+                                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides px-6 py-3"
+                              >
+                                {isGettingLocation ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Detecting Location...
+                                  </>
+                                ) : (
+                                  <>
+                                    <MapPin className="w-4 h-4 mr-2" />
+                                    Detect My Location
+                                  </>
+                                )}
+                              </Button>
+                              <p className="text-xs text-slate-500 font-queensides mt-3">
+                                Your exact coordinates are kept private
+                              </p>
+                            </div>
+                          </div>
                         )}
                       </div>
 
@@ -640,6 +861,140 @@ export function ProfileSetup() {
                           </div>
                         </RadioGroup>
                       </div>
+
+                      <div>
+                        <Label className="font-queensides">Are you a revert to Islam?</Label>
+                        <RadioGroup
+                          value={profileData.isRevert}
+                          onValueChange={(value) => updateProfileData("isRevert", value)}
+                          className="mt-2 space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="yes" id="revert-yes" />
+                            <Label htmlFor="revert-yes" className="font-queensides">
+                              Yes, I'm a revert
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="no" id="revert-no" />
+                            <Label htmlFor="revert-no" className="font-queensides">
+                              No, born Muslim
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides">Alcohol</Label>
+                        <RadioGroup
+                          value={profileData.alcohol}
+                          onValueChange={(value) => updateProfileData("alcohol", value)}
+                          className="mt-2 space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="never" id="alcohol-never" />
+                            <Label htmlFor="alcohol-never" className="font-queensides">
+                              Never
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="socially" id="alcohol-socially" />
+                            <Label htmlFor="alcohol-socially" className="font-queensides">
+                              Socially
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="regularly" id="alcohol-regularly" />
+                            <Label htmlFor="alcohol-regularly" className="font-queensides">
+                              Regularly
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides">Smoking</Label>
+                        <RadioGroup
+                          value={profileData.smoking}
+                          onValueChange={(value) => updateProfileData("smoking", value)}
+                          className="mt-2 space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="never" id="smoking-never" />
+                            <Label htmlFor="smoking-never" className="font-queensides">
+                              Never
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="occasionally" id="smoking-occasionally" />
+                            <Label htmlFor="smoking-occasionally" className="font-queensides">
+                              Occasionally
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="regularly" id="smoking-regularly" />
+                            <Label htmlFor="smoking-regularly" className="font-queensides">
+                              Regularly
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides">Psychedelics</Label>
+                        <RadioGroup
+                          value={profileData.psychedelics}
+                          onValueChange={(value) => updateProfileData("psychedelics", value)}
+                          className="mt-2 space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="never" id="psychedelics-never" />
+                            <Label htmlFor="psychedelics-never" className="font-queensides">
+                              Never
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="occasionally" id="psychedelics-occasionally" />
+                            <Label htmlFor="psychedelics-occasionally" className="font-queensides">
+                              Occasionally
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="regularly" id="psychedelics-regularly" />
+                            <Label htmlFor="psychedelics-regularly" className="font-queensides">
+                              Regularly
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      <div>
+                        <Label className="font-queensides">Halal Food</Label>
+                        <RadioGroup
+                          value={profileData.halalFood}
+                          onValueChange={(value) => updateProfileData("halalFood", value)}
+                          className="mt-2 space-y-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="always" id="halal-always" />
+                            <Label htmlFor="halal-always" className="font-queensides">
+                              Always halal
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="mostly" id="halal-mostly" />
+                            <Label htmlFor="halal-mostly" className="font-queensides">
+                              Mostly halal
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="sometimes" id="halal-sometimes" />
+                            <Label htmlFor="halal-sometimes" className="font-queensides">
+                              Sometimes
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
                     </div>
                   )}
 
@@ -652,7 +1007,7 @@ export function ProfileSetup() {
                           <Label htmlFor="bio" className="font-queensides text-lg">
                             About You
                           </Label>
-                          {profileData.bio && (
+                          {profileData.bio && bioRating > 0 && (
                             <div className="flex items-center gap-2">
                               <div
                                 className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
@@ -675,6 +1030,9 @@ export function ProfileSetup() {
                           value={profileData.bio}
                           onChange={(e) => {
                             updateProfileData("bio", e.target.value)
+                            setBioHasBeenEdited(true)
+                            setAiRatingComplete(false) // Reset AI rating when bio is edited
+                            setBioRating(0) // Reset rating when editing
                             if (e.target.value.length > 10) {
                               analyzeBio(e.target.value)
                             }
@@ -684,7 +1042,7 @@ export function ProfileSetup() {
                         />
 
                         {/* AI Rating Button - directly under textarea */}
-                        {profileData.bio.length > 50 && !aiRatingComplete && (
+                        {profileData.bio.length > 50 && bioHasBeenEdited && !aiRatingComplete && (
                           <div className="mt-4">
                             <Button
                               onClick={() => {
@@ -693,16 +1051,10 @@ export function ProfileSetup() {
                                 setTimeout(() => {
                                   const mockRating = Math.floor(Math.random() * 30) + 70 // Random rating between 70-100
                                   setBioRating(mockRating)
-                                  if (mockRating >= 80) {
-                                    setBioFeedback(
-                                      `Excellent bio! Your rating is ${mockRating}/100. You're ready to move forward.`,
-                                    )
-                                    setAiRatingComplete(true)
-                                  } else {
-                                    setBioFeedback(
-                                      `Good start! Your rating is ${mockRating}/100. Try adding more personal details and specific interests to reach 80+.`,
-                                    )
-                                  }
+                                  setBioFeedback(
+                                    `Great! Your bio has been rated ${mockRating}/100. You can now proceed to the next step.`,
+                                  )
+                                  setAiRatingComplete(true) // Always allow progression after AI rating
                                   setShowAiRating(false)
                                 }, 2000)
                               }}
@@ -727,16 +1079,18 @@ export function ProfileSetup() {
                         {bioFeedback && (
                           <div
                             className={`mt-3 p-3 rounded-lg text-sm ${
-                              bioRating >= 8
+                              aiRatingComplete
                                 ? "bg-green-50 text-green-700 border border-green-200"
-                                : bioRating >= 6
-                                  ? "bg-yellow-50 text-yellow-700 border border-yellow-200"
-                                  : "bg-red-50 text-red-700 border border-red-200"
+                                : bioHasBeenEdited
+                                  ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                  : "bg-yellow-50 text-yellow-700 border border-yellow-200"
                             }`}
                           >
                             <div className="flex items-center gap-2">
                               <Zap className="w-4 h-4" />
-                              <span className="font-medium">AI Feedback:</span>
+                              <span className="font-medium">
+                                {aiRatingComplete ? "AI Rating:" : "Bio Preview:"}
+                              </span>
                             </div>
                             <p className="mt-1">{bioFeedback}</p>
                           </div>
@@ -749,12 +1103,13 @@ export function ProfileSetup() {
                   {currentStep === 5 && (
                     <div className="space-y-6">
                       <div>
-                        <Label className="font-queensides text-lg mb-4 block">Select Your Interests</Label>
+                        <Label className="font-queensides text-lg mb-4 block">Select Your Interests & Hobbies</Label>
                         <p className="text-slate-600 font-queensides text-sm mb-4">
-                          Choose interests that represent you. This helps us find compatible matches who share your
-                          passions.
+                          Choose interests that represent you and add your own. This helps us find compatible matches who share your passions.
                         </p>
-                        <div className="grid grid-cols-2 gap-3">
+
+                        {/* Predefined Interests */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
                           {interests.map((interest) => (
                             <div
                               key={interest}
@@ -781,11 +1136,65 @@ export function ProfileSetup() {
                           ))}
                         </div>
 
+                        {/* Add Custom Interests */}
+                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/50 rounded-xl p-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-8 h-8 bg-gradient-to-br from-purple-400 to-indigo-400 rounded-full flex items-center justify-center">
+                              <span className="text-white text-sm">+</span>
+                            </div>
+                            <h4 className="font-semibold text-slate-800 font-qurova">Add Your Own Interests</h4>
+                          </div>
+                          <div className="space-y-2">
+                            <Input
+                              placeholder="Type your interests separated by commas (e.g., hiking, cooking, reading)"
+                              className="w-full bg-white/80 border border-purple-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-300 font-queensides"
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  const input = e.target as HTMLInputElement
+                                  const newInterests = input.value
+                                    .split(',')
+                                    .map(interest => interest.trim())
+                                    .filter(interest => interest && !profileData.interests.includes(interest))
+
+                                  if (newInterests.length > 0) {
+                                    updateProfileData("interests", [...profileData.interests, ...newInterests])
+                                    input.value = ''
+                                  }
+                                }
+                              }}
+                            />
+                            <div className="flex justify-between items-center">
+                              <p className="text-xs text-purple-600 font-queensides">
+                                Separate multiple interests with commas, then press Enter or click Add
+                              </p>
+                              <Button
+                                type="button"
+                                onClick={(e) => {
+                                  const input = (e.target as HTMLElement).parentElement?.parentElement?.querySelector('input') as HTMLInputElement
+                                  const newInterests = input?.value
+                                    .split(',')
+                                    .map(interest => interest.trim())
+                                    .filter(interest => interest && !profileData.interests.includes(interest))
+
+                                  if (newInterests && newInterests.length > 0) {
+                                    updateProfileData("interests", [...profileData.interests, ...newInterests])
+                                    input.value = ''
+                                  }
+                                }}
+                                size="sm"
+                                className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white font-queensides px-4"
+                              >
+                                Add
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Feedback */}
                         {profileData.interests.length > 0 && (
                           <div className="mt-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
                             <p className="text-indigo-700 font-queensides text-sm">
-                              <strong>{profileData.interests.length}</strong> interests selected. Great! This helps us
-                              find better matches for you.
+                              <strong>{profileData.interests.length}</strong> interests selected. Great! This helps us find better matches for you.
                             </p>
                           </div>
                         )}
@@ -798,73 +1207,104 @@ export function ProfileSetup() {
                     <div className="space-y-6">
                       {/* Profile Photos */}
                       <div>
-                        <Label className="font-queensides text-lg mb-4 block">Profile Photos</Label>
+                        <Label className="font-queensides text-lg mb-4 block">Profile Photos & Media</Label>
                         <p className="text-slate-600 font-queensides text-sm mb-4">
-                          Upload 2-6 photos that show your personality. Include a clear face photo and photos of your
-                          interests.
+                          For development purposes, we'll use placeholder images and media. You can complete your profile setup without uploading files.
                         </p>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Main Profile Photo */}
-                          <div className="col-span-2 p-6 border-2 border-dashed border-indigo-300 rounded-xl text-center">
-                            <Camera className="w-12 h-12 text-indigo-400 mx-auto mb-4" />
-                            <h3 className="font-medium text-slate-800 font-queensides mb-2">Main Profile Photo</h3>
-                            <p className="text-sm text-slate-600 font-queensides mb-4">
-                              A clear, modest photo of yourself. This will be your primary photo.
+                        {/* Placeholder Media Notice */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-xl p-6 mb-6">
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Camera className="w-8 h-8 text-white" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Development Mode</h3>
+                            <p className="text-slate-600 font-queensides mb-4 leading-relaxed">
+                              We'll automatically assign placeholder photos, videos, and audio from online sources for your profile during development.
                             </p>
-                            <Button variant="outline" className="font-queensides">
-                              Choose Main Photo
-                            </Button>
+                            <div className="grid grid-cols-3 gap-3 text-xs text-slate-500 font-queensides">
+                              <div className="flex items-center justify-center space-x-1">
+                                <span>📸</span>
+                                <span>Profile Photos</span>
+                              </div>
+                              <div className="flex items-center justify-center space-x-1">
+                                <span>🎥</span>
+                                <span>Video Intro</span>
+                              </div>
+                              <div className="flex items-center justify-center space-x-1">
+                                <span>🎤</span>
+                                <span>Voice Note</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Media Preview */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Main Profile Photo Preview */}
+                          <div className="col-span-2 p-4 bg-white/60 border border-indigo-200/50 rounded-xl">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
+                                <Camera className="w-8 h-8 text-indigo-600" />
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-semibold text-slate-800 font-qurova">Main Profile Photo</h4>
+                                <p className="text-sm text-slate-600 font-queensides">Placeholder image will be assigned</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                  <span className="text-xs text-green-600 font-queensides font-medium">Ready</span>
+                                </div>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Additional Photos */}
                           {[1, 2, 3, 4].map((index) => (
-                            <div
-                              key={index}
-                              className="p-4 border-2 border-dashed border-slate-300 rounded-xl text-center"
-                            >
-                              <Camera className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                              <p className="text-xs text-slate-500 font-queensides mb-2">Photo {index + 1}</p>
-                              <Button variant="ghost" size="sm" className="font-queensides text-xs">
-                                Add Photo
-                              </Button>
+                            <div key={index} className="p-3 bg-white/40 border border-slate-200/50 rounded-xl">
+                              <div className="text-center">
+                                <Camera className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                                <p className="text-xs text-slate-600 font-queensides mb-1">Photo {index + 1}</p>
+                                <div className="flex items-center justify-center space-x-1">
+                                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                                  <span className="text-xs text-blue-600 font-queensides">Auto-assigned</span>
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
-                      </div>
 
-                      {/* Video Introduction */}
-                      <div className="p-6 border-2 border-dashed border-purple-300 rounded-xl text-center">
-                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                          <span className="text-purple-600 text-xl">🎥</span>
-                        </div>
-                        <h3 className="font-medium text-slate-800 font-queensides mb-2">
-                          Video Introduction (Optional)
-                        </h3>
-                        <p className="text-sm text-slate-600 font-queensides mb-4">
-                          Upload a short 30-60 second video introducing yourself. This helps potential matches get to
-                          know your personality.
-                        </p>
-                        <Button variant="outline" className="font-queensides">
-                          Upload Video
-                        </Button>
-                      </div>
+                        {/* Media Options */}
+                        <div className="grid grid-cols-2 gap-4 mt-6">
+                          {/* Video Introduction */}
+                          <div className="p-4 bg-white/60 border border-purple-200/50 rounded-xl">
+                            <div className="text-center">
+                              <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                <span className="text-purple-600 text-lg">🎥</span>
+                              </div>
+                              <h4 className="font-medium text-slate-800 font-queensides mb-1">Video Intro</h4>
+                              <p className="text-xs text-slate-600 font-queensides mb-2">Placeholder video assigned</p>
+                              <div className="flex items-center justify-center space-x-1">
+                                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                                <span className="text-xs text-purple-600 font-queensides">Ready</span>
+                              </div>
+                            </div>
+                          </div>
 
-                      {/* Voice Note */}
-                      <div className="p-6 border-2 border-dashed border-green-300 rounded-xl text-center">
-                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                          <span className="text-green-600 text-xl">🎤</span>
+                          {/* Voice Note */}
+                          <div className="p-4 bg-white/60 border border-green-200/50 rounded-xl">
+                            <div className="text-center">
+                              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                <span className="text-green-600 text-lg">🎤</span>
+                              </div>
+                              <h4 className="font-medium text-slate-800 font-queensides mb-1">Voice Note</h4>
+                              <p className="text-xs text-slate-600 font-queensides mb-2">Placeholder audio assigned</p>
+                              <div className="flex items-center justify-center space-x-1">
+                                <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+                                <span className="text-xs text-green-600 font-queensides">Ready</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <h3 className="font-medium text-slate-800 font-queensides mb-2">
-                          Voice Introduction (Optional)
-                        </h3>
-                        <p className="text-sm text-slate-600 font-queensides mb-4">
-                          Record a voice note sharing something about yourself. Your voice adds a personal touch to your
-                          profile.
-                        </p>
-                        <Button variant="outline" className="font-queensides">
-                          Record Voice Note
-                        </Button>
                       </div>
                     </div>
                   )}
@@ -903,11 +1343,11 @@ export function ProfileSetup() {
                     ) : (
                       <Button
                         onClick={nextStep}
-                        disabled={currentStep === 4 && (!aiRatingComplete || bioRating < 80)}
+                        disabled={currentStep === 4 && bioHasBeenEdited && !aiRatingComplete}
                         className="bg-gradient-to-r from-indigo-400 to-purple-500 hover:from-indigo-500 hover:to-purple-600 font-queensides disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {currentStep === 4 && (!aiRatingComplete || bioRating < 80) ? (
-                          <>Need 80+ AI Rating to Continue</>
+                        {currentStep === 4 && bioHasBeenEdited && !aiRatingComplete ? (
+                          <>Get AI Rating to Continue</>
                         ) : (
                           <>
                             Next
@@ -967,6 +1407,7 @@ export function ProfileSetup() {
             </p>
             <p className="text-sm text-slate-400 font-queensides mt-1">- Quran 6:73</p>
           </motion.div>
+          </div>
         </div>
       </div>
 

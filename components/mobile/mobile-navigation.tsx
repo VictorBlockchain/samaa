@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, X, Bell, Settings, Clock, LogOut } from "lucide-react"
+import { Menu, X, Bell, Settings, Clock } from "lucide-react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePrayerTimes } from "@/app/hooks/use-prayer-times"
@@ -115,7 +115,7 @@ export function MobileNavigation() {
         </div>
       </motion.nav>
 
-      {/* Enhanced Mobile Menu Overlay */}
+      {/* Enhanced Mobile Menu Slide-out */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -135,11 +135,11 @@ export function MobileNavigation() {
             />
 
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: -20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: -20 }}
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="absolute top-24 left-6 right-6 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden"
+              className="absolute top-0 left-0 h-full w-80 bg-white/95 backdrop-blur-xl shadow-2xl overflow-y-auto"
               style={{
                 border: "2px solid transparent",
                 backgroundImage:
@@ -159,24 +159,30 @@ export function MobileNavigation() {
                   <h2 className="text-lg font-bold text-slate-800 font-qurova">Navigation</h2>
                   <p className="text-sm text-slate-600 font-queensides">Explore Samaa features</p>
                 </div>
-                
-                {/* Navigation Items */}
-                <div className="py-2">
+
+                {/* Information Section */}
+                <div className="px-6 py-3">
+                  <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Information</h3>
+                </div>
+                <div className="pb-2">
                   {[
-                    { title: "About Us", icon: "ℹ️", category: "info" },
-                    { title: "Why Web3/Crypto", icon: "🚀", category: "info" },
-                    { title: "Dowry/Purse Wallets", icon: "💰", category: "info" },
-                    { title: "Get Started w/Crypto", icon: "🎓", category: "info" },
-                    { title: "Support Center", icon: "💬", category: "info" },
+                    { title: "About Us", icon: "ℹ️", category: "info", href: "/about" },
+                    { title: "SAMAA Token", icon: "🪙", category: "info", href: "/samaa-token" },
+                    { title: "Why Web3/Crypto", icon: "🚀", category: "info", href: "/why-web3" },
+                    { title: "Dowry/Purse Wallets", icon: "💰", category: "info", href: "/wallet-guide" },
+                    { title: "Get Started w/Crypto", icon: "🎓", category: "info", href: "/crypto-guide" },
+                    { title: "Support Center", icon: "💬", category: "info", href: "/support" },
                   ].map((item, index) => (
-                    <motion.a
+                    <motion.button
                       key={item.title}
-                      href="#"
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1, duration: 0.4 }}
-                      className="flex items-center space-x-4 py-3 px-6 hover:bg-indigo-50/50 transition-all duration-200 group"
-                      onClick={() => setIsOpen(false)}
+                      className="flex items-center space-x-4 py-3 px-6 hover:bg-indigo-50/50 transition-all duration-200 group w-full text-left"
+                      onClick={() => {
+                        router.push(item.href)
+                        setIsOpen(false)
+                      }}
                     >
                       <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
                         <span className="text-lg">{item.icon}</span>
@@ -194,7 +200,47 @@ export function MobileNavigation() {
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                    </motion.a>
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Legal Section */}
+                <div className="px-6 py-3 border-t border-indigo-100/30">
+                  <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Legal</h3>
+                </div>
+                <div className="pb-2">
+                  {[
+                    { title: "User Agreement", icon: "📋", href: "/terms" },
+                    { title: "Privacy Policy", icon: "🔒", href: "/privacy" },
+                  ].map((item, index) => (
+                    <motion.button
+                      key={item.title}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: (index + 6) * 0.1, duration: 0.4 }}
+                      className="flex items-center space-x-4 py-3 px-6 hover:bg-indigo-50/50 transition-all duration-200 group w-full text-left"
+                      onClick={() => {
+                        router.push(item.href)
+                        setIsOpen(false)
+                      }}
+                    >
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                        <span className="text-lg">{item.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-medium text-slate-700 font-queensides group-hover:text-indigo-600 transition-colors duration-200">
+                          {item.title}
+                        </span>
+                      </div>
+                      <svg
+                        className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 transition-colors duration-200"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.button>
                   ))}
                 </div>
 

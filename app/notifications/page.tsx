@@ -19,57 +19,8 @@ interface Notification {
   actionUrl?: string
 }
 
-const NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    type: "like",
-    title: "New Like",
-    description: "Aisha K. liked your profile",
-    time: "2 minutes ago",
-    read: false,
-    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-    actionUrl: "/profile/aisha-k"
-  },
-  {
-    id: "2",
-    type: "message",
-    title: "New Audio Message",
-    description: "Fatima M. sent you an audio message",
-    time: "1 hour ago",
-    read: false,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-    actionUrl: "/explore"
-  },
-  {
-    id: "3",
-    type: "match",
-    title: "New Match",
-    description: "You and Omar A. are now connected",
-    time: "3 hours ago",
-    read: true,
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-    actionUrl: "/profile/omar-a"
-  },
-  {
-    id: "4",
-    type: "gift",
-    title: "Gift Received",
-    description: "Ahmed S. sent you a digital gift",
-    time: "1 day ago",
-    read: true,
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-    actionUrl: "/gifts"
-  },
-  {
-    id: "5",
-    type: "system",
-    title: "Profile Boost",
-    description: "Your profile was boosted for 24 hours",
-    time: "2 days ago",
-    read: true,
-    actionUrl: "/profile"
-  }
-]
+// Mock data removed - notifications will come from real backend
+const NOTIFICATIONS: Notification[] = []
 
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<"all" | "likes" | "messages" | "matches">("all")

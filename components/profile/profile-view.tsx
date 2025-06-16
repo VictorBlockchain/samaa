@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
 import {
   ArrowLeft,
   Edit3,
@@ -22,6 +22,14 @@ import {
   Plus,
   UserPlus,
   Settings,
+  MapPin,
+  MessageCircle,
+  Wallet,
+  Baby,
+  UserCheck,
+  X,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { MobileBottomNav } from "@/components/mobile/mobile-bottom-nav"
@@ -41,6 +49,10 @@ interface ProfileData {
   children: string
   tagline: string
   bio: string
+  location?: string
+  bioTagline?: string
+  wantChildren?: string
+  hasChildren?: string
 
   // Location
   currentLocation: string
@@ -66,22 +78,51 @@ interface ProfileData {
   diet: string
   alcohol: string
   smoking: string
+  psychedelics?: string
+  halalFood?: string
+  isRevert?: string
+  hijabChoice?: string
+  islamicValues?: string
+  prayerFrequency?: string
+  quranReading?: string
+  islamicEducation?: string
 
   // Marriage Intentions
   chattingTimeline: string
   familyInvolvement: string
   marriageTimeline: string
+  lookingFor?: string
+  familyPlans?: string
 
   // Future Plans
   relocationPlans: string
-  familyPlans: string
   polygamyPlan: string
 
   // Interests & Personality
   interests: string[]
   personality: string[]
 
-  // Media
+  // Wallet Information
+  dowryWallet?: {
+    isSetup: boolean
+    address?: string
+    solanaBalance?: number
+    samaaBalance?: number
+  }
+  purseWallet?: {
+    isSetup: boolean
+    address?: string
+    solanaBalance?: number
+    samaaBalance?: number
+  }
+
+  // Media from profile setup
+  media?: {
+    photos: string[]
+    videoIntro?: string
+    voiceNote?: string
+    audioMessages?: string[]
+  }
   profilePhoto?: string
   voiceIntro?: string
   video?: string
@@ -92,6 +133,9 @@ interface ProfileData {
   isVerified?: boolean
   premiumMember?: boolean
   idVerified?: boolean
+  bioRating?: number
+  responseRate?: number
+  profileComplete?: boolean
 }
 
 interface ProfileViewProps {
@@ -105,14 +149,78 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [currentTab, setCurrentTab] = useState("home")
   const [showMessagePermissions, setShowMessagePermissions] = useState(false)
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [messagePermissions, setMessagePermissions] = useState({
     requireFinancialSetup: true,
     minBioRating: 75,
     minResponseRate: 60,
     allowVideoMessages: true,
   })
+  const [userSettings, setUserSettings] = useState({
+    ageRange: [22, 35],
+    maxDistance: 50,
+    anywhereInWorld: false,
+    showOnlyVerified: true,
+    showOnlyPracticing: true,
+    interests: [] as string[],
+    faithAndPractice: {
+      prayerFrequency: "No preference",
+      hijabPreference: "No preference",
+      marriageIntention: "No preference",
+      halalFood: "No preference",
+      diet: "No preference",
+      alcohol: "No preference",
+      smoking: "No preference",
+      psychedelics: "No preference",
+      bornMuslim: "No preference",
+    },
+    aboutThem: {
+      nationality: "No preference",
+      height: "No preference",
+      maritalStatus: "No preference",
+      children: "No preference",
+      grewUpIn: "No preference",
+      languages: "No preference",
+      willingToRelocate: "No preference",
+      education: "No preference",
+    },
+    notifications: {
+      matches: true,
+      messages: true,
+      profileViews: false,
+    },
+    privacy: {
+      showAge: true,
+      showLocation: true,
+      showLastSeen: false,
+    },
+    userGender: "female",
+    requireFinancialSetup: false,
+    bioRatingMinimum: 70,
+    responseRateMinimum: 50,
+  })
 
   const { publicKey, connected } = useWallet()
+
+  // Keyboard navigation for photo modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedPhotoIndex === null || !profile?.media?.photos) return
+
+      if (e.key === 'Escape') {
+        setSelectedPhotoIndex(null)
+      } else if (e.key === 'ArrowLeft' && selectedPhotoIndex > 0) {
+        setSelectedPhotoIndex(selectedPhotoIndex - 1)
+      } else if (e.key === 'ArrowRight' && selectedPhotoIndex < profile.media.photos.length - 1) {
+        setSelectedPhotoIndex(selectedPhotoIndex + 1)
+      }
+    }
+
+    if (selectedPhotoIndex !== null) {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedPhotoIndex, profile?.media?.photos])
 
   const checkIfOwnProfile = () => {
     console.log("Checking if own profile...")
@@ -132,15 +240,98 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
   useEffect(() => {
     console.log("Profile component mounted with walletAddress:", walletAddress)
+    console.log("Connected:", connected, "PublicKey:", publicKey?.toString())
     checkIfOwnProfile()
     loadProfile()
   }, [walletAddress, publicKey, connected])
+
+  // Migrate old settings format to new format
+  const migrateSettings = (oldSettings: any) => {
+    const newSettings = {
+      ageRange: oldSettings.ageRange || [22, 35],
+      maxDistance: oldSettings.maxDistance || 50,
+      anywhereInWorld: oldSettings.anywhereInWorld || false,
+      showOnlyVerified: oldSettings.showOnlyVerified || true,
+      showOnlyPracticing: oldSettings.showOnlyPracticing || true,
+      interests: oldSettings.interests || [],
+      faithAndPractice: {
+        prayerFrequency: oldSettings.faithAndPractice?.prayerFrequency || "No preference",
+        hijabPreference: oldSettings.faithAndPractice?.hijabPreference || "No preference",
+        marriageIntention: oldSettings.faithAndPractice?.marriageIntention || "No preference",
+        halalFood: oldSettings.faithAndPractice?.halalFood || "No preference",
+        diet: oldSettings.faithAndPractice?.diet || "No preference",
+        alcohol: oldSettings.faithAndPractice?.alcohol || "No preference",
+        smoking: oldSettings.faithAndPractice?.smoking || "No preference",
+        psychedelics: oldSettings.faithAndPractice?.psychedelics || "No preference",
+        bornMuslim: oldSettings.faithAndPractice?.bornMuslim || "No preference",
+      },
+      aboutThem: {
+        nationality: oldSettings.aboutThem?.nationality || "No preference",
+        height: oldSettings.aboutThem?.height || "No preference",
+        maritalStatus: oldSettings.aboutThem?.maritalStatus || "No preference",
+        children: oldSettings.aboutThem?.children || "No preference",
+        grewUpIn: oldSettings.aboutThem?.grewUpIn || "No preference",
+        languages: oldSettings.aboutThem?.languages || "No preference",
+        willingToRelocate: oldSettings.aboutThem?.willingToRelocate || "No preference",
+        education: oldSettings.aboutThem?.education || "No preference",
+      },
+      notifications: oldSettings.notifications || {
+        matches: true,
+        messages: true,
+        profileViews: false,
+      },
+      privacy: oldSettings.privacy || {
+        showAge: true,
+        showLocation: true,
+        showLastSeen: false,
+      },
+      userGender: oldSettings.userGender || "female",
+      requireFinancialSetup: oldSettings.requireFinancialSetup || false,
+      bioRatingMinimum: oldSettings.bioRatingMinimum || 70,
+      responseRateMinimum: oldSettings.responseRateMinimum || 50,
+    }
+
+    // Save the migrated settings
+    localStorage.setItem("userSettings", JSON.stringify(newSettings))
+    console.log("Settings migrated to new format:", newSettings)
+
+    return newSettings
+  }
 
   const loadProfile = () => {
     try {
       const savedProfile = localStorage.getItem(`profile_${walletAddress}`)
       if (savedProfile) {
         setProfile(JSON.parse(savedProfile))
+      }
+
+      // Load user settings if this is own profile (check directly with wallet comparison)
+      const isOwn = connected && publicKey && publicKey.toString() === walletAddress
+      console.log("Loading settings - isOwn:", isOwn, "connected:", connected, "publicKey:", publicKey?.toString(), "walletAddress:", walletAddress)
+
+      if (isOwn) {
+        const savedSettings = localStorage.getItem("userSettings")
+        console.log("Raw saved settings:", savedSettings) // Debug log
+        if (savedSettings) {
+          const parsedSettings = JSON.parse(savedSettings)
+          console.log("Parsed settings:", parsedSettings) // Debug log
+
+          // Check if settings need migration (has old fields)
+          if (parsedSettings.faithAndPractice?.religiousPractice ||
+              parsedSettings.faithAndPractice?.islamicDress ||
+              parsedSettings.futurePlans) {
+            console.log("Migrating old settings format...")
+            const migratedSettings = migrateSettings(parsedSettings)
+            setUserSettings(migratedSettings)
+          } else {
+            console.log("Using settings as-is")
+            setUserSettings(parsedSettings)
+          }
+        } else {
+          console.log("No saved settings found") // Debug log
+        }
+      } else {
+        console.log("Not own profile, skipping settings load")
       }
     } catch (error) {
       console.error("Error loading profile:", error)
@@ -571,453 +762,1105 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
       <div className="relative z-10">
         {/* Header */}
-        {/* Mobile Navigation */}
-        <div className="md:hidden">
-          <MobileNavigation />
+        {/* Header - Same style as explore page */}
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
+          <div className="flex items-center justify-between p-4">
+            <button onClick={() => router.back()} className="p-2 hover:bg-indigo-50 rounded-xl transition-colors">
+              <ArrowLeft className="w-6 h-6 text-indigo-600" />
+            </button>
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-slate-800 font-qurova">
+                {isOwnProfile ? "My Profile" : `${profile.firstName || "User"}'s Profile`}
+              </h1>
+              <p className="text-sm text-slate-600 font-queensides">
+                {isOwnProfile ? "Your Samaa profile" : "Member profile"}
+              </p>
+            </div>
+            <div className="w-10" /> {/* Spacer */}
+          </div>
         </div>
 
-        {/* Desktop Navigation */}
-        <div className="hidden md:block">
-          <DesktopNavigation />
-        </div>
-
-        <div className="px-4 py-6 space-y-6 pt-24">
-          {/* Profile Header */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-            <div className="relative inline-block mb-4">
-              <Avatar className="w-32 h-32 border-4 border-white shadow-2xl">
-                <AvatarImage src={profile.profilePhoto || "/images/futuristic-muslim-couple-hero.jpg"} />
-                <AvatarFallback className="text-2xl font-qurova bg-gradient-to-br from-indigo-100 to-purple-100">
-                  {profile.firstName?.[0] || "U"}
-                  {profile.lastName?.[0] || ""}
-                </AvatarFallback>
-              </Avatar>
-
-              {profile.premiumMember && (
-                <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                  <Crown className="w-4 h-4 text-white" />
-                </div>
-              )}
-
-              {profile.isVerified && (
-                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <Shield className="w-4 h-4 text-white" />
-                </div>
-              )}
-            </div>
-
-            <h1 className="text-3xl font-bold text-slate-800 font-qurova mb-2">
-              {profile.firstName || "User"} {profile.lastName || ""}
-            </h1>
-
-            <div className="flex items-center justify-center gap-2 mb-4">
-              {profile.age && (
-                <Badge variant="secondary" className="font-queensides">
-                  {profile.age} years old
-                </Badge>
-              )}
-              {profile.currentLocation && (
-                <Badge variant="secondary" className="font-queensides">
-                  {profile.currentLocation}
-                </Badge>
-              )}
-            </div>
-
-            {profile.tagline && (
-              <p className="text-slate-700 font-queensides font-medium mb-2 italic">"{profile.tagline}"</p>
-            )}
-
-            {profile.bio && <p className="text-slate-600 font-queensides max-w-md mx-auto">{profile.bio}</p>}
-
-            {isOwnProfile && (
-              <Button onClick={() => router.push("/profile-setup")} variant="outline" className="mt-4 font-queensides">
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit Profile
-              </Button>
-            )}
-          </motion.div>
-
-          {/* About Me */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">About Me</h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {profile.height && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Height</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.height}</p>
-                    </div>
-                  )}
-                  {profile.maritalStatus && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.maritalStatus}</p>
-                    </div>
-                  )}
-                  {profile.children && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Children</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.children}</p>
-                    </div>
-                  )}
-                  {profile.livingArrangements && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Living Arrangements</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.livingArrangements}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Islamic Values & Religiosity */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4 flex items-center gap-2">
-                  <Star className="w-5 h-5 text-indigo-500" />
-                  Islamic Values
-                </h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {profile.sect && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Sect</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.sect}</p>
-                    </div>
-                  )}
-                  {profile.religiousPractice && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Religious Practice</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.religiousPractice}</p>
-                    </div>
-                  )}
-                  {profile.bornMuslim && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Born Muslim</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.bornMuslim}</p>
-                    </div>
-                  )}
-                  {profile.faith && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Faith</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.faith}</p>
-                    </div>
-                  )}
-                  {profile.diet && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Diet</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.diet}</p>
-                    </div>
-                  )}
-                  {profile.alcohol && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.alcohol}</p>
-                    </div>
-                  )}
-                  {profile.smoking && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Smoking</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.smoking}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Education & Career */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">Education & Career</h3>
-
-                <div className="space-y-3">
-                  {profile.education && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Education</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.education}</p>
-                    </div>
-                  )}
-                  {profile.profession && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Profession</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.profession}</p>
-                    </div>
-                  )}
-                  {profile.employer && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Employer</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.employer}</p>
-                    </div>
-                  )}
-                  {profile.jobTitle && (
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Job Title</p>
-                      <p className="font-medium text-slate-800 font-queensides">{profile.jobTitle}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Languages & Ethnicity */}
-          {(profile.ethnicity || profile.nationality || profile.languages?.length) && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">Languages & Ethnicity</h3>
-
-                  <div className="space-y-3">
-                    {profile.ethnicity && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Ethnicity</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.ethnicity}</p>
-                      </div>
-                    )}
-                    {profile.nationality && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.nationality}</p>
-                      </div>
-                    )}
-                    {profile.languages?.length > 0 && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Languages</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {profile.languages.map((language, index) => (
-                            <Badge key={index} variant="outline" className="font-queensides">
-                              {language}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Marriage Intentions */}
-          {(profile.chattingTimeline || profile.familyInvolvement || profile.marriageTimeline) && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4 flex items-center gap-2">
-                    <Heart className="w-5 h-5 text-pink-500" />
-                    Marriage Intentions
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    {profile.chattingTimeline && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Chatting Timeline</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.chattingTimeline}</p>
-                      </div>
-                    )}
-                    {profile.marriageTimeline && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Marriage Timeline</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.marriageTimeline}</p>
-                      </div>
-                    )}
-                    {profile.familyInvolvement && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-slate-500 font-queensides">Family Involvement</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.familyInvolvement}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Future Plans */}
-          {(profile.relocationPlans || profile.familyPlans || profile.polygamyPlan) && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-              <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">Future Plans</h3>
-
-                  <div className="space-y-3">
-                    {profile.relocationPlans && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Relocation Plans</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.relocationPlans}</p>
-                      </div>
-                    )}
-                    {profile.familyPlans && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Family Plans</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.familyPlans}</p>
-                      </div>
-                    )}
-                    {profile.polygamyPlan && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Polygamy Plan</p>
-                        <p className="font-medium text-slate-800 font-queensides">{profile.polygamyPlan}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Interests & Personality */}
-          {(profile.interests?.length > 0 || profile.personality?.length > 0) && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
-              <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">Interests & Personality</h3>
-
-                  <div className="space-y-4">
-                    {profile.interests?.length > 0 && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides mb-2">Interests</p>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.interests.map((interest, index) => (
-                            <Badge key={index} variant="outline" className="font-queensides">
-                              {interest}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {profile.personality?.length > 0 && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides mb-2">Personality</p>
-                        <div className="flex flex-wrap gap-2">
-                          {profile.personality.map((trait, index) => (
-                            <Badge key={index} variant="secondary" className="font-queensides">
-                              {trait}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Premium Features (if own profile) */}
-          {isOwnProfile && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="grid grid-cols-2 gap-4"
-            >
-              <Card className="bg-gradient-to-br from-teal-50 to-cyan-50 arabic-border">
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 bg-teal-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <h4 className="font-bold text-slate-800 font-qurova mb-2">Profile Boosts</h4>
-                  <p className="text-sm text-slate-600 font-queensides mb-4">Get up to 11x more visits</p>
-                  <Button size="sm" className="bg-teal-500 hover:bg-teal-600 font-queensides">
-                    Buy more
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-50 to-pink-50 arabic-border">
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Gift className="w-6 h-6 text-white" />
-                  </div>
-                  <h4 className="font-bold text-slate-800 font-qurova mb-2">Compliments</h4>
-                  <p className="text-sm text-slate-600 font-queensides mb-4">Message without waiting</p>
-                  <Button size="sm" className="bg-purple-500 hover:bg-purple-600 font-queensides">
-                    Buy more
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Web3 Features */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.9 }}
-            className="space-y-4"
+        {/* Full-Screen Hero Photo with Overlay Info */}
+        <div className="relative h-screen w-full">
+          {/* Main Profile Photo */}
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${profile.media?.photos?.[0] || profile.profilePhoto || "/images/futuristic-muslim-couple-hero.jpg"})`
+            }}
+            onClick={() => profile.media?.photos?.length && setSelectedPhotoIndex(0)}
           >
-            {isOwnProfile && (
-              <>
-                <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 arabic-border">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Crown className="w-6 h-6 text-yellow-600" />
-                      <div>
-                        <h4 className="font-bold text-slate-800 font-qurova">Manage Premium Membership</h4>
-                        <p className="text-sm text-slate-600 font-queensides">Access exclusive features</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="font-queensides">
-                      Manage
-                    </Button>
-                  </CardContent>
-                </Card>
+            {/* Dark overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+          </div>
 
-                <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <QrCode className="w-6 h-6 text-indigo-600" />
-                      <div>
-                        <h4 className="font-bold text-slate-800 font-qurova">Share Wallet QR Code</h4>
-                        <p className="text-sm text-slate-600 font-queensides">Connect with other Samaa members</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="font-queensides">
-                      Share
-                    </Button>
-                  </CardContent>
-                </Card>
+          {/* Profile Info Overlay */}
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+            {/* Name and Age */}
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-4xl font-bold font-qurova">
+                  {profile.firstName || "User"}
+                  {profile.age && (
+                    <span className="text-3xl font-qurova ml-3">{profile.age}</span>
+                  )}
+                </h1>
+              </div>
 
-                <Card className="bg-white/80 backdrop-blur-xl arabic-border">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Users className="w-6 h-6 text-purple-600" />
-                      <div>
-                        <h4 className="font-bold text-slate-800 font-qurova">Invite Friends</h4>
-                        <p className="text-sm text-slate-600 font-queensides">Earn rewards for referrals</p>
-                      </div>
-                    </div>
-                    <Button variant="outline" size="sm" className="font-queensides">
-                      Invite
-                    </Button>
-                  </CardContent>
-                </Card>
-              </>
-            )}
-
-            {/* Wallet Address Display */}
-            <Card className="bg-slate-50 arabic-border">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-slate-800 font-qurova">Wallet Address</h4>
-                    <code className="text-sm font-mono text-slate-600">
-                      {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
-                    </code>
+              {/* Location, Bio Rating, Response Rate */}
+              <div className="space-y-2 mb-3">
+                {profile.currentLocation && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <span className="font-queensides">{profile.currentLocation}</span>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <Share className="w-4 h-4" />
+                )}
+
+                <div className="flex items-center gap-4">
+                  {profile.bioRating && (
+                    <div className="flex items-center gap-2">
+                      <Star className="w-4 h-4 text-yellow-400" />
+                      <span className="font-queensides">{profile.bioRating}% Bio Rating</span>
+                    </div>
+                  )}
+                  {profile.responseRate && (
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-green-400" />
+                      <span className="font-queensides">{profile.responseRate}% Response Rate</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Info Tags */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {profile.profession && (
+                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                  <span className="text-sm font-queensides">{profile.profession}</span>
+                </div>
+              )}
+              {profile.education && (
+                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                  <span className="text-sm font-queensides">{profile.education}</span>
+                </div>
+              )}
+              {profile.sect && (
+                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                  <span className="text-sm font-queensides">{profile.sect}</span>
+                </div>
+              )}
+              {profile.marriageTimeline && (
+                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                  <span className="text-sm font-queensides">Marriage: {profile.marriageTimeline}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {isOwnProfile ? (
+                <Button
+                  onClick={() => router.push("/profile-setup")}
+                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides py-3"
+                >
+                  <Edit3 className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </Button>
+              ) : (
+                <>
+                  <Button className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-queensides py-3">
+                    Send Message
+                  </Button>
+                  <Button variant="outline" className="bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30 px-4">
+                    <Heart className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Arabic Divider */}
+        <div className="flex items-center justify-center py-8 px-4">
+          <div className="flex items-center space-x-3">
+            <Star className="w-3 h-3 text-indigo-300" />
+            <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+            <Moon className="w-4 h-4 text-purple-300" />
+            <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
+            <Sparkles className="w-3 h-3 text-blue-300" />
+            <div className="w-8 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
+            <Star className="w-3 h-3 text-indigo-300" />
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="space-y-0">
+
+          {/* Bio Tagline Section */}
+          {profile.bioTagline && (
+            <div className="relative rounded-2xl p-6 mx-4 mb-6 border-2 border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white shadow-lg">
+              {/* Arabic-inspired corner decorations */}
+              <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
+              <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
+              <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
+              <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
+
+                {/* Arabic-inspired divider below tagline */}
+                <div className="flex items-center justify-center mb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
+              
+              <div className="relative text-center mt-3">
+                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-3 mt-4">Words I Live By</h3>
+
+                <p className="text-slate-700 font-queensides italic text-lg leading-relaxed mb-4">
+                  "{profile.bioTagline}"
+                </p>
+                
+              </div>
+            </div>
+          )}
+
+          {/* Wallet Section */}
+          {(profile.gender === 'male' && profile.dowryWallet) || (profile.gender === 'female' && profile.purseWallet) ? (
+            <div className="bg-white/80 backdrop-blur-sm p-6 mx-4 mb-6 rounded-xl border border-indigo-100">
+              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4 flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-indigo-500" />
+                {profile.gender === 'male' ? 'Dowry Wallet' : 'Purse Wallet'}
+              </h3>
+
+              {profile.gender === 'male' && profile.dowryWallet ? (
+                <div className="space-y-3">
+                  {profile.dowryWallet.isSetup ? (
+                    <>
+                      <div className="flex items-center gap-2 text-green-600">
+                        <UserCheck className="w-4 h-4" />
+                        <span className="font-queensides font-medium">Wallet Setup Complete</span>
+                      </div>
+                      {profile.dowryWallet.address && (
+                        <div className="bg-slate-50 p-3 rounded-lg">
+                          <p className="text-sm text-slate-500 font-queensides mb-1">Wallet Address</p>
+                          <p className="font-mono text-sm text-slate-700 break-all">
+                            {profile.dowryWallet.address}
+                          </p>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        {profile.dowryWallet.solanaBalance !== undefined && (
+                          <div className="bg-slate-50 p-3 rounded-lg text-center">
+                            <p className="text-sm text-slate-500 font-queensides">SOL Balance</p>
+                            <p className="font-bold text-slate-800 font-qurova">
+                              {profile.dowryWallet.solanaBalance.toFixed(4)}
+                            </p>
+                          </div>
+                        )}
+                        {profile.dowryWallet.samaaBalance !== undefined && (
+                          <div className="bg-slate-50 p-3 rounded-lg text-center">
+                            <p className="text-sm text-slate-500 font-queensides">SAMAA Balance</p>
+                            <p className="font-bold text-slate-800 font-qurova">
+                              {profile.dowryWallet.samaaBalance.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-slate-500 font-queensides">Dowry wallet not yet configured</p>
+                    </div>
+                  )}
+                </div>
+              ) : profile.gender === 'female' && profile.purseWallet ? (
+                <div className="space-y-3">
+                  {profile.purseWallet.isSetup ? (
+                    <>
+                      <div className="flex items-center gap-2 text-green-600">
+                        <UserCheck className="w-4 h-4" />
+                        <span className="font-queensides font-medium">Wallet Setup Complete</span>
+                      </div>
+                      {profile.purseWallet.address && (
+                        <div className="bg-slate-50 p-3 rounded-lg">
+                          <p className="text-sm text-slate-500 font-queensides mb-1">Wallet Address</p>
+                          <p className="font-mono text-sm text-slate-700 break-all">
+                            {profile.purseWallet.address}
+                          </p>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        {profile.purseWallet.solanaBalance !== undefined && (
+                          <div className="bg-slate-50 p-3 rounded-lg text-center">
+                            <p className="text-sm text-slate-500 font-queensides">SOL Balance</p>
+                            <p className="font-bold text-slate-800 font-qurova">
+                              {profile.purseWallet.solanaBalance.toFixed(4)}
+                            </p>
+                          </div>
+                        )}
+                        {profile.purseWallet.samaaBalance !== undefined && (
+                          <div className="bg-slate-50 p-3 rounded-lg text-center">
+                            <p className="text-sm text-slate-500 font-queensides">SAMAA Balance</p>
+                            <p className="font-bold text-slate-800 font-qurova">
+                              {profile.purseWallet.samaaBalance.toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-slate-500 font-queensides">Purse wallet not yet configured</p>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* About Me - Compact */}
+          <div className="bg-white p-6">
+                              <div className="flex items-center justify-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+                <br/>
+            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">About {profile.firstName}</h3>
+
+            {/* Bio */}
+            {profile.bio && (
+              <p className="text-slate-700 font-queensides text-lg leading-relaxed mb-6 whitespace-pre-wrap break-words">
+                {profile.bio}
+              </p>
+            )}
+            
+                <div className="flex items-center justify-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+            <br/>
+            {/* Quick Facts Grid */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              {profile.height && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Height</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.height}</p>
+                </div>
+              )}
+              {profile.maritalStatus && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.maritalStatus}</p>
+                </div>
+              )}
+              {(profile.children || profile.hasChildren) && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Has Children</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.children || profile.hasChildren}</p>
+                </div>
+              )}
+              {profile.wantChildren && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Wants Children</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.wantChildren}</p>
+                </div>
+              )}
+              {profile.marriageTimeline && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Marriage Plans</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.marriageTimeline}</p>
+                </div>
+              )}
+              {profile.livingArrangements && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Living Situation</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.livingArrangements}</p>
+                </div>
+              )}
+            </div>
+            <br/>
+                <div className="flex items-center justify-center mb-4 mt-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>          
+          </div>
+
+          {/* Photo Break 1 */}
+          {profile.media?.photos?.[1] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[1]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(1)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          {/* Islamic Values - Compact */}
+          {(profile.prayerFrequency || profile.sect || profile.hijabChoice || profile.islamicValues || profile.isRevert || profile.alcohol || profile.smoking || profile.psychedelics || profile.halalFood) && (
+            <div className="bg-white p-6">
+                                <div className="flex items-center justify-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+                <br/>
+              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Islamic Values</h3>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                {profile.prayerFrequency && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.prayerFrequency}</p>
+                  </div>
+                )}
+                {profile.sect && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Sect</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.sect}</p>
+                  </div>
+                )}
+                {profile.isRevert && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Revert</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.isRevert}</p>
+                  </div>
+                )}
+                {profile.hijabChoice && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Hijab</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.hijabChoice}</p>
+                  </div>
+                )}
+                {profile.alcohol && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.alcohol}</p>
+                  </div>
+                )}
+                {profile.smoking && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Smoking</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.smoking}</p>
+                  </div>
+                )}
+                {profile.psychedelics && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.psychedelics}</p>
+                  </div>
+                )}
+                {profile.halalFood && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.halalFood}</p>
+                  </div>
+                )}
+                {profile.islamicValues && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-slate-500 font-queensides">Islamic Values</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.islamicValues}</p>
+                  </div>
+                )}
+              </div>
+              <br/>
+                <div className="flex items-center justify-center mb-4 mt-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+            </div>
+          )}
+
+          {/* Photo Break 2 */}
+          {profile.media?.photos?.[2] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[2]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(2)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          {/* Video Introduction - Full Width */}
+          {profile.media?.videoIntro && (
+            <div className="bg-white p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-slate-800 font-qurova">Video Introduction</h3>
+                {isOwnProfile && (
+                  <Button variant="outline" size="sm" className="font-queensides">
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+
+              {/* Full Width Video Player */}
+              <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
+                <video
+                  controls
+                  className="w-full h-full object-cover"
+                  poster="/placeholder-video-thumbnail.jpg"
+                >
+                  <source src={profile.media.videoIntro} type="video/mp4" />
+                  <source src={profile.media.videoIntro} type="video/webm" />
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </div>
+          )}
+          
+          {/* Photo Break 3 */}
+          {profile.media?.photos?.[3] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[3]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(3)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          {/* Voice Introduction - Compact */}
+          {profile.media?.voiceNote && (
+            <div className="bg-white p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-slate-800 font-qurova">Voice Introduction</h3>
+                {isOwnProfile && (
+                  <Button variant="outline" size="sm" className="font-queensides">
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+              <audio controls className="w-full">
+                <source src={profile.media.voiceNote} type="audio/wav" />
+                Your browser does not support the audio element.
+              </audio>
+            </div>
+          )}
+
+          {/* Photo Break 4 */}
+          {profile.media?.photos?.[4] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[4]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(4)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          {/* Education & Career - Compact */}
+          <div className="bg-white p-6 mt-4">
+                              <div className="flex items-center justify-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Education & Career</h3>
+
+            <div className="grid grid-cols-2 gap-4">
+              {profile.education && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Education</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.education}</p>
+                </div>
+              )}
+              {profile.profession && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Profession</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.profession}</p>
+                </div>
+              )}
+              {profile.employer && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Employer</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.employer}</p>
+                </div>
+              )}
+              {profile.jobTitle && (
+                <div>
+                  <p className="text-sm text-slate-500 font-queensides">Job Title</p>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.jobTitle}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Photo Break 5 */}
+          {profile.media?.photos?.[5] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[5]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(5)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          {/* Languages & Ethnicity - Compact */}
+          {(profile.ethnicity || profile.nationality || profile.languages?.length) && (
+            <div className="bg-white p-6">
+              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Background</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                {profile.ethnicity && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Ethnicity</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.ethnicity}</p>
+                  </div>
+                )}
+                {profile.nationality && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Nationality</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.nationality}</p>
+                  </div>
+                )}
+              </div>
+
+              {profile.languages?.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm text-slate-500 font-queensides mb-2">Languages</p>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.languages.map((language, index) => (
+                      <Badge key={index} variant="outline" className="font-queensides">
+                        {language}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Photo Break 6 */}
+          {profile.media?.photos?.[6] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[6]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(6)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          {/* Marriage Intentions - Compact */}
+          {(profile.chattingTimeline || profile.familyInvolvement || profile.marriageTimeline || profile.familyPlans) && (
+            <div className="bg-white p-6">
+              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Marriage Plans</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                {profile.marriageTimeline && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Timeline</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.marriageTimeline}</p>
+                  </div>
+                )}
+                {profile.familyInvolvement && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Family Role</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.familyInvolvement}</p>
+                  </div>
+                )}
+                {profile.familyPlans && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-slate-500 font-queensides">Family Plans</p>
+                    <p className="font-semibold text-slate-800 font-queensides">{profile.familyPlans}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+
+          {/* Interests & Personality - Compact */}
+          {(profile.interests?.length > 0 || profile.personality?.length > 0) && (
+            <div className="bg-white p-6 mt-4">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Interests & Personality</h3>
+
+              <div className="space-y-4">
+                {profile.interests?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides mb-2">Interests</p>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.interests.map((interest, index) => (
+                        <Badge key={index} variant="outline" className="font-queensides">
+                          {interest}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {profile.personality?.length > 0 && (
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides mb-2">Personality</p>
+                    <div className="flex flex-wrap gap-2">
+                      {profile.personality.map((trait, index) => (
+                        <Badge key={index} variant="secondary" className="font-queensides">
+                          {trait}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Final Photo Break */}
+          {profile.media?.photos?.[7] && (
+            <div
+              className="h-96 bg-cover bg-center cursor-pointer"
+              style={{
+                backgroundImage: `url(${profile.media.photos[7]})`
+              }}
+              onClick={() => setSelectedPhotoIndex(7)}
+            >
+              <div className="h-full w-full bg-black/20"></div>
+            </div>
+          )}
+
+          
+
+          {/* Arabic Divider */}
+          {isOwnProfile && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center space-x-3">
+                <Star className="w-4 h-4 text-indigo-300" />
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+                <Moon className="w-4 h-4 text-purple-300" />
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
+                <Sparkles className="w-4 h-4 text-blue-300" />
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
+                <Star className="w-4 h-4 text-indigo-300" />
+              </div>
+            </div>
+          )}
+
+          {/* What I Want Section */}
+          {isOwnProfile && (
+            <div className="relative rounded-2xl p-8 mx-4 mb-6 border-2 border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white shadow-lg">
+              {/* Arabic-inspired corner decorations */}
+              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
+              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
+              <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
+              <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
+
+              {/* Subtle gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
+
+              <div className="relative">
+                <h3 className="text-xl font-bold text-slate-800 font-qurova mb-6 text-center">What I Want</h3>
+
+                {/* Arabic-inspired title divider */}
+                <div className="flex items-center justify-center mb-6">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-12 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-4 h-4 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-12 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </div>
+
+              {/* Basic Preferences */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Basic Preferences</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Age Range</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.ageRange[0]}-{userSettings.ageRange[1]} years
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Location</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      Within {userSettings.maxDistance} miles
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Divider */}
+              <div className="flex items-center justify-center my-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+                <div className="mx-3 w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+              </div>
+
+              {/* About Them */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">About Them</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Nationality</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.nationality || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Height</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.height || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.maritalStatus || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Children</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.children || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Education</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.education || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Languages</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.languages || "No preference"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Divider */}
+              <div className="flex items-center justify-center my-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+                <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+              </div>
+
+              {/* Faith & Practice */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Faith & Practice</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.prayerFrequency || "No preference"}
+                    </p>
+                  </div>
+
+                  {userSettings.userGender === "male" && (
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Hijab Preference</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.hijabPreference || "No preference"}
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Marriage Intention</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.marriageIntention || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Diet</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.diet || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.halalFood || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.alcohol || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Smoking</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.smoking || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.psychedelics || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Born Muslim</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.faithAndPractice?.bornMuslim || "No preference"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Divider */}
+              <div className="flex items-center justify-center my-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent"></div>
+                <div className="mx-3 w-1.5 h-1.5 bg-blue-300 rounded-full"></div>
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+              </div>
+
+              {/* About Them */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">About Them</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Nationality</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.nationality || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Height</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.height || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.maritalStatus || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Children</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.children || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Grew Up In</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.grewUpIn || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Languages</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.languages || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Willing to Relocate</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.willingToRelocate || "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Education</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.aboutThem?.education || "No preference"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Divider */}
+              <div className="flex items-center justify-center my-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent"></div>
+                <div className="mx-3 w-1.5 h-1.5 bg-orange-300 rounded-full"></div>
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-200 to-transparent"></div>
+              </div>
+
+              {/* Financial & Quality Requirements */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Requirements</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Financial Setup</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.requireFinancialSetup ?
+                        (userSettings.userGender === "male" ? "Purse setup required" : "Dowry wallet required") :
+                        "Not required"
+                      }
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Bio Rating</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.bioRatingMinimum || 0}%+ required
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Response Rate</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.responseRateMinimum || 0}%+ required
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Divider */}
+              <div className="flex items-center justify-center my-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-green-200 to-transparent"></div>
+                <div className="mx-3 w-1.5 h-1.5 bg-green-300 rounded-full"></div>
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+              </div>
+
+              {/* Distance & Location */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Distance & Location</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Age Range</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.ageRange ? `${userSettings.ageRange[0]} - ${userSettings.ageRange[1]} years` : "No preference"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm text-slate-500 font-queensides">Distance</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {userSettings.anywhereInWorld
+                        ? "🌍 Anywhere in the world"
+                        : `Within ${userSettings.maxDistance || 50} miles`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section Divider */}
+              <div className="flex items-center justify-center my-6">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+                <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+              </div>
+
+              {/* Interests */}
+              <div className="mb-6">
+                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Interests</h4>
+                <div className="col-span-2">
+                  <p className="text-sm text-slate-500 font-queensides">Preferred Interests</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {userSettings.interests && userSettings.interests.length > 0
+                      ? userSettings.interests.join(", ")
+                      : "No specific preferences"}
+                  </p>
+                </div>
+              </div>
+
+              {isOwnProfile && (
+                <div className="pt-6 border-t border-slate-200">
+                  <Button
+                    variant="outline"
+                    className="w-full font-queensides"
+                    onClick={() => router.push("/settings")}
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Update Preferences
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              )}
+              </div>
+            </div>
+          )}
 
           {/* Islamic Blessing */}
           <motion.div
@@ -1044,6 +1887,55 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
           </motion.div>
         </div>
       </div>
+
+      {/* Photo Modal */}
+      {selectedPhotoIndex !== null && profile?.media?.photos && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedPhotoIndex(null)}
+              className="absolute top-4 right-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+            >
+              ✕
+            </button>
+
+            {/* Previous Button */}
+            {profile.media.photos.length > 1 && selectedPhotoIndex > 0 && (
+              <button
+                onClick={() => setSelectedPhotoIndex(selectedPhotoIndex - 1)}
+                className="absolute left-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+              >
+                ←
+              </button>
+            )}
+
+            {/* Next Button */}
+            {profile.media.photos.length > 1 && selectedPhotoIndex < profile.media.photos.length - 1 && (
+              <button
+                onClick={() => setSelectedPhotoIndex(selectedPhotoIndex + 1)}
+                className="absolute right-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+              >
+                →
+              </button>
+            )}
+
+            {/* Photo */}
+            <img
+              src={profile.media.photos[selectedPhotoIndex]}
+              alt={`Profile photo ${selectedPhotoIndex + 1}`}
+              className="max-w-full max-h-full object-contain"
+            />
+
+            {/* Photo Counter */}
+            {profile.media.photos.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white font-queensides">
+                {selectedPhotoIndex + 1} of {profile.media.photos.length}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav currentTab={currentTab} setCurrentTab={setCurrentTab} />
