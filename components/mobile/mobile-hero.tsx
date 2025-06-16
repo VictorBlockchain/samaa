@@ -6,6 +6,7 @@ import { WalletButton } from "@/components/wallet/wallet-button"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { User, Camera, Heart, Search } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function MobileHero() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -13,6 +14,7 @@ export function MobileHero() {
     target: containerRef,
     offset: ["start end", "end start"],
   })
+  const router = useRouter()
 
   const [activeTab, setActiveTab] = useState(0)
   const [activeSecondTab, setActiveSecondTab] = useState(0)
@@ -773,7 +775,10 @@ export function MobileHero() {
               </div>
 
               {/* Get Started with Crypto Button */}
-              <button className="relative w-full bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-slate-800 font-bold py-5 px-7 rounded-2xl border-2 border-purple-200/50 hover:border-purple-300/70 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm overflow-hidden group">
+              <button
+                onClick={() => router.push("/crypto-guide")}
+                className="relative w-full bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-slate-800 font-bold py-5 px-7 rounded-2xl border-2 border-purple-200/50 hover:border-purple-300/70 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm overflow-hidden group"
+              >
                 {/* Arabic-inspired corner decorations */}
                 <div className="absolute top-2 left-2 w-5 h-5 border-l-2 border-t-2 border-purple-300/50 rounded-tl-lg"></div>
                 <div className="absolute top-2 right-2 w-5 h-5 border-r-2 border-t-2 border-indigo-300/50 rounded-tr-lg"></div>
@@ -802,7 +807,10 @@ export function MobileHero() {
               </button>
 
               {/* Support Center Button */}
-              <button className="relative w-full bg-gradient-to-br from-blue-50 to-slate-50 hover:from-blue-100 hover:to-slate-100 text-slate-800 font-bold py-5 px-7 rounded-2xl border-2 border-blue-200/50 hover:border-blue-300/70 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm overflow-hidden group">
+              <button
+                onClick={() => router.push("/support")}
+                className="relative w-full bg-gradient-to-br from-blue-50 to-slate-50 hover:from-blue-100 hover:to-slate-100 text-slate-800 font-bold py-5 px-7 rounded-2xl border-2 border-blue-200/50 hover:border-blue-300/70 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm overflow-hidden group"
+              >
                 {/* Arabic-inspired corner decorations */}
                 <div className="absolute top-2 left-2 w-5 h-5 border-l-2 border-t-2 border-blue-300/50 rounded-tl-lg"></div>
                 <div className="absolute top-2 right-2 w-5 h-5 border-r-2 border-t-2 border-slate-300/50 rounded-tr-lg"></div>
@@ -877,6 +885,8 @@ export function MobileHero() {
             </div>
           </div>
         )}
+
+
       </div>
     </div>
   )
