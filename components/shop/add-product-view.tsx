@@ -436,6 +436,7 @@ export function AddProductView() {
                     <option value="Wedding Gifts">Wedding Gifts</option>
                     <option value="Arts & Crafts">Arts & Crafts</option>
                     <option value="Accessories">Accessories</option>
+                    <option value="NFTs">NFTs</option>
                   </select>
                 </div>
 

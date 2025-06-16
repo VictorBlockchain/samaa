@@ -1,18 +1,20 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, X, Bell, Settings, Clock } from "lucide-react"
+import { Menu, X, Bell, Settings, Clock, ShoppingCart } from "lucide-react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePrayerTimes } from "@/app/hooks/use-prayer-times"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { useRouter } from "next/navigation"
+import { CartService } from "@/lib/cart"
 
 export function MobileNavigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [showNav, setShowNav] = useState(true)
-  const { connected, disconnect } = useWallet()
+  const [cartItemCount, setCartItemCount] = useState(0)
+  const { connected, disconnect, publicKey } = useWallet()
   const { nextPrayer, timeToNext, isLoading: prayerLoading } = usePrayerTimes()
   const router = useRouter()
 
@@ -32,6 +34,26 @@ export function MobileNavigation() {
     window.addEventListener("scroll", handleScroll, { passive: true })
     return () => window.removeEventListener("scroll", handleScroll)
   }, [lastScrollY])
+
+  // Update cart count
+  useEffect(() => {
+    const updateCartCount = () => {
+      if (publicKey) {
+        const count = CartService.getCartItemCount(publicKey.toString())
+        setCartItemCount(count)
+      } else {
+        setCartItemCount(0)
+      }
+    }
+
+    updateCartCount()
+
+    // Update cart count when window gains focus (in case cart was updated in another tab)
+    const handleFocus = () => updateCartCount()
+    window.addEventListener('focus', handleFocus)
+
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [publicKey, isOpen]) // Update when wallet changes or menu opens
 
   return (
     <>
@@ -81,6 +103,30 @@ export function MobileNavigation() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </motion.button>
+
+                {/* Shopping Cart - Only show if cart has items */}
+                {cartItemCount > 0 && (
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => router.push('/cart')}
+                    className="p-3 rounded-2xl glass-button focus-ring relative overflow-hidden group"
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  >
+                    <ShoppingCart className="w-5 h-5 text-indigo-600 relative z-10" />
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold"
+                    >
+                      {cartItemCount > 9 ? '9+' : cartItemCount}
+                    </motion.div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </motion.button>
+                )}
 
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 5 }}
@@ -205,6 +251,47 @@ export function MobileNavigation() {
                   ))}
                 </div>
 
+                {/* New to Islam Section */}
+                <div className="px-6 py-3 border-t border-indigo-100/30">
+                  <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">New to Islam</h3>
+                </div>
+                <div className="pb-2">
+                  {[
+                    { title: "Prayer Guides", icon: "🤲", category: "islam", href: "/prayer-guide" },
+                    { title: "Pillars of Islam", icon: "🕌", category: "islam", href: "/pillars" },
+                    { title: "99 Names of Allah", icon: "✨", category: "islam", href: "/99-names" },
+                  ].map((item, index) => (
+                    <motion.button
+                      key={item.title}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: (index + 7) * 0.1, duration: 0.4 }}
+                      className="flex items-center space-x-4 py-3 px-6 hover:bg-green-50/50 transition-all duration-200 group w-full text-left"
+                      onClick={() => {
+                        router.push(item.href)
+                        setIsOpen(false)
+                      }}
+                    >
+                      <div className="w-10 h-10 bg-gradient-to-br from-green-100 to-emerald-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                        <span className="text-lg">{item.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-medium text-slate-700 font-queensides group-hover:text-green-600 transition-colors duration-200">
+                          {item.title}
+                        </span>
+                      </div>
+                      <svg
+                        className="w-4 h-4 text-slate-400 group-hover:text-green-500 transition-colors duration-200"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.button>
+                  ))}
+                </div>
+
                 {/* Legal Section */}
                 <div className="px-6 py-3 border-t border-indigo-100/30">
                   <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Legal</h3>
@@ -218,7 +305,7 @@ export function MobileNavigation() {
                       key={item.title}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: (index + 6) * 0.1, duration: 0.4 }}
+                      transition={{ delay: (index + 10) * 0.1, duration: 0.4 }}
                       className="flex items-center space-x-4 py-3 px-6 hover:bg-indigo-50/50 transition-all duration-200 group w-full text-left"
                       onClick={() => {
                         router.push(item.href)

@@ -1,12 +1,14 @@
 "use client"
 
 import { motion, useScroll } from "framer-motion"
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { User, Camera, Heart, Search } from "lucide-react"
+import { User, Camera, Heart, Search, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { MessageTabs } from "./message-tabs"
+import { loadProfile, isProfileComplete } from "@/utils/profile-storage"
 
 export function MobileHero() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -19,13 +21,34 @@ export function MobileHero() {
   const [activeTab, setActiveTab] = useState(0)
   const [activeSecondTab, setActiveSecondTab] = useState(0)
   const [hasSecondTabBeenClicked, setHasSecondTabBeenClicked] = useState(false)
-
-  // Add these state variables after the existing useState declarations:
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [profileSetupStep, setProfileSetupStep] = useState(0)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [profileComplete, setProfileComplete] = useState(false)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
 
   const { connected, publicKey } = useWallet()
+
+  // Load user profile when wallet connects
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (connected && publicKey) {
+        setIsLoadingProfile(true)
+        try {
+          const profile = await loadProfile(publicKey.toString())
+          setUserProfile(profile)
+          setProfileComplete(isProfileComplete(profile))
+        } catch (error) {
+          console.error('Error loading profile:', error)
+        } finally {
+          setIsLoadingProfile(false)
+        }
+      } else {
+        setUserProfile(null)
+        setProfileComplete(false)
+      }
+    }
+
+    checkProfile()
+  }, [connected, publicKey])
 
   const features = [
     {
@@ -149,24 +172,37 @@ export function MobileHero() {
 
   // Add pull-to-refresh handler:
   const handleRefresh = async () => {
-    setIsRefreshing(true)
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsRefreshing(false)
+    // Refresh profile data
+    if (connected && publicKey) {
+      setIsLoadingProfile(true)
+      try {
+        const profile = await loadProfile(publicKey.toString())
+        setUserProfile(profile)
+        setProfileComplete(isProfileComplete(profile))
+      } catch (error) {
+        console.error('Error refreshing profile:', error)
+      } finally {
+        setIsLoadingProfile(false)
+      }
+    }
   }
 
   return (
     <div ref={containerRef} className="min-h-screen relative">
       <div className="relative z-10 min-h-screen">
         {connected ? (
-          // Logged in version - Profile Setup
+          // Logged in version - Profile Setup or Messages
           <>
-            {/* Profile Setup Header - Full Width Edge to Edge */}
+            {/* Header - Full Width Edge to Edge */}
             <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
               <div className="flex items-center justify-center p-4">
                 <div className="text-center pt-3">
-                  <h1 className="text-xl font-bold text-slate-800 font-qurova">Welcome to Samaa</h1>
-                  <p className="text-sm text-slate-600 font-queensides">Let's set up your profile</p>
+                  <h1 className="text-xl font-bold text-slate-800 font-qurova">
+                    {profileComplete ? 'Your Messages' : 'Welcome to Samaa'}
+                  </h1>
+                  <p className="text-sm text-slate-600 font-queensides">
+                    {profileComplete ? 'Recent conversations' : 'Let\'s set up your profile'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -175,13 +211,69 @@ export function MobileHero() {
             <div className="p-4 pb-32">
               <div className="max-w-lg mx-auto">
 
-                {/* Profile Setup Flow */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="space-y-6"
-                >
+                {isLoadingProfile ? (
+                  /* Loading Profile */
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="w-12 h-12 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                      <p className="text-slate-600 font-queensides">Loading your profile...</p>
+                    </div>
+                  </div>
+                ) : profileComplete ? (
+                  /* Message Tabs for Complete Profiles */
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="space-y-6"
+                  >
+                    {/* Welcome Back Message */}
+                    <div className="text-center mb-6">
+                      <motion.div
+                        initial={{ scale: 0.8, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.2, duration: 0.6 }}
+                        className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                      >
+                        <MessageCircle className="w-8 h-8 text-indigo-600" />
+                      </motion.div>
+                      <h2 className="text-xl font-bold text-slate-800 font-qurova mb-2">
+                        Welcome back, {userProfile?.firstName}!
+                      </h2>
+                      <p className="text-slate-600 font-queensides">
+                        Here are your recent messages and conversations
+                      </p>
+                    </div>
+
+                    {/* Message Tabs Component */}
+                    <MessageTabs className="mb-6" />
+
+                    {/* Quick Actions */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => router.push('/explore')}
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white py-3 px-4 rounded-xl font-queensides font-medium transition-all duration-300 flex items-center justify-center space-x-2"
+                      >
+                        <Search className="w-4 h-4" />
+                        <span>Explore</span>
+                      </button>
+                      <button
+                        onClick={() => router.push(`/profile/${publicKey?.toString()}`)}
+                        className="bg-white/60 hover:bg-white/80 border border-indigo-200/50 text-slate-700 py-3 px-4 rounded-xl font-queensides font-medium transition-all duration-300 flex items-center justify-center space-x-2"
+                      >
+                        <User className="w-4 h-4" />
+                        <span>Profile</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                ) : (
+                  /* Profile Setup Flow */
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="space-y-6"
+                  >
                   {/* Welcome Message */}
                   <div className="text-center mb-8">
                     <motion.div
@@ -298,8 +390,9 @@ export function MobileHero() {
                     {/* Center decorative element */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-400/30 rounded-full opacity-50"></div>
                   </motion.div>
-                
-                </motion.div>
+
+                  </motion.div>
+                )}
               </div>
             </div>
           </>

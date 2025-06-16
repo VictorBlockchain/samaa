@@ -198,20 +198,25 @@ CREATE TABLE messages (
 CREATE TABLE shops (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    
+    owner_wallet TEXT, -- Solana wallet address for payments
+
     name TEXT NOT NULL,
     description TEXT,
     shop_image TEXT,
-    
+
+    -- Contact information
+    contact_email TEXT,
+    contact_phone TEXT,
+
     -- Shop metrics
     rating DECIMAL(3,2) DEFAULT 0.0,
     total_reviews INTEGER DEFAULT 0,
     total_sales INTEGER DEFAULT 0,
-    
+
     -- Shop settings
     is_active BOOLEAN DEFAULT true,
     is_verified BOOLEAN DEFAULT false,
-    
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -272,7 +277,9 @@ CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     order_number TEXT UNIQUE NOT NULL, -- Human-readable order number
     buyer_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    buyer_wallet TEXT NOT NULL, -- Solana wallet address
     shop_id UUID REFERENCES shops(id) ON DELETE CASCADE,
+    items JSONB, -- Cart items for simplified storage
     
     -- Order totals
     subtotal DECIMAL(10,4) NOT NULL,
@@ -570,7 +577,8 @@ INSERT INTO product_categories (name, description, sort_order) VALUES
 ('Shoes', 'Modest and comfortable footwear', 5),
 ('Hand Bags', 'Bags and purses for daily use', 6),
 ('Books', 'Islamic books and educational materials', 7),
-('Home Decor', 'Islamic home decoration items', 8);
+('Home Decor', 'Islamic home decoration items', 8),
+('NFTs', 'Digital collectibles and Islamic art NFTs', 9);
 
 -- Create RLS (Row Level Security) policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;

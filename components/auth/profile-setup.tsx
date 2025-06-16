@@ -30,6 +30,11 @@ import {
   UserCircle,
   Shield,
   Wallet,
+  Upload,
+  Video,
+  Mic,
+  X,
+  Loader2
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { cn } from "@/lib/utils"
@@ -37,6 +42,9 @@ import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileBottomNav } from "@/components/mobile/mobile-bottom-nav"
 import { useIsMobile } from "@/app/hooks/use-mobile"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
+import { FileUpload } from "@/components/ui/file-upload"
+import { ProfileMediaService, STORAGE_CONFIG } from "@/lib/storage"
+import { saveProfile } from "@/utils/profile-storage"
 
 interface ProfileData {
   // Basic Info
@@ -71,6 +79,9 @@ interface ProfileData {
   bio: string
   interests: string[]
   profilePhoto: File | null
+  additionalPhotos: File[]
+  videoIntro: File | null
+  voiceIntro: File | null
 }
 
 const steps = [
@@ -124,6 +135,9 @@ export function ProfileSetup() {
     bio: "",
     interests: [],
     profilePhoto: null,
+    additionalPhotos: [],
+    videoIntro: null,
+    voiceIntro: null,
   })
 
   const [locationData, setLocationData] = useState<{
@@ -146,6 +160,18 @@ export function ProfileSetup() {
 
   const isMobile = useIsMobile()
   const [currentTab, setCurrentTab] = useState("home")
+
+  // Media upload states
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
+  const [uploadedUrls, setUploadedUrls] = useState<{
+    profilePhoto?: string
+    additionalPhotos: string[]
+    videoIntro?: string
+    voiceIntro?: string
+  }>({
+    additionalPhotos: []
+  })
+  const [isUploading, setIsUploading] = useState(false)
 
   // Load existing profile data if available
   useEffect(() => {
@@ -179,6 +205,9 @@ export function ProfileSetup() {
             bio: profileData.bio || "",
             interests: profileData.interests || [],
             profilePhoto: null, // Can't pre-fill file inputs
+            additionalPhotos: [], // Can't pre-fill file inputs
+            videoIntro: null, // Can't pre-fill file inputs
+            voiceIntro: null, // Can't pre-fill file inputs
           })
 
           // Set location data if available
@@ -205,6 +234,94 @@ export function ProfileSetup() {
 
   const updateProfileData = (field: keyof ProfileData, value: any) => {
     setProfileData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  // Media upload handlers
+  const handleProfilePhotoUpload = async (files: File[]) => {
+    if (files.length === 0 || !publicKey) return
+
+    const file = files[0]
+    updateProfileData('profilePhoto', file)
+
+    try {
+      const result = await ProfileMediaService.uploadProfilePhoto(file, publicKey.toString())
+      if (result.success && result.url) {
+        setUploadedUrls(prev => ({ ...prev, profilePhoto: result.url }))
+      } else {
+        alert(result.error || 'Failed to upload profile photo')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload profile photo')
+    }
+  }
+
+  const handleAdditionalPhotosUpload = async (files: File[]) => {
+    if (files.length === 0 || !publicKey) return
+
+    updateProfileData('additionalPhotos', files)
+
+    try {
+      const uploadPromises = files.map(file =>
+        ProfileMediaService.uploadProfilePhoto(file, publicKey.toString())
+      )
+
+      const results = await Promise.all(uploadPromises)
+      const successfulUrls = results
+        .filter(result => result.success && result.url)
+        .map(result => result.url!)
+
+      setUploadedUrls(prev => ({
+        ...prev,
+        additionalPhotos: [...prev.additionalPhotos, ...successfulUrls]
+      }))
+
+      const failedCount = results.length - successfulUrls.length
+      if (failedCount > 0) {
+        alert(`${failedCount} photos failed to upload`)
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload photos')
+    }
+  }
+
+  const handleVideoUpload = async (files: File[]) => {
+    if (files.length === 0 || !publicKey) return
+
+    const file = files[0]
+    updateProfileData('videoIntro', file)
+
+    try {
+      const result = await ProfileMediaService.uploadProfileVideo(file, publicKey.toString())
+      if (result.success && result.url) {
+        setUploadedUrls(prev => ({ ...prev, videoIntro: result.url }))
+      } else {
+        alert(result.error || 'Failed to upload video')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload video')
+    }
+  }
+
+  const handleAudioUpload = async (files: File[]) => {
+    if (files.length === 0 || !publicKey) return
+
+    const file = files[0]
+    updateProfileData('voiceIntro', file)
+
+    try {
+      const result = await ProfileMediaService.uploadProfileAudio(file, publicKey.toString())
+      if (result.success && result.url) {
+        setUploadedUrls(prev => ({ ...prev, voiceIntro: result.url }))
+      } else {
+        alert(result.error || 'Failed to upload audio')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload audio')
+    }
   }
 
   const analyzeBio = (bio: string) => {
@@ -304,48 +421,65 @@ export function ProfileSetup() {
     }
   }
 
-  const handleSubmit = () => {
-    // Generate placeholder media URLs for development
-    const placeholderMedia = {
-      photos: [
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face",
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face",
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face",
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face"
-      ],
-      videoIntro: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      voiceNote: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-      audioMessages: [
-        "https://www.soundjay.com/misc/sounds/bell-ringing-01.wav",
-        "https://www.soundjay.com/misc/sounds/bell-ringing-02.wav"
-      ]
+  const handleSubmit = async () => {
+    if (!publicKey) return
+
+    setIsUploading(true)
+
+    try {
+      // Upload media files first
+      const mediaUrls: any = {
+        photos: [...uploadedUrls.additionalPhotos],
+        videoIntro: uploadedUrls.videoIntro,
+        voiceNote: uploadedUrls.voiceIntro,
+        audioMessages: []
+      }
+
+      // Add profile photo if uploaded
+      if (uploadedUrls.profilePhoto) {
+        mediaUrls.photos.unshift(uploadedUrls.profilePhoto)
+      }
+
+      // If no media uploaded, use placeholder for development
+      if (mediaUrls.photos.length === 0) {
+        mediaUrls.photos = [
+          "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+          "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face"
+        ]
+      }
+
+      // Prepare profile data for saving
+      const profileWithWallet = {
+        ...profileData,
+        walletAddress: publicKey.toString(),
+        createdAt: new Date().toISOString(),
+        media: mediaUrls,
+        profileComplete: true,
+        isVerified: false,
+        bioRating: bioRating || 0,
+        lastActive: new Date().toISOString(),
+        matchingEnabled: true,
+        profilePhoto: uploadedUrls.profilePhoto || mediaUrls.photos[0],
+        photos: mediaUrls.photos,
+        voiceIntro: uploadedUrls.voiceIntro,
+        video: uploadedUrls.videoIntro
+      }
+
+      // Save to Supabase (this will also save to localStorage as backup)
+      const success = await saveProfile(publicKey.toString(), profileWithWallet)
+
+      if (success) {
+        // Redirect to profile page
+        window.location.href = `/profile/${publicKey.toString()}`
+      } else {
+        alert('Failed to save profile. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error)
+      alert('Failed to save profile. Please try again.')
+    } finally {
+      setIsUploading(false)
     }
-
-    // Save profile data associated with wallet address
-    const profileWithWallet = {
-      ...profileData,
-      walletAddress: publicKey?.toString(),
-      createdAt: new Date().toISOString(),
-      media: placeholderMedia,
-      profileComplete: true,
-      isVerified: false,
-      bioRating: bioRating || 0,
-      lastActive: new Date().toISOString(),
-      matchingEnabled: true
-    }
-
-    // In production, this would be saved to blockchain/IPFS
-    localStorage.setItem(`profile_${publicKey?.toString()}`, JSON.stringify(profileWithWallet))
-
-    // Also save to a general profiles list for matching
-    const existingProfiles = JSON.parse(localStorage.getItem('allProfiles') || '[]')
-    const updatedProfiles = existingProfiles.filter((p: any) => p.walletAddress !== publicKey?.toString())
-    updatedProfiles.push(profileWithWallet)
-    localStorage.setItem('allProfiles', JSON.stringify(updatedProfiles))
-
-    // Redirect to profile page
-    window.location.href = `/profile/${publicKey?.toString()}`
   }
 
   if (!connected || !publicKey) {
@@ -1390,103 +1524,100 @@ export function ProfileSetup() {
                       {/* Profile Photos */}
                       <div>
                         <Label className="font-queensides text-lg mb-4 block">Profile Photos & Media</Label>
-                        <p className="text-slate-600 font-queensides text-sm mb-4">
-                          For development purposes, we'll use placeholder images and media. You can complete your profile setup without uploading files.
+                        <p className="text-slate-600 font-queensides text-sm mb-6">
+                          Upload your photos, video introduction, and voice note. All files are stored securely and can be up to {STORAGE_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB each.
                         </p>
 
-                        {/* Placeholder Media Notice */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50 rounded-xl p-6 mb-6">
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <Camera className="w-8 h-8 text-white" />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Development Mode</h3>
-                            <p className="text-slate-600 font-queensides mb-4 leading-relaxed">
-                              We'll automatically assign placeholder photos, videos, and audio from online sources for your profile during development.
-                            </p>
-                            <div className="grid grid-cols-3 gap-3 text-xs text-slate-500 font-queensides">
-                              <div className="flex items-center justify-center space-x-1">
-                                <span>📸</span>
-                                <span>Profile Photos</span>
-                              </div>
-                              <div className="flex items-center justify-center space-x-1">
-                                <span>🎥</span>
-                                <span>Video Intro</span>
-                              </div>
-                              <div className="flex items-center justify-center space-x-1">
-                                <span>🎤</span>
-                                <span>Voice Note</span>
-                              </div>
-                            </div>
-                          </div>
+                        {/* Main Profile Photo */}
+                        <div className="mb-6">
+                          <Label className="font-queensides text-base mb-3 block flex items-center gap-2">
+                            <Camera className="w-4 h-4" />
+                            Main Profile Photo
+                          </Label>
+                          <FileUpload
+                            accept={STORAGE_CONFIG.ALLOWED_IMAGE_TYPES.join(',')}
+                            maxSize={STORAGE_CONFIG.MAX_FILE_SIZE}
+                            multiple={false}
+                            onFileSelect={(files) => updateProfileData('profilePhoto', files[0] || null)}
+                            onUpload={handleProfilePhotoUpload}
+                            type="image"
+                            placeholder="Upload your main profile photo"
+                            className="mb-4"
+                          />
                         </div>
 
-                        {/* Media Preview */}
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Main Profile Photo Preview */}
-                          <div className="col-span-2 p-4 bg-white/60 border border-indigo-200/50 rounded-xl">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
-                                <Camera className="w-8 h-8 text-indigo-600" />
-                              </div>
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-slate-800 font-qurova">Main Profile Photo</h4>
-                                <p className="text-sm text-slate-600 font-queensides">Placeholder image will be assigned</p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                  <span className="text-xs text-green-600 font-queensides font-medium">Ready</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Additional Photos */}
-                          {[1, 2, 3, 4].map((index) => (
-                            <div key={index} className="p-3 bg-white/40 border border-slate-200/50 rounded-xl">
-                              <div className="text-center">
-                                <Camera className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                                <p className="text-xs text-slate-600 font-queensides mb-1">Photo {index + 1}</p>
-                                <div className="flex items-center justify-center space-x-1">
-                                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                                  <span className="text-xs text-blue-600 font-queensides">Auto-assigned</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                        {/* Additional Photos */}
+                        <div className="mb-6">
+                          <Label className="font-queensides text-base mb-3 block flex items-center gap-2">
+                            <Camera className="w-4 h-4" />
+                            Additional Photos (Optional)
+                          </Label>
+                          <FileUpload
+                            accept={STORAGE_CONFIG.ALLOWED_IMAGE_TYPES.join(',')}
+                            maxSize={STORAGE_CONFIG.MAX_FILE_SIZE}
+                            multiple={true}
+                            onFileSelect={(files) => updateProfileData('additionalPhotos', files)}
+                            onUpload={handleAdditionalPhotosUpload}
+                            type="image"
+                            placeholder="Upload additional photos (up to 4 more)"
+                            className="mb-4"
+                          />
                         </div>
 
-                        {/* Media Options */}
-                        <div className="grid grid-cols-2 gap-4 mt-6">
-                          {/* Video Introduction */}
-                          <div className="p-4 bg-white/60 border border-purple-200/50 rounded-xl">
-                            <div className="text-center">
-                              <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                                <span className="text-purple-600 text-lg">🎥</span>
-                              </div>
-                              <h4 className="font-medium text-slate-800 font-queensides mb-1">Video Intro</h4>
-                              <p className="text-xs text-slate-600 font-queensides mb-2">Placeholder video assigned</p>
-                              <div className="flex items-center justify-center space-x-1">
-                                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
-                                <span className="text-xs text-purple-600 font-queensides">Ready</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Voice Note */}
-                          <div className="p-4 bg-white/60 border border-green-200/50 rounded-xl">
-                            <div className="text-center">
-                              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                                <span className="text-green-600 text-lg">🎤</span>
-                              </div>
-                              <h4 className="font-medium text-slate-800 font-queensides mb-1">Voice Note</h4>
-                              <p className="text-xs text-slate-600 font-queensides mb-2">Placeholder audio assigned</p>
-                              <div className="flex items-center justify-center space-x-1">
-                                <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
-                                <span className="text-xs text-green-600 font-queensides">Ready</span>
-                              </div>
-                            </div>
-                          </div>
+                        {/* Video Introduction */}
+                        <div className="mb-6">
+                          <Label className="font-queensides text-base mb-3 block flex items-center gap-2">
+                            <Video className="w-4 h-4" />
+                            Video Introduction (Optional)
+                          </Label>
+                          <FileUpload
+                            accept={STORAGE_CONFIG.ALLOWED_VIDEO_TYPES.join(',')}
+                            maxSize={STORAGE_CONFIG.MAX_FILE_SIZE}
+                            multiple={false}
+                            onFileSelect={(files) => updateProfileData('videoIntro', files[0] || null)}
+                            onUpload={handleVideoUpload}
+                            type="video"
+                            placeholder="Upload a short video introduction"
+                            className="mb-4"
+                          />
+                          <p className="text-xs text-slate-500 font-queensides">
+                            Share a brief video about yourself (recommended: 30-60 seconds)
+                          </p>
                         </div>
+
+                        {/* Voice Introduction */}
+                        <div className="mb-6">
+                          <Label className="font-queensides text-base mb-3 block flex items-center gap-2">
+                            <Mic className="w-4 h-4" />
+                            Voice Introduction (Optional)
+                          </Label>
+                          <FileUpload
+                            accept={STORAGE_CONFIG.ALLOWED_AUDIO_TYPES.join(',')}
+                            maxSize={STORAGE_CONFIG.MAX_FILE_SIZE}
+                            multiple={false}
+                            onFileSelect={(files) => updateProfileData('voiceIntro', files[0] || null)}
+                            onUpload={handleAudioUpload}
+                            type="audio"
+                            placeholder="Upload a voice introduction"
+                            className="mb-4"
+                          />
+                          <p className="text-xs text-slate-500 font-queensides">
+                            Record a voice message introducing yourself (recommended: 30-60 seconds)
+                          </p>
+                        </div>
+
+                        {/* Upload Progress */}
+                        {isUploading && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                            <div className="flex items-center space-x-3">
+                              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                              <div>
+                                <p className="font-medium text-blue-800 font-queensides">Uploading media files...</p>
+                                <p className="text-sm text-blue-600 font-queensides">Please wait while we process your uploads</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1517,10 +1648,20 @@ export function ProfileSetup() {
                     {currentStep === steps.length ? (
                       <Button
                         onClick={handleSubmit}
-                        className="bg-gradient-to-r from-indigo-400 to-purple-500 hover:from-indigo-500 hover:to-purple-600 font-queensides"
+                        disabled={isUploading}
+                        className="bg-gradient-to-r from-indigo-400 to-purple-500 hover:from-indigo-500 hover:to-purple-600 font-queensides disabled:opacity-50"
                       >
-                        Complete Profile
-                        <Check className="w-4 h-4 ml-2" />
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving Profile...
+                          </>
+                        ) : (
+                          <>
+                            Complete Profile
+                            <Check className="w-4 h-4 ml-2" />
+                          </>
+                        )}
                       </Button>
                     ) : (
                       <Button

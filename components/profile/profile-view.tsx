@@ -39,6 +39,7 @@ import { useRouter } from "next/navigation"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
+import { loadProfile as loadProfileFromStorage } from "@/utils/profile-storage"
 
 interface ProfileData {
   // Basic Info
@@ -300,11 +301,18 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
     return newSettings
   }
 
-  const loadProfile = () => {
+  const loadProfile = async () => {
     try {
-      const savedProfile = localStorage.getItem(`profile_${walletAddress}`)
-      if (savedProfile) {
-        setProfile(JSON.parse(savedProfile))
+      console.log("Loading profile for wallet address:", walletAddress)
+
+      // Use the new profile storage system
+      const profileData = await loadProfileFromStorage(walletAddress)
+      console.log("Loaded profile data:", profileData)
+
+      if (profileData) {
+        setProfile(profileData as any) // Type assertion to handle interface differences
+      } else {
+        console.log("No profile found for address:", walletAddress)
       }
 
       // Load user settings if this is own profile (check directly with wallet comparison)

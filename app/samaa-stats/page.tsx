@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Users, Heart, Wallet, TrendingUp, Shield, Star, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -7,14 +8,31 @@ import { CelestialBackground } from "@/components/ui/celestial-background"
 
 export default function SamaaStatsPage() {
   const router = useRouter()
-
-  // Current platform stats - in real app this would come from API
-  const stats = {
+  const [stats, setStats] = useState({
     totalWomen: 0,
     totalMen: 0,
     totalMarriages: 0,
     dowryWalletsMinted: 0,
     purseWalletsMinted: 0
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Load stats from Supabase
+  useEffect(() => {
+    loadStats()
+  }, [])
+
+  const loadStats = async () => {
+    try {
+      const { StatsService } = await import('@/lib/database')
+      const platformStats = await StatsService.getPlatformStats()
+      setStats(platformStats)
+    } catch (error) {
+      console.error('Error loading stats:', error)
+      // Keep default stats (all 0) if error
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const statCards = [
@@ -59,6 +77,18 @@ export default function SamaaStatsPage() {
       description: "Smart NFT purse wallets created"
     }
   ]
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 relative overflow-hidden flex items-center justify-center">
+        <CelestialBackground intensity="medium" />
+        <div className="relative z-10 text-center">
+          <div className="w-8 h-8 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 font-queensides">Loading platform statistics...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 relative overflow-hidden">

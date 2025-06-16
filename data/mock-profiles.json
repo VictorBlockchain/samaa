@@ -1,0 +1,51 @@
+{
+  "profiles": {
+    "BPaN7WF2c5dxBr7NQWrqb1aY3TwQAjfMVmvDZZZ8L12z": {
+      "firstName": "Ahmed",
+      "lastName": "Hassan",
+      "age": "29",
+      "gender": "male",
+      "maritalStatus": "never_married",
+      "hasChildren": "no",
+      "wantChildren": "yes",
+      "bioTagline": "Seeking a righteous partner for this life and the next",
+      "currentLocation": "New York, NY, USA",
+      "grewUpIn": "Cairo, Egypt",
+      "livingArrangements": "alone",
+      "education": "bachelors",
+      "profession": "Software Engineer",
+      "employer": "Tech Solutions Inc",
+      "jobTitle": "Senior Developer",
+      "ethnicity": "Arab",
+      "nationality": "Egyptian-American",
+      "languages": ["Arabic", "English"],
+      "religiosity": "very_religious",
+      "prayerFrequency": "five_times_daily",
+      "hijabPreference": "not_applicable",
+      "marriageIntention": "within_year",
+      "isRevert": "no",
+      "alcohol": "never",
+      "smoking": "never",
+      "psychedelics": "never",
+      "halalFood": "always",
+      "bio": "Assalamu alaikum! I'm Ahmed, a software engineer living in New York. I was born in Cairo but moved to the US for my studies and career. I'm looking for a practicing Muslim sister who shares my values and vision for building a strong Islamic family together.\n\nI pray five times a day, attend Jummah regularly, and try to live my life according to Islamic principles. I enjoy reading Islamic books, playing soccer, and exploring new technologies. I'm also passionate about giving back to the community through volunteer work at the local mosque.\n\nI'm looking for someone who is kind, practicing, and ready to start a family. If you think we might be compatible, I'd love to hear from you insha'Allah.",
+      "interests": ["Technology", "Soccer", "Islamic Studies", "Volunteer Work", "Reading", "Travel"],
+      "profilePhoto": null,
+      "photos": [
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face"
+      ],
+      "walletAddress": "BPaN7WF2c5dxBr7NQWrqb1aY3TwQAjfMVmvDZZZ8L12z",
+      "createdAt": "2024-01-15T10:30:00Z",
+      "updatedAt": "2024-01-15T10:30:00Z",
+      "isVerified": true,
+      "bioRating": 92,
+      "latitude": 40.7128,
+      "longitude": -74.0060,
+      "height": "5'10\"",
+      "children": "0",
+      "tagline": "Seeking a righteous partner for this life and the next",
+      "location": "New York, NY, USA"
+    }
+  }
+}

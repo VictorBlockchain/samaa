@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { ArrowLeft, Heart, Star, Play, ShoppingCart, Truck, Shield, RotateCcw, Eye, Edit3 } from "lucide-react"
+import { ArrowLeft, Heart, Star, Play, ShoppingCart, Truck, Shield, RotateCcw, Eye, Edit3, Plus, Minus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CelestialBackground } from "@/components/ui/celestial-background"
+import { CartService } from "@/lib/cart"
 
 interface Product {
   id: string
@@ -278,13 +279,54 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
       }
     }
 
-    console.log("Purchasing product:", {
-      id: product?.id,
-      quantity,
-      size: selectedSize || undefined,
-      color: selectedColor || undefined
-    })
-    // Implement purchase logic here
+    // Add to cart and redirect to checkout
+    if (handleAddToCart()) {
+      router.push('/cart')
+    }
+  }
+
+  const handleAddToCart = (): boolean => {
+    if (!connected || !publicKey || !product) {
+      alert("Please connect your wallet to add items to cart")
+      return false
+    }
+
+    // Validate size and color selection for clothing items
+    if (isClothingCategory(product.category)) {
+      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+        alert("Please select a size")
+        return false
+      }
+      if (product.colors && product.colors.length > 0 && !selectedColor) {
+        alert("Please select a color")
+        return false
+      }
+    }
+
+    const cartItem = {
+      productId: product.id,
+      productUuid: product.id, // Using id as uuid for now
+      productName: product.name,
+      productImage: product.images[0] || '',
+      price: product.price,
+      currency: product.currency,
+      quantity: quantity,
+      selectedSize: selectedSize || undefined,
+      selectedColor: selectedColor || undefined,
+      shopId: product.shopId || 'unknown',
+      shopName: product.seller,
+      sellerWallet: 'seller_wallet_address' // This should come from the product data
+    }
+
+    const success = CartService.addToCart(publicKey.toString(), cartItem)
+
+    if (success) {
+      alert(`Added ${quantity} ${product.name} to cart!`)
+      return true
+    } else {
+      alert("Failed to add item to cart. Please try again.")
+      return false
+    }
   }
 
   const handleEdit = () => {
@@ -586,10 +628,12 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
                 {product.inStock ? "Buy Now" : "Out of Stock"}
               </Button>
               <Button
+                onClick={handleAddToCart}
                 variant="outline"
                 className="w-full py-4 border-2 border-indigo-500 text-indigo-600 font-bold hover:bg-indigo-50 transition-colors font-queensides text-lg"
                 disabled={!product.inStock}
               >
+                <Plus className="w-5 h-5 mr-2" />
                 Add to Cart
               </Button>
             </div>

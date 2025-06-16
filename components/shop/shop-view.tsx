@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, ShoppingBag, Store, Package, Truck, Plus, Edit3, Eye, Trash2, Users, TrendingUp } from "lucide-react"
+import { ArrowLeft, ShoppingBag, Store, Package, Truck, Plus, Edit3, Eye, Trash2, Users, TrendingUp, Calendar, CreditCard, CheckCircle, Clock, X, Search, Star, Heart, Share2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,9 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
 import { CelestialBackground } from "@/components/ui/celestial-background"
+import { OrderService, Order } from "@/lib/cart"
 
 interface Product {
   id: string
@@ -50,7 +52,93 @@ interface UserShop {
   processingTime: string
 }
 
-const SHOP_PRODUCTS: Product[] = []
+// Mock products for search demonstration
+const SHOP_PRODUCTS: Product[] = [
+  {
+    id: "1",
+    name: "Elegant White Wedding Dress",
+    description: "Beautiful modest wedding dress with intricate lace details and long sleeves. Perfect for Islamic wedding ceremonies.",
+    images: ["https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=400"],
+    price: 2.5,
+    currency: "SOL",
+    category: "Bride Fashion",
+    seller: "Modest Bridal",
+    rating: 4.8,
+    reviews: 24,
+    inStock: true,
+    shopId: "shop1"
+  },
+  {
+    id: "2",
+    name: "Traditional Thobe for Men",
+    description: "Classic white thobe made from premium cotton. Comfortable and elegant for daily wear and special occasions.",
+    images: ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400"],
+    price: 150,
+    currency: "SAMAA",
+    category: "Men's Fashion",
+    seller: "Islamic Clothing Co",
+    rating: 4.6,
+    reviews: 18,
+    inStock: true,
+    shopId: "shop2"
+  },
+  {
+    id: "3",
+    name: "Hijab Collection Set",
+    description: "Set of 5 premium hijabs in different colors. Made from breathable fabric, perfect for daily wear.",
+    images: ["https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400"],
+    price: 1.2,
+    currency: "SOL",
+    category: "Women's Fashion",
+    seller: "Hijab House",
+    rating: 4.9,
+    reviews: 42,
+    inStock: true,
+    shopId: "shop3"
+  },
+  {
+    id: "4",
+    name: "Islamic Calligraphy Art",
+    description: "Beautiful hand-crafted Islamic calligraphy featuring Ayat al-Kursi. Perfect for home decoration.",
+    images: ["https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400"],
+    price: 0.8,
+    currency: "SOL",
+    category: "Arts & Crafts",
+    seller: "Islamic Art Studio",
+    rating: 4.7,
+    reviews: 15,
+    inStock: true,
+    shopId: "shop4"
+  },
+  {
+    id: "5",
+    name: "Prayer Beads (Tasbih)",
+    description: "Handmade prayer beads with 99 beads. Made from natural wood with beautiful craftsmanship.",
+    images: ["https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?w=400"],
+    price: 45,
+    currency: "SAMAA",
+    category: "Accessories",
+    seller: "Spiritual Crafts",
+    rating: 4.5,
+    reviews: 8,
+    inStock: true,
+    shopId: "shop5"
+  },
+  {
+    id: "6",
+    name: "Modest Evening Gown",
+    description: "Elegant long-sleeve evening gown in navy blue. Perfect for formal Islamic events and celebrations.",
+    images: ["https://images.unsplash.com/photo-1566479179817-c0b5b4b8b1cc?w=400"],
+    price: 1.8,
+    currency: "SOL",
+    category: "Women's Fashion",
+    seller: "Modest Fashion",
+    rating: 4.4,
+    reviews: 12,
+    inStock: true,
+    shopId: "shop6"
+  }
+]
 
 export function ShopView() {
   const searchParams = useSearchParams()
@@ -61,6 +149,17 @@ export function ShopView() {
   const [showEditShop, setShowEditShop] = useState(false)
 
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+
+  // Orders state
+  const [ordersView, setOrdersView] = useState<"received" | "placed">("received")
+  const [receivedOrders, setReceivedOrders] = useState<Order[]>([])
+  const [placedOrders, setPlacedOrders] = useState<Order[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(false)
+
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("")
+  const [searchResults, setSearchResults] = useState<Product[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   const router = useRouter()
   const { connected, publicKey } = useWallet()
@@ -87,12 +186,39 @@ export function ShopView() {
     }
   }, [connected, publicKey])
 
+  // Load orders when orders tab is active
+  useEffect(() => {
+    if (activeTab === "orders" && connected && publicKey) {
+      loadOrders()
+    }
+  }, [activeTab, connected, publicKey])
+
   const loadUserShop = () => {
     if (!publicKey) return
 
     const savedShop = localStorage.getItem(`shop_${publicKey.toString()}`)
     if (savedShop) {
       setUserShop(JSON.parse(savedShop))
+    }
+  }
+
+  const loadOrders = async () => {
+    if (!publicKey) return
+
+    setOrdersLoading(true)
+    try {
+      // Load orders placed by this user (as customer)
+      const userOrders = await OrderService.getUserOrders(publicKey.toString())
+      setPlacedOrders(userOrders)
+
+      // Load orders received by this user's shop (as seller)
+      // For now, we'll use a mock implementation since we need shop-specific orders
+      // In a real implementation, you'd query orders by shop_id
+      setReceivedOrders([]) // TODO: Implement shop orders query
+    } catch (error) {
+      console.error('Error loading orders:', error)
+    } finally {
+      setOrdersLoading(false)
     }
   }
 
@@ -187,6 +313,90 @@ export function ShopView() {
     router.push(`/shop/item/${productId}`)
   }
 
+  // Helper functions for orders
+  const getStatusIcon = (status: Order['status']) => {
+    switch (status) {
+      case 'pending':
+        return <Clock className="w-4 h-4" />
+      case 'paid':
+        return <CheckCircle className="w-4 h-4" />
+      case 'shipped':
+        return <Truck className="w-4 h-4" />
+      case 'delivered':
+        return <Package className="w-4 h-4" />
+      case 'cancelled':
+        return <X className="w-4 h-4" />
+      default:
+        return <Clock className="w-4 h-4" />
+    }
+  }
+
+  const getStatusColor = (status: Order['status']) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'paid':
+        return 'bg-blue-100 text-blue-800'
+      case 'shipped':
+        return 'bg-purple-100 text-purple-800'
+      case 'delivered':
+        return 'bg-green-100 text-green-800'
+      case 'cancelled':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Search function
+  const handleSearch = (term: string) => {
+    setSearchTerm(term)
+
+    if (!term.trim()) {
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+
+    // Simulate API delay
+    setTimeout(() => {
+      const results = SHOP_PRODUCTS.filter(product =>
+        product.name.toLowerCase().includes(term.toLowerCase()) ||
+        product.description.toLowerCase().includes(term.toLowerCase()) ||
+        product.seller.toLowerCase().includes(term.toLowerCase()) ||
+        product.category.toLowerCase().includes(term.toLowerCase())
+      )
+
+      setSearchResults(results)
+      setIsSearching(false)
+    }, 300)
+  }
+
+  // Get products to display (search results or filtered by category)
+  const getDisplayProducts = () => {
+    if (searchTerm.trim()) {
+      return searchResults
+    }
+
+    if (selectedCategory === "All") {
+      return SHOP_PRODUCTS
+    }
+
+    return SHOP_PRODUCTS.filter(product => product.category === selectedCategory)
+  }
+
   return (
     <div className="min-h-screen relative">
       <CelestialBackground />
@@ -248,128 +458,165 @@ export function ShopView() {
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="Search shops, owners, or items..."
-                      className="w-full px-4 py-3 pl-12 bg-white rounded-xl border border-indigo-200/50 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                      placeholder="Search products by name, description, seller, or category..."
+                      className="w-full px-4 py-3 pl-12 pr-10 bg-white rounded-xl border border-indigo-200/50 text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300"
                     />
                     <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
+                      {isSearching ? (
+                        <div className="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                      )}
                     </div>
+                    {searchTerm && (
+                      <button
+                        onClick={() => handleSearch("")}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    )}
                   </div>
+
+                  {/* Search Results Info */}
+                  {searchTerm && (
+                    <div className="mt-3 text-sm text-slate-600 font-queensides">
+                      {isSearching ? (
+                        "Searching..."
+                      ) : (
+                        <>
+                          Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchTerm}"
+                          {searchResults.length === 0 && (
+                            <span className="block mt-1 text-slate-500">
+                              Try searching for wedding dress, hijab, thobe, or calligraphy
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
                 </Card>
 
-                {/* Elegant Coming Soon Section */}
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="relative group mb-8"
-                >
-                  <div className="relative rounded-2xl p-8 border-2 border-indigo-300/20 hover:border-indigo-400/40 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-gradient-to-br from-white/5 to-indigo-50/10">
-                    {/* Arabic-inspired corner decorations */}
-                    <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
-                    <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
-                    <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
-                    <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
-
-                    {/* Geometric pattern overlay */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-300/30 rounded-full opacity-20"></div>
-                    <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
-                    <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
-
-                    <div className="relative z-10 text-center">
-                      {/* Elegant Icon */}
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.3, duration: 0.6 }}
-                        className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 border border-indigo-200/50"
+                {/* Category Filter */}
+                {!searchTerm && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {["All", "Bride Fashion", "Groom Fashion", "Women's Fashion", "Men's Fashion", "Accessories"].map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
+                        className={`px-4 py-2 rounded-full text-sm font-queensides transition-all duration-300 ${
+                          selectedCategory === category
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                            : "bg-white/60 text-slate-600 hover:bg-white/80 border border-indigo-200/50"
+                        }`}
                       >
-                        <Store className="w-10 h-10 text-indigo-600" />
-                      </motion.div>
-
-                      {/* Title */}
-                      <h3 className="text-3xl font-bold text-slate-800 mb-4 font-qurova">
-                        Shopping Coming Soon
-                      </h3>
-
-                      {/* Elegant Description */}
-                      <p className="text-lg text-slate-600 font-queensides leading-relaxed mb-6 max-w-sm mx-auto">
-                        Shopping will be active soon! For now, create your store and start adding products.
-                        <span className="font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                          Soon-to-be brides and grooms
-                        </span> will be looking for beautiful wedding outfits.
-                      </p>
-
-                      {/* Preparation Steps */}
-                      <div className="space-y-4 mb-6">
-                        <p className="text-base text-indigo-600 font-queensides font-semibold">
-                          Get ready for the launch:
-                        </p>
-
-                        <div className="grid grid-cols-1 gap-3 max-w-xs mx-auto">
-                          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 border border-indigo-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-                                <Store className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Create your shop profile</span>
-                            </div>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                                <span className="text-white text-sm">👗</span>
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Add your wedding products</span>
-                            </div>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                <Truck className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Set up shipping & policies</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Trust Indicators */}
-                      <div className="flex justify-center space-x-4 text-sm">
-                        <div className="flex items-center space-x-2 text-indigo-600">
-                          <div className="w-2 h-2 bg-indigo-500/70 rounded-full"></div>
-                          <span className="font-queensides">Islamic Values</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-purple-600">
-                          <div className="w-2 h-2 bg-purple-500/70 rounded-full"></div>
-                          <span className="font-queensides">Wedding Focus</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Arabic-Inspired Card Divider */}
-                    <div className="flex items-center justify-center mt-6">
-                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/30 to-transparent"></div>
-                      <div className="mx-4 flex items-center space-x-1">
-                        <div className="w-1 h-1 bg-indigo-400/60 rounded-full"></div>
-                        <div className="w-2 h-2 border border-indigo-400/40 rounded-full flex items-center justify-center">
-                          <div className="w-0.5 h-0.5 bg-indigo-500/70 rounded-full"></div>
-                        </div>
-                        <div className="w-1 h-1 bg-purple-400/60 rounded-full"></div>
-                      </div>
-                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300/30 to-transparent"></div>
-                    </div>
+                        {category}
+                      </button>
+                    ))}
                   </div>
-                </motion.div>
+                )}
+
+                {/* Products Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  {getDisplayProducts().map((product, index) => (
+                    <motion.div
+                      key={product.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="group cursor-pointer"
+                      onClick={() => handleViewProduct(product.id)}
+                    >
+                      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-indigo-200/50 hover:border-indigo-300/60">
+                        {/* Product Image */}
+                        <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                          <img
+                            src={product.images[0]}
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+
+                          {/* Quick Actions */}
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="flex flex-col gap-1">
+                              <button className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors">
+                                <Heart className="w-4 h-4 text-slate-600" />
+                              </button>
+                              <button className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors">
+                                <Share2 className="w-4 h-4 text-slate-600" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Price Badge */}
+                          <div className="absolute bottom-2 left-2">
+                            <div className="bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-lg">
+                              <span className="text-sm font-bold text-indigo-600 font-qurova">
+                                {product.price} {product.currency}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="p-4">
+                          <h3 className="font-semibold text-slate-800 font-queensides mb-1 line-clamp-1">
+                            {product.name}
+                          </h3>
+                          <p className="text-sm text-slate-600 font-queensides mb-2 line-clamp-2">
+                            {product.description}
+                          </p>
+
+                          {/* Seller and Rating */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500 font-queensides">
+                              by {product.seller}
+                            </span>
+                            <div className="flex items-center space-x-1">
+                              <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                              <span className="text-xs text-slate-600 font-queensides">
+                                {product.rating}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* No Results */}
+                {searchTerm && searchResults.length === 0 && !isSearching && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-center py-12"
+                  >
+                    <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700 font-qurova mb-2">No products found</h3>
+                    <p className="text-slate-600 font-queensides mb-4">
+                      Try adjusting your search terms or browse by category
+                    </p>
+                    <Button
+                      onClick={() => handleSearch("")}
+                      variant="outline"
+                      className="font-queensides"
+                    >
+                      Clear Search
+                    </Button>
+                  </motion.div>
+                )}
 
                 {!connected && (
                   <Card className="p-4 mt-6 bg-amber-50 border-amber-200">
@@ -400,7 +647,8 @@ export function ShopView() {
                     { name: "Women's Fashion", icon: "👗", gradient: "from-purple-100 to-violet-100", iconColor: "text-purple-600" },
                     { name: "Men's Fashion", icon: "👔", gradient: "from-slate-100 to-gray-100", iconColor: "text-slate-600" },
                     { name: "Wedding Gifts", icon: "🎁", gradient: "from-emerald-100 to-green-100", iconColor: "text-emerald-600" },
-                    { name: "Accessories", icon: "💍", gradient: "from-amber-100 to-yellow-100", iconColor: "text-amber-600" }
+                    { name: "Accessories", icon: "💍", gradient: "from-amber-100 to-yellow-100", iconColor: "text-amber-600" },
+                    { name: "NFTs", icon: "🖼️", gradient: "from-cyan-100 to-teal-100", iconColor: "text-cyan-600" }
                   ].map((category) => (
                     <Card
                       key={category.name}
@@ -797,121 +1045,215 @@ export function ShopView() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {/* Orders Coming Soon */}
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="relative group mb-8"
-                >
-                  <div className="relative rounded-2xl p-8 border-2 border-blue-300/20 hover:border-blue-400/40 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-gradient-to-br from-blue-50/50 to-indigo-50/30">
-                    {/* Arabic-inspired corner decorations */}
-                    <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-blue-400/60 rounded-tl-xl"></div>
-                    <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-indigo-400/60 rounded-tr-xl"></div>
-                    <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-indigo-400/60 rounded-bl-xl"></div>
-                    <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-blue-400/60 rounded-br-xl"></div>
-
-                    {/* Geometric pattern overlay */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-blue-300/30 rounded-full opacity-20"></div>
-                    <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
-                    <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-blue-300/20 rounded-full"></div>
-
-                    <div className="relative z-10 text-center">
-                      {/* Elegant Icon */}
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.3, duration: 0.6 }}
-                        className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-6 border border-blue-200/50"
+                {!connected ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className="relative group mb-8"
+                  >
+                    <div className="relative rounded-2xl p-8 border-2 border-amber-300/20 hover:border-amber-400/40 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-gradient-to-br from-amber-50/50 to-orange-50/30">
+                      <div className="relative z-10 text-center">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.3, duration: 0.6 }}
+                          className="w-20 h-20 bg-gradient-to-br from-amber-100 to-orange-100 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-200/50"
+                        >
+                          <Package className="w-10 h-10 text-amber-600" />
+                        </motion.div>
+                        <h3 className="text-2xl font-bold text-amber-800 font-qurova mb-4">Connect Wallet Required</h3>
+                        <p className="text-amber-700 font-queensides leading-relaxed">Please connect your wallet to view your orders</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Toggle between received and placed orders */}
+                    <div className="flex bg-white/60 backdrop-blur-sm rounded-xl p-1 border border-indigo-200/50">
+                      <button
+                        onClick={() => setOrdersView("received")}
+                        className={`flex-1 py-3 px-4 rounded-lg transition-all duration-300 font-queensides font-medium ${
+                          ordersView === "received"
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                            : "text-slate-600 hover:bg-white/50"
+                        }`}
                       >
-                        <Package className="w-10 h-10 text-blue-600" />
-                      </motion.div>
-
-                      {/* Title */}
-                      <h3 className="text-3xl font-bold text-slate-800 mb-4 font-qurova">
-                        Orders Coming Soon
-                      </h3>
-
-                      {/* Elegant Description */}
-                      <p className="text-lg text-slate-600 font-queensides leading-relaxed mb-6 max-w-sm mx-auto">
-                        Your order management will be available when shopping launches.
-                        <span className="font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                          Get ready for your first customers!
-                        </span>
-                      </p>
-
-                      {/* Order Management Features */}
-                      <div className="space-y-4 mb-6">
-                        <p className="text-base text-blue-600 font-queensides font-semibold">
-                          What you'll be able to manage:
-                        </p>
-
-                        <div className="grid grid-cols-1 gap-3 max-w-xs mx-auto">
-                          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                <Package className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Track all orders</span>
-                            </div>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 border border-indigo-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center">
-                                <Truck className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Manage shipping</span>
-                            </div>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border border-green-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                                <Users className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Customer support</span>
-                            </div>
-                          </div>
-
-                          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200/50 shadow-sm">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                                <TrendingUp className="w-4 h-4 text-white" />
-                              </div>
-                              <span className="text-sm font-queensides text-slate-700 font-semibold">Sales analytics</span>
-                            </div>
-                          </div>
+                        <div className="flex items-center justify-center space-x-2">
+                          <Store className="w-4 h-4" />
+                          <span>Orders Received</span>
                         </div>
-                      </div>
-
-                      {/* Trust Indicators */}
-                      <div className="flex justify-center space-x-4 text-sm">
-                        <div className="flex items-center space-x-2 text-blue-600">
-                          <div className="w-2 h-2 bg-blue-500/70 rounded-full"></div>
-                          <span className="font-queensides">Secure Payments</span>
+                        {userShop && (
+                          <div className="text-xs opacity-75 mt-1">
+                            As shop owner
+                          </div>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setOrdersView("placed")}
+                        className={`flex-1 py-3 px-4 rounded-lg transition-all duration-300 font-queensides font-medium ${
+                          ordersView === "placed"
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg"
+                            : "text-slate-600 hover:bg-white/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-center space-x-2">
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>Orders Placed</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-indigo-600">
-                          <div className="w-2 h-2 bg-indigo-500/70 rounded-full"></div>
-                          <span className="font-queensides">Order Protection</span>
+                        <div className="text-xs opacity-75 mt-1">
+                          As customer
                         </div>
-                      </div>
+                      </button>
                     </div>
 
-                    {/* Arabic-Inspired Card Divider */}
-                    <div className="flex items-center justify-center mt-6">
-                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-blue-300/30 to-transparent"></div>
-                      <div className="mx-4 flex items-center space-x-1">
-                        <div className="w-1 h-1 bg-blue-400/60 rounded-full"></div>
-                        <div className="w-2 h-2 border border-blue-400/40 rounded-full flex items-center justify-center">
-                          <div className="w-0.5 h-0.5 bg-blue-500/70 rounded-full"></div>
-                        </div>
-                        <div className="w-1 h-1 bg-indigo-400/60 rounded-full"></div>
+                    {ordersLoading ? (
+                      <div className="text-center py-12">
+                        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-slate-600 font-queensides">Loading orders...</p>
                       </div>
-                      <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/30 to-transparent"></div>
-                    </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {ordersView === "received" ? (
+                          // Orders received by user's shop
+                          userShop ? (
+                            receivedOrders.length === 0 ? (
+                              <Card className="p-8 text-center">
+                                <Store className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                <h3 className="font-bold text-slate-700 font-qurova mb-2">No Orders Received Yet</h3>
+                                <p className="text-slate-600 font-queensides mb-4">
+                                  Orders placed at your shop will appear here
+                                </p>
+                                <Button
+                                  onClick={() => setActiveTab("myshop")}
+                                  variant="outline"
+                                  className="font-queensides"
+                                >
+                                  Manage My Shop
+                                </Button>
+                              </Card>
+                            ) : (
+                              receivedOrders.map((order, index) => (
+                                <Card key={order.id} className="p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                      <h4 className="font-semibold text-slate-800 font-queensides">
+                                        Order #{order.id.slice(0, 8)}
+                                      </h4>
+                                      <div className="flex items-center space-x-4 text-sm text-slate-600 font-queensides">
+                                        <div className="flex items-center space-x-1">
+                                          <Calendar className="w-3 h-3" />
+                                          <span>{formatDate(order.createdAt)}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-1">
+                                          <CreditCard className="w-3 h-3" />
+                                          <span>{order.totalAmount.toFixed(4)} {order.currency}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
+                                      {getStatusIcon(order.status)}
+                                      <span className="capitalize">{order.status}</span>
+                                    </Badge>
+                                  </div>
+                                  <div className="text-sm text-slate-600 font-queensides">
+                                    {order.items.length} item{order.items.length !== 1 ? 's' : ''} •
+                                    Customer: {order.buyerWallet.slice(0, 8)}...
+                                  </div>
+                                </Card>
+                              ))
+                            )
+                          ) : (
+                            <Card className="p-8 text-center">
+                              <Store className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                              <h3 className="font-bold text-slate-700 font-qurova mb-2">No Shop Created</h3>
+                              <p className="text-slate-600 font-queensides mb-4">
+                                Create a shop to receive orders from customers
+                              </p>
+                              <Button
+                                onClick={() => setActiveTab("myshop")}
+                                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 font-queensides"
+                              >
+                                Create Shop
+                              </Button>
+                            </Card>
+                          )
+                        ) : (
+                          // Orders placed by user as customer
+                          placedOrders.length === 0 ? (
+                            <Card className="p-8 text-center">
+                              <ShoppingBag className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                              <h3 className="font-bold text-slate-700 font-qurova mb-2">No Orders Placed Yet</h3>
+                              <p className="text-slate-600 font-queensides mb-4">
+                                Orders you place from other shops will appear here
+                              </p>
+                              <Button
+                                onClick={() => setActiveTab("shop")}
+                                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 font-queensides"
+                              >
+                                Start Shopping
+                              </Button>
+                            </Card>
+                          ) : (
+                            placedOrders.map((order, index) => (
+                              <Card key={order.id} className="p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div>
+                                    <h4 className="font-semibold text-slate-800 font-queensides">
+                                      Order #{order.id.slice(0, 8)}
+                                    </h4>
+                                    <div className="flex items-center space-x-4 text-sm text-slate-600 font-queensides">
+                                      <div className="flex items-center space-x-1">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>{formatDate(order.createdAt)}</span>
+                                      </div>
+                                      <div className="flex items-center space-x-1">
+                                        <CreditCard className="w-3 h-3" />
+                                        <span>{order.totalAmount.toFixed(4)} {order.currency}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Badge className={`${getStatusColor(order.status)} flex items-center space-x-1`}>
+                                    {getStatusIcon(order.status)}
+                                    <span className="capitalize">{order.status}</span>
+                                  </Badge>
+                                </div>
+
+                                {/* Order Items Preview */}
+                                <div className="space-y-2">
+                                  {order.items.slice(0, 2).map((item, itemIndex) => (
+                                    <div key={itemIndex} className="flex items-center space-x-3 text-sm">
+                                      <div className="w-8 h-8 rounded bg-slate-100 flex-shrink-0">
+                                        <img
+                                          src={item.productImage}
+                                          alt={item.productName}
+                                          className="w-full h-full object-cover rounded"
+                                        />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-slate-800 font-queensides truncate">
+                                          {item.productName}
+                                        </p>
+                                        <p className="text-slate-600 font-queensides">
+                                          Qty: {item.quantity} • {item.price} {item.currency}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {order.items.length > 2 && (
+                                    <p className="text-xs text-slate-500 font-queensides">
+                                      +{order.items.length - 2} more item{order.items.length - 2 !== 1 ? 's' : ''}
+                                    </p>
+                                  )}
+                                </div>
+                              </Card>
+                            ))
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
-                </motion.div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
