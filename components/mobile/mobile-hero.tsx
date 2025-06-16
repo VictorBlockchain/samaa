@@ -305,7 +305,7 @@ export function MobileHero() {
           </>
         ) : (
           // Original hero content for non-logged in users
-          <div className="p-4 pb-32 pt-24">
+          <div className="p-4 pb-32">
             <div className="max-w-lg mx-auto">
             {/* Keep all the existing hero content here */}
             <motion.div
