@@ -27,6 +27,9 @@ import {
   FileText,
   Zap,
   TrendingUp,
+  UserCircle,
+  Shield,
+  Wallet,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { cn } from "@/lib/utils"
@@ -347,13 +350,192 @@ export function ProfileSetup() {
 
   if (!connected || !publicKey) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-4">Wallet Required</h2>
-            <p className="text-slate-600 font-queensides">Please connect your wallet to set up your profile.</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 relative overflow-hidden">
+        <CelestialBackground intensity="medium" />
+
+        {/* Header */}
+        <div className="relative z-10 sticky top-0 bg-white/80 backdrop-blur-xl border-b border-indigo-200/50">
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={() => window.history.back()}
+              className="flex items-center space-x-2 text-slate-600 hover:text-slate-800 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              <span className="font-queensides">Back</span>
+            </button>
+            <h1 className="text-xl font-bold text-slate-800 font-qurova">Profile Setup</h1>
+            <div className="w-16"></div> {/* Spacer for centering */}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 flex items-center justify-center min-h-[80vh] p-6">
+          <div className="w-full max-w-lg mx-auto">
+            <Card className="border-2 border-indigo-200/50 overflow-hidden backdrop-blur-sm bg-white/95 shadow-2xl">
+              <CardContent className="p-8 text-center relative">
+                {/* Arabic-inspired corner decorations */}
+                <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
+                <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
+                <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
+
+                {/* Geometric pattern overlay */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-300/30 rounded-full opacity-20"></div>
+                <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
+                <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
+
+                {/* Islamic Divider */}
+                <div className="flex items-center justify-center mb-8 relative z-10">
+                  <div className="flex items-center space-x-3">
+                    <Star className="w-4 h-4 text-indigo-400" />
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent" />
+                    <Moon className="w-4 h-4 text-purple-400" />
+                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+                    <Sparkles className="w-4 h-4 text-blue-400" />
+                  </div>
+                </div>
+
+                {/* Icon */}
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
+                  className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-indigo-200/50 relative z-10"
+                >
+                  <UserCircle className="w-12 h-12 text-indigo-600" />
+                </motion.div>
+
+                <motion.h2
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.6 }}
+                  className="text-3xl font-bold text-slate-800 font-qurova mb-4 relative z-10"
+                >
+                  Ready to Create Your Profile?
+                </motion.h2>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6, duration: 0.6 }}
+                  className="text-slate-600 font-queensides mb-8 leading-relaxed text-lg relative z-10"
+                >
+                  Connect your wallet to start building your Islamic dating profile and join our growing community of Muslims seeking meaningful connections
+                </motion.p>
+
+                {/* Profile Setup Steps Preview */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8, duration: 0.6 }}
+                  className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 mb-8 relative z-10"
+                >
+                  <h3 className="font-bold text-indigo-700 font-queensides mb-4">What You'll Set Up:</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-indigo-600 font-queensides">
+                    <div className="flex items-center space-x-2">
+                      <User className="w-4 h-4" />
+                      <span>Basic Information</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>Location & Education</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Heart className="w-4 h-4" />
+                      <span>Islamic Values</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4" />
+                      <span>About You</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Star className="w-4 h-4" />
+                      <span>Interests & Hobbies</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Camera className="w-4 h-4" />
+                      <span>Photos & Media</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Decorative divider */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 1.0, duration: 0.6 }}
+                  className="flex items-center justify-center mb-8 relative z-10"
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                    <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                    <div className="w-4 h-4 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                    </div>
+                    <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+                  </div>
+                </motion.div>
+
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.2, duration: 0.6 }}
+                  className="space-y-4 relative z-10"
+                >
+                  <Button
+                    onClick={() => window.location.href = "/crypto-guide"}
+                    className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides py-4 text-lg shadow-xl"
+                  >
+                    <Wallet className="w-5 h-5 mr-2" />
+                    Connect Wallet to Continue
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => window.history.back()}
+                    className="w-full font-queensides border-indigo-200 hover:bg-indigo-50"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Go Back
+                  </Button>
+                </motion.div>
+
+                {/* Security Message */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.4, duration: 0.6 }}
+                  className="mt-8 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 relative z-10"
+                >
+                  <div className="flex items-center justify-center space-x-2 mb-2">
+                    <Shield className="w-5 h-5 text-green-600" />
+                    <h3 className="font-bold text-green-700 font-queensides">Secure & Private</h3>
+                  </div>
+                  <p className="text-sm text-green-600 font-queensides">
+                    Your profile data is secured on the blockchain. Only you control your information and who can see it.
+                  </p>
+                </motion.div>
+
+                {/* Islamic Divider */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.6, duration: 0.6 }}
+                  className="flex items-center justify-center mt-8 relative z-10"
+                >
+                  <div className="flex items-center space-x-3">
+                    <Star className="w-3 h-3 text-indigo-300" />
+                    <div className="w-6 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+                    <Moon className="w-3 h-3 text-purple-300" />
+                    <div className="w-6 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
+                    <Sparkles className="w-3 h-3 text-blue-300" />
+                  </div>
+                </motion.div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     )
   }

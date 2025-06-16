@@ -167,6 +167,7 @@ export function MobileNavigation() {
                 <div className="pb-2">
                   {[
                     { title: "About Us", icon: "ℹ️", category: "info", href: "/about" },
+                    { title: "Samaa Stats", icon: "📊", category: "info", href: "/samaa-stats" },
                     { title: "SAMAA Token", icon: "🪙", category: "info", href: "/samaa-token" },
                     { title: "Why Web3/Crypto", icon: "🚀", category: "info", href: "/why-web3" },
                     { title: "Dowry/Purse Wallets", icon: "💰", category: "info", href: "/wallet-guide" },
