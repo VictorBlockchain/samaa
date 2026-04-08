@@ -101,6 +101,30 @@ export class ProfileService {
     }
   }
 
+  // Update profile by user ID (Supabase Auth user ID)
+  static async updateProfileByUserId(userId: string, updates: Partial<UserUpdate>): Promise<User | null> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      return data
+    } catch (error) {
+      console.error('Error updating profile by user ID:', error)
+      return null
+    }
+  }
+
   // Upsert profile (create or update) using wallet address; accepts legacy solana_address
   static async upsertProfile(profileData: UserInsert & { principal?: string; wallet?: string; solana_address?: string }): Promise<User | null> {
     try {

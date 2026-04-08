@@ -42,7 +42,8 @@ import { useRouter } from "next/navigation"
 import { useUser } from "@/app/context/UserContext"
 import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
-import { loadProfile as loadProfileFromStorage } from "@/utils/profile-storage"
+import { ProfileService, UserSettingsService } from "@/lib/database"
+import { supabase } from "@/lib/supabase"
 
 interface ProfileData {
   // Basic Info
@@ -92,6 +93,9 @@ interface ProfileData {
   prayerFrequency?: string
   quranReading?: string
   islamicEducation?: string
+  religiosity?: string
+  hijabPreference?: string
+  marriageIntention?: string
 
   // Marriage Intentions
   chattingTimeline: string
@@ -313,34 +317,137 @@ export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
     try {
       console.log("Loading profile for user ID:", profileUserId)
 
-      // Use the new profile storage system
-      const profileData = await loadProfileFromStorage(profileUserId)
-      console.log("Loaded profile data:", profileData)
+      // Load profile from Supabase by user ID
+      const supabaseProfile = await ProfileService.getProfileByUserId(profileUserId)
+      console.log("Loaded profile data from Supabase:", supabaseProfile)
 
-      if (profileData) {
-        // URLs are now direct Supabase public URLs, no resolution needed
-        const sourcePhotos = (profileData.media?.photos && profileData.media.photos.length > 0)
-          ? profileData.media.photos
-          : ((profileData as any).photos || [])
-        const normalizedMedia = {
-          ...(profileData.media || { photos: [] }),
-          photos: sourcePhotos,
-          videoIntro: profileData.media?.videoIntro || (profileData as any).video,
-          voiceNote: profileData.media?.voiceNote || (profileData as any).voiceIntro,
+      if (supabaseProfile) {
+        // Get public URLs for media from Supabase storage
+        let photos: string[] = []
+        if (supabaseProfile.profile_photos && Array.isArray(supabaseProfile.profile_photos)) {
+          photos = supabaseProfile.profile_photos.map((path: string) => {
+            // If already a full URL, return as-is
+            if (path.startsWith('http')) return path
+            // Otherwise, get public URL from Supabase storage
+            const { data } = supabase.storage.from('profiles').getPublicUrl(path)
+            return data.publicUrl
+          })
         }
-        
-        const normalized = {
-          ...(profileData as any),
+
+        // Get video intro URL
+        let videoIntro: string | undefined
+        if (supabaseProfile.video_intro) {
+          videoIntro = supabaseProfile.video_intro.startsWith('http')
+            ? supabaseProfile.video_intro
+            : supabase.storage.from('videos').getPublicUrl(supabaseProfile.video_intro).data.publicUrl
+        }
+
+        // Get voice intro URL
+        let voiceNote: string | undefined
+        if (supabaseProfile.voice_intro) {
+          voiceNote = supabaseProfile.voice_intro.startsWith('http')
+            ? supabaseProfile.voice_intro
+            : supabase.storage.from('voice-notes').getPublicUrl(supabaseProfile.voice_intro).data.publicUrl
+        }
+
+        // Get profile photo URL
+        let profilePhoto: string | undefined
+        if (supabaseProfile.profile_photo) {
+          profilePhoto = supabaseProfile.profile_photo.startsWith('http')
+            ? supabaseProfile.profile_photo
+            : supabase.storage.from('profiles').getPublicUrl(supabaseProfile.profile_photo).data.publicUrl
+        }
+
+        const normalizedMedia = {
+          photos,
+          videoIntro,
+          voiceNote,
+          audioMessages: [],
+        }
+
+        const normalized: ProfileData = {
+          firstName: supabaseProfile.first_name || '',
+          lastName: supabaseProfile.last_name || '',
+          age: supabaseProfile.age?.toString() || '',
+          gender: supabaseProfile.gender || '',
+          height: (supabaseProfile as any).height || '',
+          maritalStatus: supabaseProfile.marital_status || '',
+          children: supabaseProfile.has_children ? 'yes' : 'no',
+          tagline: supabaseProfile.bio?.substring(0, 100) || '',
+          bio: supabaseProfile.bio || '',
+          location: supabaseProfile.location || '',
+          bioTagline: supabaseProfile.bio_tagline || '',
+          wantChildren: supabaseProfile.wants_children ? 'yes' : 'no',
+          hasChildren: supabaseProfile.has_children ? 'yes' : 'no',
+          currentLocation: supabaseProfile.location || '',
+          grewUpIn: supabaseProfile.city || supabaseProfile.location || '',
+          livingArrangements: (supabaseProfile as any).living_arrangements || '',
+          education: supabaseProfile.education || '',
+          profession: supabaseProfile.profession || '',
+          employer: supabaseProfile.employer || '',
+          jobTitle: supabaseProfile.job_title || '',
+          ethnicity: supabaseProfile.ethnicity || '',
+          nationality: supabaseProfile.nationality || '',
+          languages: supabaseProfile.languages || [],
+          sect: 'Sunni',
+          bornMuslim: 'yes',
+          religiousPractice: supabaseProfile.religiosity || '',
+          faith: 'strong',
+          diet: 'halal_only',
+          alcohol: supabaseProfile.alcohol || 'never',
+          smoking: supabaseProfile.smoking || 'never',
+          psychedelics: supabaseProfile.psychedelics || 'never',
+          halalFood: supabaseProfile.halal_food || 'always',
+          isRevert: supabaseProfile.is_revert ? 'yes' : 'no',
+          hijabChoice: supabaseProfile.hijab_preference || '',
+          islamicValues: 'traditional',
+          prayerFrequency: supabaseProfile.prayer_frequency || '',
+          quranReading: 'daily',
+          islamicEducation: 'self_taught',
+          religiosity: supabaseProfile.religiosity || '',
+          hijabPreference: supabaseProfile.hijab_preference || '',
+          marriageIntention: supabaseProfile.marriage_intention || '',
+          chattingTimeline: 'few_weeks',
+          familyInvolvement: 'involved',
+          marriageTimeline: supabaseProfile.marriage_intention || '',
+          lookingFor: 'practicing_muslim',
+          familyPlans: 'children_soon',
+          relocationPlans: 'open_to_relocate',
+          polygamyPlan: 'not_interested',
+          interests: supabaseProfile.interests || [],
+          personality: ['Kind', 'Religious'],
+          dowryWallet: {
+            isSetup: !!supabaseProfile.mahr_wallet_address,
+            address: supabaseProfile.mahr_wallet_address || undefined,
+            solanaBalance: 0,
+            samaaBalance: 0,
+          },
+          purseWallet: {
+            isSetup: !!supabaseProfile.purse_wallet_address,
+            address: supabaseProfile.purse_wallet_address || undefined,
+            solanaBalance: 0,
+            samaaBalance: 0,
+          },
           media: normalizedMedia,
-          profilePhoto: profileData.profilePhoto,
+          profilePhoto,
+          voiceIntro: voiceNote,
+          video: videoIntro,
+          userId: supabaseProfile.id,
+          createdAt: supabaseProfile.created_at || new Date().toISOString(),
+          isVerified: supabaseProfile.is_verified || false,
+          premiumMember: false,
+          idVerified: supabaseProfile.is_verified || false,
+          bioRating: supabaseProfile.bio_rating || 0,
+          responseRate: supabaseProfile.response_rate || 0,
+          profileComplete: true,
         }
         console.log("Profile data with media", normalized)
-        setProfile(normalized as any)
+        setProfile(normalized)
       } else {
         console.log("No profile found for user ID:", profileUserId)
       }
 
-      // Load user settings if this is own profile (check directly with user ID comparison)
+      // Load user settings from Supabase if this is own profile
       const isOwn = isAuthenticated && userId && userId === profileUserId
       console.log(
         "Loading settings - isOwn:",
@@ -354,27 +461,67 @@ export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
       )
 
       if (isOwn) {
-        const savedSettings = localStorage.getItem("userSettings")
-        console.log("Raw saved settings:", savedSettings) // Debug log
-        if (savedSettings) {
-          const parsedSettings = JSON.parse(savedSettings)
-          console.log("Parsed settings:", parsedSettings) // Debug log
-
-          // Check if settings need migration (has old fields)
-          if (
-            parsedSettings.faithAndPractice?.religiousPractice ||
-            parsedSettings.faithAndPractice?.islamicDress ||
-            parsedSettings.futurePlans
-          ) {
-            console.log("Migrating old settings format...")
-            const migratedSettings = migrateSettings(parsedSettings)
-            setUserSettings(migratedSettings)
-          } else {
-            console.log("Using settings as-is")
+        // Load settings from Supabase
+        const dbSettings = await UserSettingsService.getUserSettings(userId)
+        if (dbSettings) {
+          console.log("Loaded settings from Supabase:", dbSettings)
+          setUserSettings({
+            ageRange: [dbSettings.age_range_min || 22, dbSettings.age_range_max || 35],
+            maxDistance: dbSettings.max_distance || 50,
+            anywhereInWorld: dbSettings.anywhere_in_world || false,
+            showOnlyVerified: dbSettings.show_only_verified ?? true,
+            showOnlyPracticing: dbSettings.show_only_practicing ?? true,
+            interests: dbSettings.preferred_interests || [],
+            faithAndPractice: {
+              prayerFrequency: (dbSettings as any).prayer_frequency || "No preference",
+              hijabPreference: (dbSettings as any).hijab_preference || "No preference",
+              marriageIntention: (dbSettings as any).marriage_intention || "No preference",
+              halalFood: (dbSettings as any).halal_food || "No preference",
+              diet: (dbSettings as any).diet || "No preference",
+              alcohol: (dbSettings as any).alcohol || "No preference",
+              smoking: (dbSettings as any).smoking || "No preference",
+              psychedelics: (dbSettings as any).psychedelics || "No preference",
+              bornMuslim: (dbSettings as any).born_muslim || "No preference",
+            },
+            aboutThem: {
+              nationality: (dbSettings as any).nationality || "No preference",
+              height: (dbSettings as any).height || "No preference",
+              maritalStatus: (dbSettings as any).marital_status || "No preference",
+              children: (dbSettings as any).children || "No preference",
+              grewUpIn: (dbSettings as any).grew_up_in || "No preference",
+              languages: (dbSettings as any).languages || "No preference",
+              willingToRelocate: (dbSettings as any).willing_to_relocate || "No preference",
+              education: (dbSettings as any).education || "No preference",
+            },
+            notifications: {
+              matches: dbSettings.notifications_matches ?? true,
+              messages: dbSettings.notifications_messages ?? true,
+              profileViews: dbSettings.notifications_profile_views ?? false,
+            },
+            privacy: {
+              showAge: dbSettings.show_age ?? true,
+              showLocation: dbSettings.show_location ?? true,
+              showLastSeen: dbSettings.show_last_seen ?? false,
+            },
+            userGender: supabaseProfile?.gender || "female",
+            requireFinancialSetup: dbSettings.require_financial_setup || false,
+            bioRatingMinimum: dbSettings.bio_rating_minimum || 70,
+            responseRateMinimum: dbSettings.response_rate_minimum || 50,
+          })
+          // Load message permissions from settings
+          setMessagePermissions({
+            requireFinancialSetup: dbSettings.require_financial_setup || false,
+            minBioRating: dbSettings.bio_rating_minimum || 75,
+            minResponseRate: dbSettings.response_rate_minimum || 60,
+            allowVideoMessages: (dbSettings as any).allow_video_messages ?? true,
+          })
+        } else {
+          // Fallback to localStorage if no Supabase settings
+          const savedSettings = localStorage.getItem("userSettings")
+          if (savedSettings) {
+            const parsedSettings = JSON.parse(savedSettings)
             setUserSettings(parsedSettings)
           }
-        } else {
-          console.log("No saved settings found") // Debug log
         }
       } else {
         console.log("Not own profile, skipping settings load")
@@ -764,8 +911,19 @@ export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
                             Cancel
                           </Button>
                           <Button
-                            onClick={() => {
-                              // Save permissions logic here
+                            onClick={async () => {
+                              if (!userId) return
+                              try {
+                                await UserSettingsService.upsertUserSettings(userId, {
+                                  require_financial_setup: messagePermissions.requireFinancialSetup,
+                                  bio_rating_minimum: messagePermissions.minBioRating,
+                                  response_rate_minimum: messagePermissions.minResponseRate,
+                                  allow_video_messages: messagePermissions.allowVideoMessages,
+                                })
+                                console.log("Message permissions saved to Supabase")
+                              } catch (error) {
+                                console.error("Error saving message permissions:", error)
+                              }
                               setShowMessagePermissions(false)
                             }}
                             className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-queensides"
@@ -2390,8 +2548,19 @@ export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
                   Cancel
                 </Button>
                 <Button
-                  onClick={() => {
-                    // Save permissions logic here
+                  onClick={async () => {
+                    if (!userId) return
+                    try {
+                      await UserSettingsService.upsertUserSettings(userId, {
+                        require_financial_setup: messagePermissions.requireFinancialSetup,
+                        bio_rating_minimum: messagePermissions.minBioRating,
+                        response_rate_minimum: messagePermissions.minResponseRate,
+                        allow_video_messages: messagePermissions.allowVideoMessages,
+                      })
+                      console.log("Message permissions saved to Supabase")
+                    } catch (error) {
+                      console.error("Error saving message permissions:", error)
+                    }
                     setShowMessagePermissions(false)
                   }}
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-queensides"

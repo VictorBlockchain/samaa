@@ -5,6 +5,8 @@ import { motion } from "framer-motion"
 import { ArrowLeft, MapPin, Heart, Users, Bell, Shield, BookOpen, User, Target, Wallet } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/app/context/UserContext"
+import { useAuth } from "@/app/context/AuthContext"
+import { UserSettingsService, ProfileService } from "@/lib/database"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -31,8 +33,10 @@ const interests = [
 
 export function SettingsView() {
   const router = useRouter()
-  const { address } = useUser()
+  const { userId, profile, refreshProfile } = useUser()
+  const { user } = useAuth()
   const [customInterests, setCustomInterests] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
   const [settings, setSettings] = useState({
     ageRange: [22, 35],
     maxDistance: 50,
@@ -99,26 +103,38 @@ export function SettingsView() {
 
   // Load settings and user profile data
   useEffect(() => {
-    // First load saved settings
-    const savedSettings = localStorage.getItem("userSettings")
-    console.log("Loading saved settings:", savedSettings) // Debug log
-    if (savedSettings) {
-      const parsedSettings = JSON.parse(savedSettings)
-      console.log("Parsed saved settings:", parsedSettings) // Debug log
-      setSettings(parsedSettings)
-    }
-
-    // Then get user gender from profile using wallet address
-    if (address) {
-      const userProfile = localStorage.getItem(`profile_${address}`)
-      if (userProfile) {
-        const profile = JSON.parse(userProfile)
-        console.log("Loaded profile:", profile) // Debug log
-        console.log("Profile gender:", profile.gender) // Debug log
-        setSettings(prev => ({ ...prev, userGender: profile.gender || "female" }))
+    const loadSettings = async () => {
+      // First load saved settings from database
+      if (userId) {
+        const dbSettings = await UserSettingsService.getUserSettings(userId)
+        if (dbSettings) {
+          setSettings(prev => ({
+            ...prev,
+            ageRange: [dbSettings.age_range_min || 22, dbSettings.age_range_max || 35],
+            maxDistance: dbSettings.max_distance || 50,
+            anywhereInWorld: dbSettings.anywhere_in_world || false,
+            showOnlyVerified: dbSettings.show_only_verified ?? true,
+            showOnlyPracticing: dbSettings.show_only_practicing ?? true,
+            userGender: profile?.gender || "female",
+          }))
+        }
+      }
+      
+      // Also check localStorage as fallback
+      const savedSettings = localStorage.getItem("userSettings")
+      if (savedSettings && !userId) {
+        const parsedSettings = JSON.parse(savedSettings)
+        setSettings(parsedSettings)
+      }
+      
+      // Get user gender from profile
+      if (profile?.gender) {
+        setSettings(prev => ({ ...prev, userGender: profile.gender }))
       }
     }
-  }, [address])
+    
+    loadSettings()
+  }, [userId, profile])
 
   const FilterSelect = ({
     label,
@@ -819,15 +835,67 @@ export function SettingsView() {
           {/* Save Button */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.82 }}>
             <Button
-              onClick={() => {
-                console.log("Saving settings:", settings) // Debug log
-                localStorage.setItem("userSettings", JSON.stringify(settings))
-                console.log("Settings saved to localStorage") // Debug log
-                router.back()
+              onClick={async () => {
+                setIsSaving(true)
+                try {
+                  // Save to Supabase if authenticated
+                  if (userId) {
+                    await UserSettingsService.upsertUserSettings(userId, {
+                      age_range_min: settings.ageRange[0],
+                      age_range_max: settings.ageRange[1],
+                      max_distance: settings.maxDistance,
+                      anywhere_in_world: settings.anywhereInWorld,
+                      show_only_verified: settings.showOnlyVerified,
+                      show_only_practicing: settings.showOnlyPracticing,
+                      // Faith and Practice preferences
+                      prayer_frequency: settings.faithAndPractice.prayerFrequency,
+                      hijab_preference: settings.faithAndPractice.hijabPreference,
+                      marriage_intention: settings.faithAndPractice.marriageIntention,
+                      halal_food: settings.faithAndPractice.halalFood,
+                      diet: settings.faithAndPractice.diet,
+                      alcohol: settings.faithAndPractice.alcohol,
+                      smoking: settings.faithAndPractice.smoking,
+                      psychedelics: settings.faithAndPractice.psychedelics,
+                      born_muslim: settings.faithAndPractice.bornMuslim,
+                      // About them preferences
+                      nationality: settings.aboutThem.nationality,
+                      height: settings.aboutThem.height,
+                      marital_status: settings.aboutThem.maritalStatus,
+                      children: settings.aboutThem.children,
+                      grew_up_in: settings.aboutThem.grewUpIn,
+                      languages: settings.aboutThem.languages,
+                      willing_to_relocate: settings.aboutThem.willingToRelocate,
+                      education: settings.aboutThem.education,
+                      // Notifications
+                      notifications_matches: settings.notifications.matches,
+                      notifications_messages: settings.notifications.messages,
+                      notifications_profile_views: settings.notifications.profileViews,
+                      // Privacy
+                      show_age: settings.privacy.showAge,
+                      show_location: settings.privacy.showLocation,
+                      show_last_seen: settings.privacy.showLastSeen,
+                      // Financial & Quality Requirements
+                      require_financial_setup: settings.requireFinancialSetup,
+                      bio_rating_minimum: settings.bioRatingMinimum,
+                      response_rate_minimum: settings.responseRateMinimum,
+                      // Interests
+                      preferred_interests: settings.interests,
+                    })
+                  }
+                  
+                  // Also save to localStorage as backup
+                  localStorage.setItem("userSettings", JSON.stringify(settings))
+                  router.back()
+                } catch (error) {
+                  console.error("Error saving settings:", error)
+                } finally {
+                  setIsSaving(false)
+                }
               }}
+              disabled={isSaving}
               className="w-full py-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-2xl font-queensides mb-12"
             >
-              Save Settings
+              {isSaving ? "Saving..." : "Save Settings"}
             </Button>
           </motion.div>
         </div>
