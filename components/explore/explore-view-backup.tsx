@@ -263,7 +263,7 @@ export function ExploreViewBackup() {
   }
 
   const handleProfileClick = (suitorId: string) => {
-    router.push(`/profile/${suitorId}`)
+    router.push(`/profile?address=${suitorId}`)
   }
 
   const getCountryFlag = (country: string) => {

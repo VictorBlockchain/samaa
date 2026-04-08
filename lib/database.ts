@@ -11,13 +11,13 @@ type UserSettingsUpdate = Database['public']['Tables']['user_settings']['Update'
 // Profile Operations
 export class ProfileService {
   
-  // Get profile by Solana address
-  static async getProfileByAddress(solanaAddress: string): Promise<User | null> {
+  // Get profile by user ID (Supabase Auth user ID)
+  static async getProfileByUserId(userId: string): Promise<User | null> {
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('solana_address', solanaAddress)
+        .eq('id', userId)
         .single()
 
       if (error) {
@@ -30,68 +30,87 @@ export class ProfileService {
 
       return data
     } catch (error) {
+      console.error('Error fetching profile by user ID:', error)
+      return null
+    }
+  }
+
+  // Legacy method - get profile by wallet address (deprecated, use getProfileByUserId)
+  static async getProfileByAddress(walletAddress: string): Promise<User | null> {
+    try {
+      const { data, error } = await supabase.rpc('get_user_by_principal', {
+        p_principal: walletAddress,
+      })
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No rows returned
+          return null
+        }
+        throw error
+      }
+
+      return data as any
+    } catch (error) {
       console.error('Error fetching profile:', error)
       return null
     }
   }
 
-  // Create new profile
   static async createProfile(profileData: UserInsert): Promise<User | null> {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .insert(profileData)
-        .select()
-        .single()
+      const principal = (profileData as any).principal ?? (profileData as any).wallet ?? (profileData as any).solana_address
+      const { data, error } = await supabase.rpc('upsert_user_minimal', {
+        p_principal: principal,
+        p_first_name: (profileData as any).first_name ?? null,
+        p_last_name: (profileData as any).last_name ?? null,
+        p_gender: (profileData as any).gender ?? null,
+        p_location: (profileData as any).location ?? null,
+        p_bio: (profileData as any).bio ?? null,
+        p_interests: (profileData as any).interests ?? null,
+        p_profile_photo: (profileData as any).profile_photo ?? null,
+      })
 
       if (error) {
         throw error
       }
 
-      return data
+      return data as any
     } catch (error) {
       console.error('Error creating profile:', error)
       return null
     }
   }
 
-  // Update existing profile
-  static async updateProfile(solanaAddress: string, updates: UserUpdate): Promise<User | null> {
+  static async updateProfile(walletAddress: string, updates: UserUpdate): Promise<User | null> {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('solana_address', solanaAddress)
-        .select()
-        .single()
+      const principal = walletAddress
+      const { data, error } = await supabase.rpc('update_user_profile_json', {
+        p_principal: principal,
+        p_profile: updates as any,
+      })
 
       if (error) {
         throw error
       }
 
-      return data
+      return data as any
     } catch (error) {
       console.error('Error updating profile:', error)
       return null
     }
   }
 
-  // Upsert profile (create or update)
-  static async upsertProfile(profileData: UserInsert & { solana_address: string }): Promise<User | null> {
+  // Upsert profile (create or update) using wallet address; accepts legacy solana_address
+  static async upsertProfile(profileData: UserInsert & { principal?: string; wallet?: string; solana_address?: string }): Promise<User | null> {
     try {
-      // Check if profile exists
-      const existingProfile = await this.getProfileByAddress(profileData.solana_address)
-      
-      if (existingProfile) {
-        // Update existing profile
-        return await this.updateProfile(profileData.solana_address, profileData)
-      } else {
-        // Create new profile
-        return await this.createProfile(profileData)
+      const principal = (profileData as any).principal ?? (profileData as any).wallet ?? (profileData as any).solana_address
+      if (!principal) {
+        throw new Error('upsertProfile requires a principal')
       }
+      const created = await this.createProfile({ ...profileData, principal } as any)
+      const updated = await this.updateProfile(principal, profileData as any)
+      return updated || created
     } catch (error) {
       console.error('Error upserting profile:', error)
       return null
@@ -171,12 +190,9 @@ export class ProfileService {
   }
 
   // Update last active timestamp
-  static async updateLastActive(solanaAddress: string): Promise<void> {
+  static async updateLastActive(principal: string): Promise<void> {
     try {
-      await supabase
-        .from('users')
-        .update({ last_active: new Date().toISOString() })
-        .eq('solana_address', solanaAddress)
+      await supabase.rpc('set_last_active', { p_principal: principal })
     } catch (error) {
       console.error('Error updating last active:', error)
     }

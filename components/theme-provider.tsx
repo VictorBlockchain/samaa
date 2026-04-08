@@ -7,5 +7,9 @@ import {
 } from 'next-themes'
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  // Guard against unexpected import issues; fall back to rendering children.
+  if (!NextThemesProvider) {
+    return <>{children}</>
+  }
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>
 }

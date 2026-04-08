@@ -31,12 +31,15 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCircle,
-  Zap
+  Zap,
+  Camera,
+  Video as VideoIcon,
+  Mic,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { MobileBottomNav } from "@/components/mobile/mobile-bottom-nav"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
 import { loadProfile as loadProfileFromStorage } from "@/utils/profile-storage"
@@ -131,7 +134,7 @@ interface ProfileData {
   video?: string
 
   // Verification & Premium
-  walletAddress: string
+  userId?: string
   createdAt: string
   isVerified?: boolean
   premiumMember?: boolean
@@ -142,10 +145,10 @@ interface ProfileData {
 }
 
 interface ProfileViewProps {
-  walletAddress: string
+  userId: string
 }
 
-export function ProfileView({ walletAddress }: ProfileViewProps) {
+export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
   const router = useRouter()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -153,6 +156,7 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
   const [currentTab, setCurrentTab] = useState("home")
   const [showMessagePermissions, setShowMessagePermissions] = useState(false)
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
+  const [sliderIndex, setSliderIndex] = useState(1)
   const [messagePermissions, setMessagePermissions] = useState({
     requireFinancialSetup: true,
     minBioRating: 75,
@@ -203,50 +207,54 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
     responseRateMinimum: 50,
   })
 
-  const { publicKey, connected } = useWallet()
+  const { userId, isAuthenticated } = useUser()
 
   // Keyboard navigation for photo modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (selectedPhotoIndex === null || !profile?.media?.photos) return
 
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         setSelectedPhotoIndex(null)
-      } else if (e.key === 'ArrowLeft' && selectedPhotoIndex > 0) {
+      } else if (e.key === "ArrowLeft" && selectedPhotoIndex > 0) {
         setSelectedPhotoIndex(selectedPhotoIndex - 1)
-      } else if (e.key === 'ArrowRight' && selectedPhotoIndex < profile.media.photos.length - 1) {
+      } else if (e.key === "ArrowRight" && selectedPhotoIndex < profile.media.photos.length - 1) {
         setSelectedPhotoIndex(selectedPhotoIndex + 1)
       }
     }
 
     if (selectedPhotoIndex !== null) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
+      document.addEventListener("keydown", handleKeyDown)
+      return () => document.removeEventListener("keydown", handleKeyDown)
     }
   }, [selectedPhotoIndex, profile?.media?.photos])
 
   const checkIfOwnProfile = () => {
     console.log("Checking if own profile...")
-    console.log("Connected:", connected)
-    console.log("PublicKey:", publicKey?.toString())
-    console.log("WalletAddress from URL:", walletAddress)
+    console.log("Signed in:", isAuthenticated)
+    console.log("User ID:", userId)
+    console.log("Profile User ID from URL:", profileUserId)
 
-    if (connected && publicKey) {
-      const isOwn = publicKey.toString() === walletAddress
+    if (isAuthenticated && userId) {
+      const isOwn = userId === profileUserId
       console.log("Is own profile:", isOwn)
       setIsOwnProfile(isOwn)
     } else {
-      console.log("Wallet not connected, setting isOwnProfile to false")
+      console.log("Not signed in, setting isOwnProfile to false")
       setIsOwnProfile(false)
     }
   }
 
   useEffect(() => {
-    console.log("Profile component mounted with walletAddress:", walletAddress)
-    console.log("Connected:", connected, "PublicKey:", publicKey?.toString())
+    console.log("Profile component mounted with userId:", profileUserId)
+    console.log("Signed in:", isAuthenticated, "User ID:", userId)
     checkIfOwnProfile()
     loadProfile()
-  }, [walletAddress, publicKey, connected])
+  }, [profileUserId, userId, isAuthenticated])
+
+  const photosCount = (profile?.media?.photos || []).filter(Boolean).length
+  const hasVideo = !!profile?.media?.videoIntro
+  const hasAudio = !!profile?.media?.voiceNote
 
   // Migrate old settings format to new format
   const migrateSettings = (oldSettings: any) => {
@@ -303,21 +311,47 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
   const loadProfile = async () => {
     try {
-      console.log("Loading profile for wallet address:", walletAddress)
+      console.log("Loading profile for user ID:", profileUserId)
 
       // Use the new profile storage system
-      const profileData = await loadProfileFromStorage(walletAddress)
+      const profileData = await loadProfileFromStorage(profileUserId)
       console.log("Loaded profile data:", profileData)
 
       if (profileData) {
-        setProfile(profileData as any) // Type assertion to handle interface differences
+        // URLs are now direct Supabase public URLs, no resolution needed
+        const sourcePhotos = (profileData.media?.photos && profileData.media.photos.length > 0)
+          ? profileData.media.photos
+          : ((profileData as any).photos || [])
+        const normalizedMedia = {
+          ...(profileData.media || { photos: [] }),
+          photos: sourcePhotos,
+          videoIntro: profileData.media?.videoIntro || (profileData as any).video,
+          voiceNote: profileData.media?.voiceNote || (profileData as any).voiceIntro,
+        }
+        
+        const normalized = {
+          ...(profileData as any),
+          media: normalizedMedia,
+          profilePhoto: profileData.profilePhoto,
+        }
+        console.log("Profile data with media", normalized)
+        setProfile(normalized as any)
       } else {
-        console.log("No profile found for address:", walletAddress)
+        console.log("No profile found for user ID:", profileUserId)
       }
 
-      // Load user settings if this is own profile (check directly with wallet comparison)
-      const isOwn = connected && publicKey && publicKey.toString() === walletAddress
-      console.log("Loading settings - isOwn:", isOwn, "connected:", connected, "publicKey:", publicKey?.toString(), "walletAddress:", walletAddress)
+      // Load user settings if this is own profile (check directly with user ID comparison)
+      const isOwn = isAuthenticated && userId && userId === profileUserId
+      console.log(
+        "Loading settings - isOwn:",
+        isOwn,
+        "authenticated:",
+        isAuthenticated,
+        "userId:",
+        userId,
+        "profileUserId:",
+        profileUserId
+      )
 
       if (isOwn) {
         const savedSettings = localStorage.getItem("userSettings")
@@ -327,9 +361,11 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
           console.log("Parsed settings:", parsedSettings) // Debug log
 
           // Check if settings need migration (has old fields)
-          if (parsedSettings.faithAndPractice?.religiousPractice ||
-              parsedSettings.faithAndPractice?.islamicDress ||
-              parsedSettings.futurePlans) {
+          if (
+            parsedSettings.faithAndPractice?.religiousPractice ||
+            parsedSettings.faithAndPractice?.islamicDress ||
+            parsedSettings.futurePlans
+          ) {
             console.log("Migrating old settings format...")
             const migratedSettings = migrateSettings(parsedSettings)
             setUserSettings(migratedSettings)
@@ -365,13 +401,11 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
   console.log("- isLoading:", isLoading)
   console.log("- profile:", !!profile)
   console.log("- isOwnProfile:", isOwnProfile)
-  console.log("- walletAddress:", walletAddress)
-  console.log("- connected:", connected)
-  console.log("- publicKey:", publicKey?.toString())
+  console.log("- profileUserId:", profileUserId)
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative pb-24">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative pt-24 pb-24">
         <CelestialBackground intensity="light" />
 
         <div className="relative z-10">
@@ -390,13 +424,17 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             {isOwnProfile ? (
               // Own profile - encourage to create profile
               <div className="w-full max-w-md space-y-8">
- 
-
                 {/* Profile Setup Card */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
                   <Card className="arabic-border bg-gradient-to-br from-indigo-50 to-purple-50">
                     <CardContent className="p-8 text-center">
-                      <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Create Your Profile</h3>
+                      <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
+                        Create Your Profile
+                      </h3>
                       <p className="text-slate-600 font-queensides mb-6 leading-relaxed">
                         Share your values, interests, and what you're looking for in a life partner.
                       </p>
@@ -412,19 +450,27 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 </motion.div>
 
                 {/* Audio/Video Message Permissions Card */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
                   <Card className="arabic-border bg-gradient-to-br from-emerald-50 to-teal-50">
                     <CardContent className="p-8 text-center">
-                      <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Message Permissions</h3>
+                      <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
+                        Message Permissions
+                      </h3>
                       <p className="text-slate-600 font-queensides mb-6 leading-relaxed">
-                        Control who can send you audio and video messages. These are separate from your match
-                        preferences.
+                        Control who can send you audio and video messages. These are separate from
+                        your match preferences.
                       </p>
 
                       <div className="space-y-4 mb-6">
                         <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
                           <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">Require Financial Setup</p>
+                            <p className="font-medium text-slate-800 font-qurova">
+                              Require Financial Setup
+                            </p>
                             <p className="text-sm text-slate-600 font-queensides">
                               Only users with dowry wallet/purse can message me
                             </p>
@@ -436,7 +482,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
                         <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
                           <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">Minimum Bio Rating</p>
+                            <p className="font-medium text-slate-800 font-qurova">
+                              Minimum Bio Rating
+                            </p>
                             <p className="text-sm text-slate-600 font-queensides">
                               Require 75%+ profile completion to message me
                             </p>
@@ -451,7 +499,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
                         <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
                           <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">Response Rate Filter</p>
+                            <p className="font-medium text-slate-800 font-qurova">
+                              Response Rate Filter
+                            </p>
                             <p className="text-sm text-slate-600 font-queensides">
                               Only users with 60%+ response rate can message me
                             </p>
@@ -466,7 +516,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
                         <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
                           <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">Allow Video Messages</p>
+                            <p className="font-medium text-slate-800 font-qurova">
+                              Allow Video Messages
+                            </p>
                             <p className="text-sm text-slate-600 font-queensides">
                               Users can send video messages to me
                             </p>
@@ -479,8 +531,8 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
                       <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/30 mb-6">
                         <p className="text-sm text-emerald-700 font-queensides">
-                          These settings only control who can send you messages. Your match preferences are configured
-                          separately in Settings.
+                          These settings only control who can send you messages. Your match
+                          preferences are configured separately in Settings.
                         </p>
                       </div>
 
@@ -496,12 +548,19 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 </motion.div>
 
                 {/* Explore Options Card */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                >
                   <Card className="arabic-border bg-white/80 backdrop-blur-xl">
                     <CardContent className="p-8 text-center">
-                      <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">Explore Samaa</h3>
+                      <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">
+                        Explore Samaa
+                      </h3>
                       <p className="text-slate-600 font-queensides mb-6">
-                        Take a look around and see what Samaa has to offer before creating your profile.
+                        Take a look around and see what Samaa has to offer before creating your
+                        profile.
                       </p>
                       <div className="space-y-3">
                         <Button
@@ -524,7 +583,11 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 </motion.div>
 
                 {/* Islamic Blessing Card */}
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                >
                   <Card className="arabic-border bg-gradient-to-br from-slate-50 to-slate-100">
                     <CardContent className="p-10 text-center">
                       {/* Islamic Divider */}
@@ -557,7 +620,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                     >
                       <div className="p-6">
                         <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-xl font-bold text-slate-800 font-qurova">Message Permissions</h3>
+                          <h3 className="text-xl font-bold text-slate-800 font-qurova">
+                            Message Permissions
+                          </h3>
                           <button
                             onClick={() => setShowMessagePermissions(false)}
                             className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
@@ -570,7 +635,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                           {/* Financial Setup Toggle */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-slate-800 font-qurova">Require Financial Setup</p>
+                              <p className="font-medium text-slate-800 font-qurova">
+                                Require Financial Setup
+                              </p>
                               <p className="text-sm text-slate-600 font-queensides">
                                 Only users with dowry wallet/purse
                               </p>
@@ -583,12 +650,16 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                                 }))
                               }
                               className={`w-12 h-6 rounded-full relative transition-colors ${
-                                messagePermissions.requireFinancialSetup ? "bg-emerald-500" : "bg-slate-200"
+                                messagePermissions.requireFinancialSetup
+                                  ? "bg-emerald-500"
+                                  : "bg-slate-200"
                               }`}
                             >
                               <div
                                 className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                                  messagePermissions.requireFinancialSetup ? "translate-x-6" : "translate-x-0.5"
+                                  messagePermissions.requireFinancialSetup
+                                    ? "translate-x-6"
+                                    : "translate-x-0.5"
                                 }`}
                               />
                             </button>
@@ -597,7 +668,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                           {/* Bio Rating Slider */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-slate-800 font-qurova">Minimum Bio Rating</p>
+                              <p className="font-medium text-slate-800 font-qurova">
+                                Minimum Bio Rating
+                              </p>
                               <span className="text-sm font-medium text-emerald-600">
                                 {messagePermissions.minBioRating}%
                               </span>
@@ -615,13 +688,17 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                               }
                               className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
                             />
-                            <p className="text-sm text-slate-600 font-queensides mt-1">Profile completion required</p>
+                            <p className="text-sm text-slate-600 font-queensides mt-1">
+                              Profile completion required
+                            </p>
                           </div>
 
                           {/* Response Rate Slider */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-slate-800 font-qurova">Minimum Response Rate</p>
+                              <p className="font-medium text-slate-800 font-qurova">
+                                Minimum Response Rate
+                              </p>
                               <span className="text-sm font-medium text-emerald-600">
                                 {messagePermissions.minResponseRate}%
                               </span>
@@ -647,8 +724,12 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                           {/* Video Messages Toggle */}
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-slate-800 font-qurova">Allow Video Messages</p>
-                              <p className="text-sm text-slate-600 font-queensides">Users can send video messages</p>
+                              <p className="font-medium text-slate-800 font-qurova">
+                                Allow Video Messages
+                              </p>
+                              <p className="text-sm text-slate-600 font-queensides">
+                                Users can send video messages
+                              </p>
                             </div>
                             <button
                               onClick={() =>
@@ -658,12 +739,16 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                                 }))
                               }
                               className={`w-12 h-6 rounded-full relative transition-colors ${
-                                messagePermissions.allowVideoMessages ? "bg-emerald-500" : "bg-slate-200"
+                                messagePermissions.allowVideoMessages
+                                  ? "bg-emerald-500"
+                                  : "bg-slate-200"
                               }`}
                             >
                               <div
                                 className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                                  messagePermissions.allowVideoMessages ? "translate-x-6" : "translate-x-0.5"
+                                  messagePermissions.allowVideoMessages
+                                    ? "translate-x-6"
+                                    : "translate-x-0.5"
                                 }`}
                               />
                             </button>
@@ -695,7 +780,11 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               </div>
             ) : (
               // Someone else's profile - profile not found
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-md"
+              >
                 <Card className="max-w-md mx-auto border-2 border-indigo-200/50 overflow-hidden backdrop-blur-sm bg-white/95">
                   <CardContent className="p-8 text-center relative">
                     {/* Arabic-inspired corner decorations */}
@@ -745,7 +834,8 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                       transition={{ delay: 0.6, duration: 0.6 }}
                       className="text-slate-600 font-queensides mb-8 leading-relaxed text-lg relative z-10"
                     >
-                      Connect your wallet and create your profile to start finding meaningful connections in our Muslim community
+                      Connect your wallet and create your profile to start finding meaningful
+                      connections in our Muslim community
                     </motion.p>
 
                     {/* Decorative divider */}
@@ -797,7 +887,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                       transition={{ delay: 1.2, duration: 0.6 }}
                       className="mt-8 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 relative z-10"
                     >
-                      <h3 className="font-bold text-green-700 font-queensides mb-2">Why Join Samaa?</h3>
+                      <h3 className="font-bold text-green-700 font-queensides mb-2">
+                        Why Join Samaa?
+                      </h3>
                       <div className="text-sm text-green-600 font-queensides space-y-1">
                         <p>✓ Find meaningful Islamic connections</p>
                         <p>✓ Web3-powered dowry & purse wallets</p>
@@ -813,9 +905,11 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                       transition={{ delay: 1.4, duration: 0.6 }}
                       className="mt-6 p-3 bg-slate-50 rounded-lg relative z-10"
                     >
-                      <p className="text-xs text-slate-500 font-queensides mb-1">Viewing Profile Address</p>
+                      <p className="text-xs text-slate-500 font-queensides mb-1">
+                        User ID
+                      </p>
                       <code className="text-xs font-mono text-slate-600">
-                        {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
+                        {profileUserId.slice(0, 8)}...{profileUserId.slice(-8)}
                       </code>
                     </motion.div>
 
@@ -856,7 +950,10 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
         {/* Header - Same style as explore page */}
         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
           <div className="flex items-center justify-between p-4">
-            <button onClick={() => router.back()} className="p-2 hover:bg-indigo-50 rounded-xl transition-colors">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-indigo-50 rounded-xl transition-colors"
+            >
               <ArrowLeft className="w-6 h-6 text-indigo-600" />
             </button>
             <div className="text-center">
@@ -873,11 +970,16 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
         {/* Full-Screen Hero Photo with Overlay Info */}
         <div className="relative h-screen w-full">
+          {profile.media?.photos?.[0] && (
+            <div className="absolute top-2 left-2 z-30 bg-black/40 text-white text-xs px-2 py-1 rounded">
+              <span>{profile.media.photos[0]}</span>
+            </div>
+          )}
           {/* Main Profile Photo */}
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
-              backgroundImage: `url(${profile.media?.photos?.[0] || profile.profilePhoto || "/images/futuristic-muslim-couple-hero.jpg"})`
+              backgroundImage: `url(${profile.media?.photos?.[0] || profile.profilePhoto || "/images/futuristic-muslim-couple-hero.jpg"})`,
             }}
             onClick={() => profile.media?.photos?.length && setSelectedPhotoIndex(0)}
           >
@@ -892,9 +994,7 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-bold font-qurova">
                   {profile.firstName || "User"}
-                  {profile.age && (
-                    <span className="text-3xl font-qurova ml-3">{profile.age}</span>
-                  )}
+                  {profile.age && <span className="text-3xl font-qurova ml-3">{profile.age}</span>}
                 </h1>
               </div>
 
@@ -943,7 +1043,31 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               )}
               {profile.marriageTimeline && (
                 <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
-                  <span className="text-sm font-queensides">Marriage: {profile.marriageTimeline}</span>
+                  <span className="text-sm font-queensides">
+                    Marriage: {profile.marriageTimeline}
+                  </span>
+                </div>
+              )}
+              {(photosCount > 0 || hasVideo || hasAudio) && (
+                <div className="flex items-center gap-2">
+                  {photosCount > 0 && (
+                    <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
+                      <Camera className="w-4 h-4" />
+                      <span className="text-sm font-queensides">{photosCount} photos</span>
+                    </div>
+                  )}
+                  {hasVideo && (
+                    <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
+                      <VideoIcon className="w-4 h-4" />
+                      <span className="text-sm font-queensides">Video</span>
+                    </div>
+                  )}
+                  {hasAudio && (
+                    <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
+                      <Mic className="w-4 h-4" />
+                      <span className="text-sm font-queensides">Audio</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -963,7 +1087,10 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                   <Button className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-queensides py-3">
                     Send Message
                   </Button>
-                  <Button variant="outline" className="bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30 px-4">
+                  <Button
+                    variant="outline"
+                    className="bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30 px-4"
+                  >
                     <Heart className="w-5 h-5" />
                   </Button>
                 </>
@@ -987,7 +1114,6 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
 
         {/* Scrollable Content */}
         <div className="space-y-0">
-
           {/* Bio Tagline Section */}
           {profile.bioTagline && (
             <div className="relative rounded-2xl p-6 mx-4 mb-6 border-2 border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white shadow-lg">
@@ -997,42 +1123,44 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
               <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
 
-                {/* Arabic-inspired divider below tagline */}
-                <div className="flex items-center justify-center mb-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              {/* Arabic-inspired divider below tagline */}
+              <div className="flex items-center justify-center mb-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                   </div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
                 </div>
+              </div>
 
               {/* Subtle gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
-              
+
               <div className="relative text-center mt-3">
-                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-3 mt-4">Words I Live By</h3>
+                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-3 mt-4">
+                  Words I Live By
+                </h3>
 
                 <p className="text-slate-700 font-queensides italic text-lg leading-relaxed mb-4">
                   "{profile.bioTagline}"
                 </p>
-                
               </div>
             </div>
           )}
 
           {/* Wallet Section */}
-          {(profile.gender === 'male' && profile.dowryWallet) || (profile.gender === 'female' && profile.purseWallet) ? (
-            <div className="bg-white/80 backdrop-blur-sm p-6 mx-4 mb-6 rounded-xl border border-indigo-100">
+          {(profile.gender === "male" && profile.dowryWallet) ||
+          (profile.gender === "female" && profile.purseWallet) ? (
+            <div className="bg-white/80 backdrop-blur-sm p-6 mx-4 mb-6 rounded-xl border border-indigo-100 mb-10">
               <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4 flex items-center gap-2">
                 <Wallet className="w-5 h-5 text-indigo-500" />
-                {profile.gender === 'male' ? 'Dowry Wallet' : 'Purse Wallet'}
+                {profile.gender === "male" ? "Dowry Wallet" : "Purse Wallet"}
               </h3>
 
-              {profile.gender === 'male' && profile.dowryWallet ? (
+              {profile.gender === "male" && profile.dowryWallet ? (
                 <div className="space-y-3">
                   {profile.dowryWallet.isSetup ? (
                     <>
@@ -1042,7 +1170,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                       </div>
                       {profile.dowryWallet.address && (
                         <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-sm text-slate-500 font-queensides mb-1">Wallet Address</p>
+                          <p className="text-sm text-slate-500 font-queensides mb-1">
+                            Wallet Address
+                          </p>
                           <p className="font-mono text-sm text-slate-700 break-all">
                             {profile.dowryWallet.address}
                           </p>
@@ -1069,11 +1199,13 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                     </>
                   ) : (
                     <div className="text-center py-4">
-                      <p className="text-slate-500 font-queensides">Dowry wallet not yet configured</p>
+                      <p className="text-slate-500 font-queensides">
+                        Dowry wallet not yet configured
+                      </p>
                     </div>
                   )}
                 </div>
-              ) : profile.gender === 'female' && profile.purseWallet ? (
+              ) : profile.gender === "female" && profile.purseWallet ? (
                 <div className="space-y-3">
                   {profile.purseWallet.isSetup ? (
                     <>
@@ -1083,7 +1215,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                       </div>
                       {profile.purseWallet.address && (
                         <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-sm text-slate-500 font-queensides mb-1">Wallet Address</p>
+                          <p className="text-sm text-slate-500 font-queensides mb-1">
+                            Wallet Address
+                          </p>
                           <p className="font-mono text-sm text-slate-700 break-all">
                             {profile.purseWallet.address}
                           </p>
@@ -1110,29 +1244,33 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                     </>
                   ) : (
                     <div className="text-center py-4">
-                      <p className="text-slate-500 font-queensides">Purse wallet not yet configured</p>
+                      <p className="text-slate-500 font-queensides">
+                        Purse wallet not yet configured
+                      </p>
                     </div>
                   )}
                 </div>
               ) : null}
             </div>
           ) : null}
-
+  <br/>
           {/* About Me - Compact */}
           <div className="bg-white p-6">
-                              <div className="flex items-center justify-center mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                  </div>
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                 </div>
-                <br/>
-            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">About {profile.firstName}</h3>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              </div>
+            </div>
+            <br />
+            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
+              About {profile.firstName}
+            </h3>
 
             {/* Bio */}
             {profile.bio && (
@@ -1140,19 +1278,19 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 {profile.bio}
               </p>
             )}
-            
-                <div className="flex items-center justify-center mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                  </div>
+
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                 </div>
-            <br/>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              </div>
+            </div>
+            <br />
             {/* Quick Facts Grid */}
             <div className="grid grid-cols-2 gap-4 mt-4">
               {profile.height && (
@@ -1164,83 +1302,103 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               {profile.maritalStatus && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.maritalStatus}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.maritalStatus}
+                  </p>
                 </div>
               )}
               {(profile.children || profile.hasChildren) && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Has Children</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.children || profile.hasChildren}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.children || profile.hasChildren}
+                  </p>
                 </div>
               )}
               {profile.wantChildren && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Wants Children</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.wantChildren}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.wantChildren}
+                  </p>
                 </div>
               )}
               {profile.marriageTimeline && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Marriage Plans</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.marriageTimeline}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.marriageTimeline}
+                  </p>
                 </div>
               )}
               {profile.livingArrangements && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Living Situation</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.livingArrangements}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.livingArrangements}
+                  </p>
                 </div>
               )}
             </div>
-            <br/>
-                <div className="flex items-center justify-center mb-4 mt-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                  </div>
-                </div>          
+            <br />
+            <div className="flex items-center justify-center mb-4 mt-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                </div>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              </div>
+            </div>
           </div>
 
           {/* Photo Break 1 */}
           {profile.media?.photos?.[1] && (
             <div
-              className="h-96 bg-cover bg-center cursor-pointer"
+              className="h-96 bg-cover bg-center cursor-pointer mb-0"
               style={{
-                backgroundImage: `url(${profile.media.photos[1]})`
+                backgroundImage: `url(${profile.media.photos[1]})`, marginBottom:'0px'
               }}
               onClick={() => setSelectedPhotoIndex(1)}
             >
-              <div className="h-full w-full bg-black/20"></div>
+              <div className="h-full w-full bg-black/20 mb-0"></div>
             </div>
           )}
 
           {/* Islamic Values - Compact */}
-          {(profile.prayerFrequency || profile.sect || profile.hijabChoice || profile.islamicValues || profile.isRevert || profile.alcohol || profile.smoking || profile.psychedelics || profile.halalFood) && (
-            <div className="bg-white p-6">
-                                <div className="flex items-center justify-center mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+          {(profile.prayerFrequency ||
+            profile.sect ||
+            profile.hijabChoice ||
+            profile.islamicValues ||
+            profile.isRevert ||
+            profile.alcohol ||
+            profile.smoking ||
+            profile.psychedelics ||
+            profile.halalFood) && (
+            <div className="bg-white p-6" style={{ marginTop: '-23px' }}>
+              <div className="flex items-center justify-center mb-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                   </div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
                 </div>
-                <br/>
+              </div>
+              <br />
               <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Islamic Values</h3>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 {profile.prayerFrequency && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.prayerFrequency}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.prayerFrequency}
+                    </p>
                   </div>
                 )}
                 {profile.sect && (
@@ -1252,58 +1410,72 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 {profile.isRevert && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Revert</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.isRevert}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.isRevert}
+                    </p>
                   </div>
                 )}
                 {profile.hijabChoice && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Hijab</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.hijabChoice}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.hijabChoice}
+                    </p>
                   </div>
                 )}
                 {profile.alcohol && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.alcohol}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.alcohol}
+                    </p>
                   </div>
                 )}
                 {profile.smoking && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Smoking</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.smoking}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.smoking}
+                    </p>
                   </div>
                 )}
                 {profile.psychedelics && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.psychedelics}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.psychedelics}
+                    </p>
                   </div>
                 )}
                 {profile.halalFood && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.halalFood}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.halalFood}
+                    </p>
                   </div>
                 )}
                 {profile.islamicValues && (
                   <div className="col-span-2">
                     <p className="text-sm text-slate-500 font-queensides">Islamic Values</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.islamicValues}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.islamicValues}
+                    </p>
                   </div>
                 )}
               </div>
-              <br/>
-                <div className="flex items-center justify-center mb-4 mt-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              <br />
+              <div className="flex items-center justify-center mb-4 mt-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                   </div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
                 </div>
+              </div>
             </div>
           )}
 
@@ -1312,7 +1484,7 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             <div
               className="h-96 bg-cover bg-center cursor-pointer"
               style={{
-                backgroundImage: `url(${profile.media.photos[2]})`
+                backgroundImage: `url(${profile.media.photos[2]})`,
               }}
               onClick={() => setSelectedPhotoIndex(2)}
             >
@@ -1347,23 +1519,10 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               </div>
             </div>
           )}
-          
-          {/* Photo Break 3 */}
-          {profile.media?.photos?.[3] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer"
-              style={{
-                backgroundImage: `url(${profile.media.photos[3]})`
-              }}
-              onClick={() => setSelectedPhotoIndex(3)}
-            >
-              <div className="h-full w-full bg-black/20"></div>
-            </div>
-          )}
 
           {/* Voice Introduction - Compact */}
           {profile.media?.voiceNote && (
-            <div className="bg-white p-6">
+            <div className="bg-white p-6" style={{ marginTop: '-23px' }}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-bold text-slate-800 font-qurova">Voice Introduction</h3>
                 {isOwnProfile && (
@@ -1380,45 +1539,71 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             </div>
           )}
 
-          {/* Photo Break 4 */}
-          {profile.media?.photos?.[4] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer"
-              style={{
-                backgroundImage: `url(${profile.media.photos[4]})`
-              }}
-              onClick={() => setSelectedPhotoIndex(4)}
-            >
-              <div className="h-full w-full bg-black/20"></div>
+          {/* Photo Break 3-4 Slider */}
+          {(profile.media?.photos?.[3] || profile.media?.photos?.[4]) && (
+            <div className="relative h-96 overflow-hidden">
+              <div
+                className="flex h-full transition-transform duration-500 ease-in-out"
+                style={{ transform: `translateX(-${(sliderIndex - 1) * 100}%)` }}
+              >
+                {profile.media.photos.slice(3, 5).map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="h-full w-full flex-shrink-0 bg-cover bg-center cursor-pointer"
+                    style={{ backgroundImage: `url(${src})` }}
+                    onClick={() => setSelectedPhotoIndex(3 + idx)}
+                  >
+                    <div className="h-full w-full bg-black/20"></div>
+                  </div>
+                ))}
+              </div>
+              {/* Dots indicator */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                {profile.media.photos.slice(3, 5).map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSliderIndex(idx + 1)}
+                    className={`w-2 h-2 rounded-full ${
+                      sliderIndex === idx + 1 ? 'bg-white' : 'bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
           {/* Education & Career - Compact */}
           <div className="bg-white p-6 mt-4">
-                              <div className="flex items-center justify-center mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                  </div>
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                 </div>
-            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Education & Career</h3>
+                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
+              Education & Career
+            </h3>
 
             <div className="grid grid-cols-2 gap-4">
               {profile.education && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Education</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.education}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.education}
+                  </p>
                 </div>
               )}
               {profile.profession && (
                 <div>
                   <p className="text-sm text-slate-500 font-queensides">Profession</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.profession}</p>
+                  <p className="font-semibold text-slate-800 font-queensides">
+                    {profile.profession}
+                  </p>
                 </div>
               )}
               {profile.employer && (
@@ -1441,7 +1626,7 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             <div
               className="h-96 bg-cover bg-center cursor-pointer"
               style={{
-                backgroundImage: `url(${profile.media.photos[5]})`
+                backgroundImage: `url(${profile.media.photos[5]})`,
               }}
               onClick={() => setSelectedPhotoIndex(5)}
             >
@@ -1458,13 +1643,17 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 {profile.ethnicity && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Ethnicity</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.ethnicity}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.ethnicity}
+                    </p>
                   </div>
                 )}
                 {profile.nationality && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.nationality}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.nationality}
+                    </p>
                   </div>
                 )}
               </div>
@@ -1489,7 +1678,7 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             <div
               className="h-96 bg-cover bg-center cursor-pointer"
               style={{
-                backgroundImage: `url(${profile.media.photos[6]})`
+                backgroundImage: `url(${profile.media.photos[6]})`,
               }}
               onClick={() => setSelectedPhotoIndex(6)}
             >
@@ -1498,7 +1687,10 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
           )}
 
           {/* Marriage Intentions - Compact */}
-          {(profile.chattingTimeline || profile.familyInvolvement || profile.marriageTimeline || profile.familyPlans) && (
+          {(profile.chattingTimeline ||
+            profile.familyInvolvement ||
+            profile.marriageTimeline ||
+            profile.familyPlans) && (
             <div className="bg-white p-6">
               <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Marriage Plans</h3>
 
@@ -1506,41 +1698,48 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 {profile.marriageTimeline && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Timeline</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.marriageTimeline}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.marriageTimeline}
+                    </p>
                   </div>
                 )}
                 {profile.familyInvolvement && (
                   <div>
                     <p className="text-sm text-slate-500 font-queensides">Family Role</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.familyInvolvement}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.familyInvolvement}
+                    </p>
                   </div>
                 )}
                 {profile.familyPlans && (
                   <div className="col-span-2">
                     <p className="text-sm text-slate-500 font-queensides">Family Plans</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.familyPlans}</p>
+                    <p className="font-semibold text-slate-800 font-queensides">
+                      {profile.familyPlans}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
           )}
-          
 
           {/* Interests & Personality - Compact */}
           {(profile.interests?.length > 0 || profile.personality?.length > 0) && (
             <div className="bg-white p-6 mt-4">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              <div className="flex items-center justify-center mb-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
+                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
+                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
                   </div>
+                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
+                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
                 </div>
-              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Interests & Personality</h3>
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
+                Interests & Personality
+              </h3>
 
               <div className="space-y-4">
                 {profile.interests?.length > 0 && (
@@ -1576,15 +1775,13 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             <div
               className="h-96 bg-cover bg-center cursor-pointer"
               style={{
-                backgroundImage: `url(${profile.media.photos[7]})`
+                backgroundImage: `url(${profile.media.photos[7]})`,
               }}
               onClick={() => setSelectedPhotoIndex(7)}
             >
               <div className="h-full w-full bg-black/20"></div>
             </div>
           )}
-
-          
 
           {/* Arabic Divider */}
           {isOwnProfile && (
@@ -1614,7 +1811,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
 
               <div className="relative">
-                <h3 className="text-xl font-bold text-slate-800 font-qurova mb-6 text-center">What I Want</h3>
+                <h3 className="text-xl font-bold text-slate-800 font-qurova mb-6 text-center">
+                  What I Want
+                </h3>
 
                 {/* Arabic-inspired title divider */}
                 <div className="flex items-center justify-center mb-6">
@@ -1629,326 +1828,343 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                   </div>
                 </div>
 
-              {/* Basic Preferences */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Basic Preferences</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Age Range</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.ageRange[0]}-{userSettings.ageRange[1]} years
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Location</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      Within {userSettings.maxDistance} miles
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-                <div className="mx-3 w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-              </div>
-
-              {/* About Them */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">About Them</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.nationality || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Height</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.height || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.maritalStatus || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Children</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.children || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Education</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.education || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Languages</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.languages || "No preference"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-                <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-              </div>
-
-              {/* Faith & Practice */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Faith & Practice</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.prayerFrequency || "No preference"}
-                    </p>
-                  </div>
-
-                  {userSettings.userGender === "male" && (
+                {/* Basic Preferences */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    Basic Preferences
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-slate-500 font-queensides">Hijab Preference</p>
+                      <p className="text-sm text-slate-500 font-queensides">Age Range</p>
                       <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.hijabPreference || "No preference"}
+                        {userSettings.ageRange[0]}-{userSettings.ageRange[1]} years
                       </p>
                     </div>
-                  )}
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Marriage Intention</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.marriageIntention || "No preference"}
-                    </p>
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Location</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        Within {userSettings.maxDistance} miles
+                      </p>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Diet</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.diet || "No preference"}
-                    </p>
+                {/* Section Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+                  <div className="mx-3 w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+                </div>
+
+                {/* About Them */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    About Them
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Nationality</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.nationality || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Height</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.height || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.maritalStatus || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Children</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.children || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Education</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.education || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Languages</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.languages || "No preference"}
+                      </p>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.halalFood || "No preference"}
-                    </p>
+                {/* Section Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+                  <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+                </div>
+
+                {/* Faith & Practice */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    Faith & Practice
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.prayerFrequency || "No preference"}
+                      </p>
+                    </div>
+
+                    {userSettings.userGender === "male" && (
+                      <div>
+                        <p className="text-sm text-slate-500 font-queensides">Hijab Preference</p>
+                        <p className="font-semibold text-slate-800 font-queensides">
+                          {userSettings.faithAndPractice?.hijabPreference || "No preference"}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Marriage Intention</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.marriageIntention || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Diet</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.diet || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.halalFood || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.alcohol || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Smoking</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.smoking || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.psychedelics || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Born Muslim</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.faithAndPractice?.bornMuslim || "No preference"}
+                      </p>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.alcohol || "No preference"}
-                    </p>
+                {/* Section Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent"></div>
+                  <div className="mx-3 w-1.5 h-1.5 bg-blue-300 rounded-full"></div>
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+                </div>
+
+                {/* About Them */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    About Them
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Nationality</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.nationality || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Height</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.height || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.maritalStatus || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Children</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.children || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Grew Up In</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.grewUpIn || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Languages</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.languages || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Willing to Relocate</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.willingToRelocate || "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Education</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.aboutThem?.education || "No preference"}
+                      </p>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Smoking</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.smoking || "No preference"}
-                    </p>
+                {/* Section Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent"></div>
+                  <div className="mx-3 w-1.5 h-1.5 bg-orange-300 rounded-full"></div>
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-200 to-transparent"></div>
+                </div>
+
+                {/* Financial & Quality Requirements */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    Requirements
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Financial Setup</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.requireFinancialSetup
+                          ? userSettings.userGender === "male"
+                            ? "Purse setup required"
+                            : "Dowry wallet required"
+                          : "Not required"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Bio Rating</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.bioRatingMinimum || 0}%+ required
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Response Rate</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.responseRateMinimum || 0}%+ required
+                      </p>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.psychedelics || "No preference"}
-                    </p>
+                {/* Section Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-green-200 to-transparent"></div>
+                  <div className="mx-3 w-1.5 h-1.5 bg-green-300 rounded-full"></div>
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+                </div>
+
+                {/* Distance & Location */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    Distance & Location
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Age Range</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.ageRange
+                          ? `${userSettings.ageRange[0]} - ${userSettings.ageRange[1]} years`
+                          : "No preference"}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-slate-500 font-queensides">Distance</p>
+                      <p className="font-semibold text-slate-800 font-queensides">
+                        {userSettings.anywhereInWorld
+                          ? "🌍 Anywhere in the world"
+                          : `Within ${userSettings.maxDistance || 50} miles`}
+                      </p>
+                    </div>
                   </div>
+                </div>
 
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Born Muslim</p>
+                {/* Section Divider */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
+                  <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
+                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
+                </div>
+
+                {/* Interests */}
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
+                    Interests
+                  </h4>
+                  <div className="col-span-2">
+                    <p className="text-sm text-slate-500 font-queensides">Preferred Interests</p>
                     <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.faithAndPractice?.bornMuslim || "No preference"}
+                      {userSettings.interests && userSettings.interests.length > 0
+                        ? userSettings.interests.join(", ")
+                        : "No specific preferences"}
                     </p>
                   </div>
                 </div>
-              </div>
 
-              {/* Section Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent"></div>
-                <div className="mx-3 w-1.5 h-1.5 bg-blue-300 rounded-full"></div>
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-              </div>
-
-              {/* About Them */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">About Them</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.nationality || "No preference"}
-                    </p>
+                {isOwnProfile && (
+                  <div className="pt-6 border-t border-slate-200">
+                    <Button
+                      variant="outline"
+                      className="w-full font-queensides"
+                      onClick={() => router.push("/settings")}
+                    >
+                      <Settings className="w-4 h-4 mr-2" />
+                      Update Preferences
+                    </Button>
                   </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Height</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.height || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.maritalStatus || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Children</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.children || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Grew Up In</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.grewUpIn || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Languages</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.languages || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Willing to Relocate</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.willingToRelocate || "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Education</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.aboutThem?.education || "No preference"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent"></div>
-                <div className="mx-3 w-1.5 h-1.5 bg-orange-300 rounded-full"></div>
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-200 to-transparent"></div>
-              </div>
-
-              {/* Financial & Quality Requirements */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Requirements</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Financial Setup</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.requireFinancialSetup ?
-                        (userSettings.userGender === "male" ? "Purse setup required" : "Dowry wallet required") :
-                        "Not required"
-                      }
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Bio Rating</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.bioRatingMinimum || 0}%+ required
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Response Rate</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.responseRateMinimum || 0}%+ required
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-green-200 to-transparent"></div>
-                <div className="mx-3 w-1.5 h-1.5 bg-green-300 rounded-full"></div>
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-              </div>
-
-              {/* Distance & Location */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Distance & Location</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Age Range</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.ageRange ? `${userSettings.ageRange[0]} - ${userSettings.ageRange[1]} years` : "No preference"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Distance</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.anywhereInWorld
-                        ? "🌍 Anywhere in the world"
-                        : `Within ${userSettings.maxDistance || 50} miles`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section Divider */}
-              <div className="flex items-center justify-center my-6">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-                <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-              </div>
-
-              {/* Interests */}
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">Interests</h4>
-                <div className="col-span-2">
-                  <p className="text-sm text-slate-500 font-queensides">Preferred Interests</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {userSettings.interests && userSettings.interests.length > 0
-                      ? userSettings.interests.join(", ")
-                      : "No specific preferences"}
-                  </p>
-                </div>
-              </div>
-
-              {isOwnProfile && (
-                <div className="pt-6 border-t border-slate-200">
-                  <Button
-                    variant="outline"
-                    className="w-full font-queensides"
-                    onClick={() => router.push("/settings")}
-                  >
-                    <Settings className="w-4 h-4 mr-2" />
-                    Update Preferences
-                  </Button>
-                </div>
-              )}
+                )}
               </div>
             </div>
           )}
@@ -2002,14 +2218,15 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
             )}
 
             {/* Next Button */}
-            {profile.media.photos.length > 1 && selectedPhotoIndex < profile.media.photos.length - 1 && (
-              <button
-                onClick={() => setSelectedPhotoIndex(selectedPhotoIndex + 1)}
-                className="absolute right-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-              >
-                →
-              </button>
-            )}
+            {profile.media.photos.length > 1 &&
+              selectedPhotoIndex < profile.media.photos.length - 1 && (
+                <button
+                  onClick={() => setSelectedPhotoIndex(selectedPhotoIndex + 1)}
+                  className="absolute right-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+                >
+                  →
+                </button>
+              )}
 
             {/* Photo */}
             <img
@@ -2041,7 +2258,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
           >
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-slate-800 font-qurova">Message Permissions</h3>
+                <h3 className="text-xl font-bold text-slate-800 font-qurova">
+                  Message Permissions
+                </h3>
                 <button
                   onClick={() => setShowMessagePermissions(false)}
                   className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
@@ -2054,12 +2273,19 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 {/* Financial Setup Toggle */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-800 font-qurova">Require Financial Setup</p>
-                    <p className="text-sm text-slate-600 font-queensides">Only users with dowry wallet/purse</p>
+                    <p className="font-medium text-slate-800 font-qurova">
+                      Require Financial Setup
+                    </p>
+                    <p className="text-sm text-slate-600 font-queensides">
+                      Only users with dowry wallet/purse
+                    </p>
                   </div>
                   <button
                     onClick={() =>
-                      setMessagePermissions((prev) => ({ ...prev, requireFinancialSetup: !prev.requireFinancialSetup }))
+                      setMessagePermissions((prev) => ({
+                        ...prev,
+                        requireFinancialSetup: !prev.requireFinancialSetup,
+                      }))
                     }
                     className={`w-12 h-6 rounded-full relative transition-colors ${
                       messagePermissions.requireFinancialSetup ? "bg-emerald-500" : "bg-slate-200"
@@ -2067,7 +2293,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                   >
                     <div
                       className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                        messagePermissions.requireFinancialSetup ? "translate-x-6" : "translate-x-0.5"
+                        messagePermissions.requireFinancialSetup
+                          ? "translate-x-6"
+                          : "translate-x-0.5"
                       }`}
                     />
                   </button>
@@ -2077,7 +2305,9 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-slate-800 font-qurova">Minimum Bio Rating</p>
-                    <span className="text-sm font-medium text-emerald-600">{messagePermissions.minBioRating}%</span>
+                    <span className="text-sm font-medium text-emerald-600">
+                      {messagePermissions.minBioRating}%
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -2085,18 +2315,25 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                     max="100"
                     value={messagePermissions.minBioRating}
                     onChange={(e) =>
-                      setMessagePermissions((prev) => ({ ...prev, minBioRating: Number.parseInt(e.target.value) }))
+                      setMessagePermissions((prev) => ({
+                        ...prev,
+                        minBioRating: Number.parseInt(e.target.value),
+                      }))
                     }
                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
                   />
-                  <p className="text-sm text-slate-600 font-queensides mt-1">Profile completion required</p>
+                  <p className="text-sm text-slate-600 font-queensides mt-1">
+                    Profile completion required
+                  </p>
                 </div>
 
                 {/* Response Rate Slider */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-slate-800 font-qurova">Minimum Response Rate</p>
-                    <span className="text-sm font-medium text-emerald-600">{messagePermissions.minResponseRate}%</span>
+                    <span className="text-sm font-medium text-emerald-600">
+                      {messagePermissions.minResponseRate}%
+                    </span>
                   </div>
                   <input
                     type="range"
@@ -2104,22 +2341,32 @@ export function ProfileView({ walletAddress }: ProfileViewProps) {
                     max="100"
                     value={messagePermissions.minResponseRate}
                     onChange={(e) =>
-                      setMessagePermissions((prev) => ({ ...prev, minResponseRate: Number.parseInt(e.target.value) }))
+                      setMessagePermissions((prev) => ({
+                        ...prev,
+                        minResponseRate: Number.parseInt(e.target.value),
+                      }))
                     }
                     className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
                   />
-                  <p className="text-sm text-slate-600 font-queensides mt-1">How often they respond to messages</p>
+                  <p className="text-sm text-slate-600 font-queensides mt-1">
+                    How often they respond to messages
+                  </p>
                 </div>
 
                 {/* Video Messages Toggle */}
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-slate-800 font-qurova">Allow Video Messages</p>
-                    <p className="text-sm text-slate-600 font-queensides">Users can send video messages</p>
+                    <p className="text-sm text-slate-600 font-queensides">
+                      Users can send video messages
+                    </p>
                   </div>
                   <button
                     onClick={() =>
-                      setMessagePermissions((prev) => ({ ...prev, allowVideoMessages: !prev.allowVideoMessages }))
+                      setMessagePermissions((prev) => ({
+                        ...prev,
+                        allowVideoMessages: !prev.allowVideoMessages,
+                      }))
                     }
                     className={`w-12 h-6 rounded-full relative transition-colors ${
                       messagePermissions.allowVideoMessages ? "bg-emerald-500" : "bg-slate-200"

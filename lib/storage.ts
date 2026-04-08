@@ -2,16 +2,15 @@ import { supabase } from './supabase'
 
 // Storage configuration
 export const STORAGE_CONFIG = {
-  MAX_FILE_SIZE: 50 * 1024 * 1024, // 50MB in bytes (configurable)
+  MAX_FILE_SIZE: 50 * 1024 * 1024,
   ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm', 'video/mov', 'video/avi'],
-  ALLOWED_AUDIO_TYPES: ['audio/mp3', 'audio/wav', 'audio/m4a', 'audio/ogg'],
+  ALLOWED_AUDIO_TYPES: ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/m4a', 'audio/ogg'],
   BUCKETS: {
-    PROFILE_PHOTOS: 'profile-photos',
-    PROFILE_VIDEOS: 'profile-videos', 
-    PROFILE_AUDIO: 'profile-audio',
-    SHOP_IMAGES: 'shop-images',
-    SHOP_VIDEOS: 'shop-videos'
+    PROFILES: 'profiles',
+    PRODUCTS: 'products',
+    VOICE_NOTES: 'voice-notes',
+    VIDEOS: 'videos'
   }
 }
 
@@ -52,24 +51,29 @@ export function validateFile(file: File, type: 'image' | 'video' | 'audio'): { v
 }
 
 // Generate unique file name
-export function generateFileName(originalName: string, userId: string, type: string): string {
+export function generateFileName(originalName: string, userId: string): string {
   const timestamp = Date.now()
   const extension = originalName.split('.').pop()
-  return `${userId}/${type}/${timestamp}.${extension}`
+  return `${userId}/${timestamp}.${extension}`
+}
+
+// Get public URL for a file
+export function getPublicUrl(bucket: string, path: string): string {
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+  return data.publicUrl
 }
 
 // Upload file to Supabase Storage
 export async function uploadFile(
-  file: File,
   bucket: string,
-  fileName: string,
+  path: string,
+  file: File,
   onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    // Upload file
     const { data, error } = await supabase.storage
       .from(bucket)
-      .upload(fileName, file, {
+      .upload(path, file, {
         cacheControl: '3600',
         upsert: false
       })
@@ -78,40 +82,23 @@ export async function uploadFile(
       return { success: false, error: error.message }
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(fileName)
-
-    return {
-      success: true,
-      url: urlData.publicUrl
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Upload failed'
-    }
+    const url = getPublicUrl(bucket, data.path)
+    return { success: true, url }
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'Upload failed' }
   }
 }
 
 // Delete file from Supabase Storage
-export async function deleteFile(bucket: string, fileName: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteFile(bucket: string, path: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { error } = await supabase.storage
-      .from(bucket)
-      .remove([fileName])
-
+    const { error } = await supabase.storage.from(bucket).remove([path])
     if (error) {
       return { success: false, error: error.message }
     }
-
     return { success: true }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Delete failed'
-    }
+  } catch (e: any) {
+    return { success: false, error: e?.message || 'Delete failed' }
   }
 }
 
@@ -128,9 +115,8 @@ export class ProfileMediaService {
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
-
-    const fileName = generateFileName(file.name, userId, 'photos')
-    return await uploadFile(file, STORAGE_CONFIG.BUCKETS.PROFILE_PHOTOS, fileName, onProgress)
+    const path = generateFileName(file.name, userId)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.PROFILES, path, file, onProgress)
   }
 
   // Upload profile video
@@ -143,9 +129,8 @@ export class ProfileMediaService {
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
-
-    const fileName = generateFileName(file.name, userId, 'videos')
-    return await uploadFile(file, STORAGE_CONFIG.BUCKETS.PROFILE_VIDEOS, fileName, onProgress)
+    const path = generateFileName(file.name, userId)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.VIDEOS, path, file, onProgress)
   }
 
   // Upload profile audio
@@ -158,43 +143,13 @@ export class ProfileMediaService {
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
-
-    const fileName = generateFileName(file.name, userId, 'audio')
-    return await uploadFile(file, STORAGE_CONFIG.BUCKETS.PROFILE_AUDIO, fileName, onProgress)
+    const path = generateFileName(file.name, userId)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.VOICE_NOTES, path, file, onProgress)
   }
 
   // Delete profile media
-  static async deleteProfileMedia(
-    url: string,
-    type: 'photo' | 'video' | 'audio'
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Extract file path from URL
-      const urlParts = url.split('/')
-      const fileName = urlParts.slice(-3).join('/') // userId/type/filename
-
-      let bucket: string
-      switch (type) {
-        case 'photo':
-          bucket = STORAGE_CONFIG.BUCKETS.PROFILE_PHOTOS
-          break
-        case 'video':
-          bucket = STORAGE_CONFIG.BUCKETS.PROFILE_VIDEOS
-          break
-        case 'audio':
-          bucket = STORAGE_CONFIG.BUCKETS.PROFILE_AUDIO
-          break
-        default:
-          return { success: false, error: 'Invalid media type' }
-      }
-
-      return await deleteFile(bucket, fileName)
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Delete failed'
-      }
-    }
+  static async deleteProfileMedia(bucket: string, path: string): Promise<{ success: boolean; error?: string }> {
+    return await deleteFile(bucket, path)
   }
 }
 
@@ -211,9 +166,8 @@ export class ShopMediaService {
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
-
-    const fileName = generateFileName(file.name, shopId, 'images')
-    return await uploadFile(file, STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, fileName, onProgress)
+    const path = generateFileName(file.name, shopId)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.PRODUCTS, path, file, onProgress)
   }
 
   // Upload shop video
@@ -226,9 +180,8 @@ export class ShopMediaService {
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
-
-    const fileName = generateFileName(file.name, shopId, 'videos')
-    return await uploadFile(file, STORAGE_CONFIG.BUCKETS.SHOP_VIDEOS, fileName, onProgress)
+    const path = generateFileName(file.name, shopId)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.PRODUCTS, path, file, onProgress)
   }
 }
 

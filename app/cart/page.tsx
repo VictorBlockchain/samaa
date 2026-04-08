@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -30,7 +30,7 @@ import { CheckoutModal } from "@/components/shop/checkout-modal"
 
 export default function CartPage() {
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { isConnected, address } = useUser()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCheckout, setShowCheckout] = useState(false)
@@ -51,42 +51,42 @@ export default function CartPage() {
 
   useEffect(() => {
     loadCartItems()
-  }, [publicKey])
+  }, [address])
 
   const loadCartItems = () => {
-    if (!publicKey) {
+    if (!address) {
       setCartItems([])
       setIsLoading(false)
       return
     }
 
-    const items = CartService.getCartItems(publicKey.toString())
+    const items = CartService.getCartItems(address)
     setCartItems(items)
     setIsLoading(false)
   }
 
   const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (!publicKey) return
+    if (!address) return
 
-    const success = CartService.updateCartItemQuantity(publicKey.toString(), itemId, newQuantity)
+    const success = CartService.updateCartItemQuantity(address, itemId, newQuantity)
     if (success) {
       loadCartItems()
     }
   }
 
   const removeItem = (itemId: string) => {
-    if (!publicKey) return
+    if (!address) return
 
-    const success = CartService.removeFromCart(publicKey.toString(), itemId)
+    const success = CartService.removeFromCart(address, itemId)
     if (success) {
       loadCartItems()
     }
   }
 
   const clearCart = () => {
-    if (!publicKey) return
+    if (!address) return
 
-    const success = CartService.clearCart(publicKey.toString())
+    const success = CartService.clearCart(address)
     if (success) {
       loadCartItems()
     }
@@ -100,7 +100,7 @@ export default function CartPage() {
   const totalUSD = ExchangeRateService.convertToUSD(totalInSelectedCurrency, selectedCurrency)
 
   const handleCheckout = () => {
-    if (!connected) {
+    if (!isConnected) {
       alert("Please connect your wallet to proceed with checkout")
       return
     }
@@ -113,7 +113,7 @@ export default function CartPage() {
     setShowCheckout(false)
   }
 
-  if (!connected) {
+  if (!isConnected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative overflow-hidden">
         <CelestialBackground intensity="medium" />

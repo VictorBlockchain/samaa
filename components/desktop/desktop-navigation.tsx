@@ -1,6 +1,6 @@
 "use client"
 
-import { WalletMultiButton } from "@/components/wallet/wallet-multi-button"
+// import { WalletMultiButton } from "@/components/wallet/wallet-multi-button"
 
 export function DesktopNavigation() {
   return (
@@ -44,9 +44,7 @@ export function DesktopNavigation() {
             </a>
           </div> */}
 
-          <div className="flex items-center">
-            {/* <WalletMultiButton /> */}
-          </div>
+          <div className="flex items-center">{/* <WalletMultiButton /> */}</div>
         </div>
       </div>
     </nav>

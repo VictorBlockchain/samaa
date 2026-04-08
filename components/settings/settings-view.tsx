@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, MapPin, Heart, Users, Bell, Shield, BookOpen, User, Target, Wallet } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -31,7 +31,7 @@ const interests = [
 
 export function SettingsView() {
   const router = useRouter()
-  const { publicKey } = useWallet()
+  const { address } = useUser()
   const [customInterests, setCustomInterests] = useState("")
   const [settings, setSettings] = useState({
     ageRange: [22, 35],
@@ -109,8 +109,8 @@ export function SettingsView() {
     }
 
     // Then get user gender from profile using wallet address
-    if (publicKey) {
-      const userProfile = localStorage.getItem(`profile_${publicKey.toString()}`)
+    if (address) {
+      const userProfile = localStorage.getItem(`profile_${address}`)
       if (userProfile) {
         const profile = JSON.parse(userProfile)
         console.log("Loaded profile:", profile) // Debug log
@@ -118,7 +118,7 @@ export function SettingsView() {
         setSettings(prev => ({ ...prev, userGender: profile.gender || "female" }))
       }
     }
-  }, [publicKey])
+  }, [address])
 
   const FilterSelect = ({
     label,

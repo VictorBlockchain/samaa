@@ -66,7 +66,9 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Queensides", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     line-height: 1.6;
@@ -107,19 +109,26 @@
   /* Modern Card System */
   .modern-card {
     @apply bg-white/95 backdrop-blur-sm border border-gray-100/50;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    box-shadow:
+      0 1px 3px 0 rgba(0, 0, 0, 0.1),
+      0 1px 2px 0 rgba(0, 0, 0, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.05);
   }
 
   .modern-card-elevated {
     @apply bg-white/95 backdrop-blur-sm border border-gray-100/60;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px
-      rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .modern-card-floating {
     @apply bg-white backdrop-blur-sm border border-gray-100/70;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05), 0 0 0 1px
-      rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   /* Enhanced Gradient Text */
@@ -140,7 +149,9 @@
     @apply px-8 py-4 rounded-2xl shadow-lg hover:shadow-xl;
     @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
     @apply hover:scale-105 active:scale-95;
-    box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    box-shadow:
+      0 4px 14px 0 rgba(99, 102, 241, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
   }
 
   .btn-secondary {
@@ -198,11 +209,15 @@
 
   /* Custom shadow utilities */
   .shadow-soft {
-    box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+    box-shadow:
+      0 2px 15px -3px rgba(0, 0, 0, 0.07),
+      0 10px 20px -2px rgba(0, 0, 0, 0.04);
   }
 
   .shadow-soft-lg {
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    box-shadow:
+      0 10px 15px -3px rgba(0, 0, 0, 0.1),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
 
   .shadow-indigo {
@@ -211,6 +226,56 @@
 
   .shadow-purple {
     box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.4);
+  }
+
+  /* Themed Dropdown Menu */
+  .menu-dropdown {
+    @apply w-56 p-2 space-y-1 rounded-2xl;
+    @apply bg-white/90 backdrop-blur-xl border border-indigo-100/40;
+    @apply shadow-soft ring-1 ring-indigo-100/40;
+    background-image:
+      linear-gradient(white, white),
+      linear-gradient(
+        135deg,
+        rgba(99, 102, 241, 0.22),
+        rgba(139, 92, 246, 0.18),
+        rgba(59, 130, 246, 0.2)
+      );
+    background-origin: border-box;
+    background-clip: content-box, border-box;
+  }
+
+  .dark .menu-dropdown {
+    @apply bg-white/10 border-white/10 ring-0;
+    background-image:
+      linear-gradient(rgba(17, 24, 39, 0.85), rgba(17, 24, 39, 0.85)),
+      linear-gradient(
+        135deg,
+        rgba(99, 102, 241, 0.25),
+        rgba(139, 92, 246, 0.2),
+        rgba(59, 130, 246, 0.22)
+      );
+  }
+
+  .menu-section-title {
+    @apply px-2 py-1.5 text-xs font-queensides uppercase tracking-wide text-slate-500;
+  }
+
+  .menu-item {
+    @apply w-full text-left px-3 py-2 rounded-xl transition-colors duration-200;
+    @apply text-slate-700 hover:bg-indigo-50;
+  }
+
+  .dark .menu-item {
+    @apply text-slate-200 hover:bg-indigo-500/10;
+  }
+
+  .menu-item-danger {
+    @apply text-red-600 hover:bg-red-50;
+  }
+
+  .dark .menu-item-danger {
+    @apply text-red-400 hover:bg-red-500/10;
   }
 }
 
@@ -393,7 +458,8 @@ html {
 /* Qurova Font - For Branding/Logo */
 @font-face {
   font-family: "Qurova";
-  src: url("/fonts/qurova-font/qurovademolight-3l82z-webfont.woff2") format("woff2"),
+  src:
+    url("/fonts/qurova-font/qurovademolight-3l82z-webfont.woff2") format("woff2"),
     url("/fonts/qurova-font/qurovademolight-3l82z-webfont.woff") format("woff");
   font-weight: 300;
   font-style: normal;
@@ -401,7 +467,8 @@ html {
 }
 @font-face {
   font-family: "Qurova";
-  src: url("/fonts/qurova-font/qurovademoregular-dygy0-webfont.woff2") format("woff2"),
+  src:
+    url("/fonts/qurova-font/qurovademoregular-dygy0-webfont.woff2") format("woff2"),
     url("/fonts/qurova-font/qurovademoregular-dygy0-webfont.woff") format("woff");
   font-weight: 400;
   font-style: normal;
@@ -409,7 +476,8 @@ html {
 }
 @font-face {
   font-family: "Qurova";
-  src: url("/fonts/qurova-font/qurovademomedium-pg4lz-webfont.woff2") format("woff2"),
+  src:
+    url("/fonts/qurova-font/qurovademomedium-pg4lz-webfont.woff2") format("woff2"),
     url("/fonts/qurova-font/qurovademomedium-pg4lz-webfont.woff") format("woff");
   font-weight: 500;
   font-style: normal;
@@ -417,7 +485,8 @@ html {
 }
 @font-face {
   font-family: "Qurova";
-  src: url("/fonts/qurova-font/qurovademosemibold-xrzqr-webfont.woff2") format("woff2"),
+  src:
+    url("/fonts/qurova-font/qurovademosemibold-xrzqr-webfont.woff2") format("woff2"),
     url("/fonts/qurova-font/qurovademosemibold-xrzqr-webfont.woff") format("woff");
   font-weight: 600;
   font-style: normal;
@@ -425,7 +494,8 @@ html {
 }
 @font-face {
   font-family: "Qurova";
-  src: url("/fonts/qurova-font/qurovademobold-zp2ak-webfont.woff2") format("woff2"),
+  src:
+    url("/fonts/qurova-font/qurovademobold-zp2ak-webfont.woff2") format("woff2"),
     url("/fonts/qurova-font/qurovademobold-zp2ak-webfont.woff") format("woff");
   font-weight: 700;
   font-style: normal;
@@ -435,7 +505,8 @@ html {
 /* Monainn Font - For Body Text */
 @font-face {
   font-family: "Monainn";
-  src: url("/fonts/monainn-font/monainnregular-rpwko-webfont.woff2") format("woff2"),
+  src:
+    url("/fonts/monainn-font/monainnregular-rpwko-webfont.woff2") format("woff2"),
     url("/fonts/monainn-font/monainnregular-rpwko-webfont.woff") format("woff");
   font-weight: 400;
   font-style: normal;
@@ -468,8 +539,183 @@ html {
 /* Dattermatter Font - For Special Display Text */
 @font-face {
   font-family: "Dattermatter";
-  src: url("/fonts/dattermatter-font/DattermatterBoldPersoinalUseRegular-GOxqg.ttf") format("truetype");
+  src: url("/fonts/dattermatter-font/DattermatterBoldPersoinalUseRegular-GOxqg.ttf")
+    format("truetype");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dynamic Wallet Connect Button Overrides                                     */
+/* -------------------------------------------------------------------------- */
+/* Scope overrides to the dynamic wallet widget wrapper to avoid leaking styles */
+.dynamic-wallet-theme [data-testid="ConnectButton"],
+.dynamic-wallet-theme .button.button--primary.connect-button[data-testid="ConnectButton"] {
+  appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  padding: 0.75rem 1rem !important; /* ~px-4 py-3 */
+  min-height: 44px !important; /* touch target */
+  border-radius: 0.75rem !important; /* rounded-xl */
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: linear-gradient(90deg, #f3e8ff, #e9d5ff) !important; /* light purple */
+  color: #ffffff !important;
+  box-shadow: none !important;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    filter 200ms ease,
+    background 200ms ease !important;
+  text-decoration: none !important;
+}
+
+.dynamic-wallet-theme [data-testid="ConnectButton"]:hover {
+  filter: brightness(1.05) !important;
+  box-shadow: none !important;
+}
+
+.dynamic-wallet-theme [data-testid="ConnectButton"]:active {
+  transform: scale(0.98) !important;
+}
+
+.dynamic-wallet-theme [data-testid="ConnectButton"]:focus {
+  outline: 2px solid rgba(99, 102, 241, 0.5) !important;
+  box-shadow: none !important;
+}
+
+.dynamic-wallet-theme [data-testid="ConnectButton"]:disabled,
+.dynamic-wallet-theme [data-testid="ConnectButton"][aria-disabled="true"] {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  filter: saturate(0.8) !important;
+}
+
+/* Typography inside the Dynamic connect button */
+.dynamic-wallet-theme [data-testid="ConnectButton"] .typography,
+.dynamic-wallet-theme [data-testid="ConnectButton"] .typography-button__content {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* Dark mode adjustments to align with theme */
+.dark .dynamic-wallet-theme [data-testid="ConnectButton"] {
+  background: linear-gradient(90deg, #e9d5ff, #d8b4fe) !important; /* light purple (dark mode) */
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+.dark .dynamic-wallet-theme [data-testid="ConnectButton"]:hover {
+  filter: brightness(1.08) !important;
+}
+
+/* Theme-driven CSS variables for Dynamic connect button */
+.dynamic-wallet-theme {
+  --dynamic-connect-button-background: linear-gradient(
+    90deg,
+    hsl(var(--primary)),
+    hsl(var(--ring))
+  );
+  --dynamic-connect-button-border: 1px solid hsl(var(--border) / 0.35);
+  /* Dynamic divides the provided radius by 2, so set *2 to yield var(--radius) */
+  --dynamic-connect-button-radius: calc(var(--radius) * 2);
+  --dynamic-connect-button-shadow:
+    0 10px 25px -5px rgba(99, 102, 241, 0.35), 0 8px 16px -6px rgba(168, 85, 247, 0.25);
+}
+
+.dark .dynamic-wallet-theme {
+  --dynamic-connect-button-background: linear-gradient(
+    90deg,
+    hsl(var(--primary)),
+    hsl(var(--ring))
+  );
+  --dynamic-connect-button-border: 1px solid hsl(var(--border) / 0.45);
+  --dynamic-connect-button-shadow:
+    0 12px 28px -6px rgba(99, 102, 241, 0.45), 0 10px 20px -6px rgba(168, 85, 247, 0.35);
+}
+
+/* Ensure label color aligns with theme foreground */
+.dynamic-wallet-theme .connect-button,
+.dynamic-wallet-theme [data-testid="ConnectButton"] {
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.dynamic-wallet-theme .connect-button:hover,
+.dynamic-wallet-theme [data-testid="ConnectButton"]:hover {
+  filter: brightness(1.06) !important;
+}
+
+/* Variant: Default (theme-driven gradient) */
+.dynamic-wallet-theme.connect-variant-default [data-testid="ConnectButton"] {
+  border-radius: var(--radius) !important;
+  background: linear-gradient(90deg, #f3e8ff, #e9d5ff) !important; /* light purple */
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--border) / 0.25) !important;
+  box-shadow: none !important;
+}
+
+.dark .dynamic-wallet-theme.connect-variant-default [data-testid="ConnectButton"] {
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--ring))) !important;
+  border-color: hsl(var(--border) / 0.35) !important;
+}
+
+/* Variant: Glass (subtle, blurred, luminous) */
+.dynamic-wallet-theme.connect-variant-glass [data-testid="ConnectButton"] {
+  border-radius: var(--radius) !important;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.15),
+    hsl(var(--ring) / 0.15)
+  ) !important;
+  backdrop-filter: blur(12px) !important;
+  border-color: hsl(var(--border) / 0.35) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+.dynamic-wallet-theme.connect-variant-glass [data-testid="ConnectButton"]:hover {
+  filter: brightness(1.08) !important;
+}
+
+/* Variant: Outline (clean, minimal accent) */
+.dynamic-wallet-theme.connect-variant-outline [data-testid="ConnectButton"] {
+  border-radius: var(--radius) !important;
+  background: transparent !important;
+  border-width: 1.5px !important;
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary)) !important;
+  box-shadow: none !important;
+}
+.dynamic-wallet-theme.connect-variant-outline [data-testid="ConnectButton"]:hover {
+  background: hsl(var(--primary) / 0.08) !important;
+}
+
+/* Variant: Minimal (surface-matched) */
+.dynamic-wallet-theme.connect-variant-minimal [data-testid="ConnectButton"] {
+  border-radius: var(--radius) !important;
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  box-shadow: none !important;
+}
+.dynamic-wallet-theme.connect-variant-minimal [data-testid="ConnectButton"]:hover {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Center Dynamic widget container so ConnectButton aligns center */
+.dynamic-wallet-theme .dynamic-widget__container,
+.dynamic-shadow-dom .dynamic-widget__container {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center !important;
+  width: 100% !important;
+  gap: 0.5rem !important;
+}
+
+.dynamic-wallet-theme [data-testid="ConnectButton"],
+.dynamic-wallet-theme .connect-button {
+  margin: 0 auto !important;
 }

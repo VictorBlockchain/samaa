@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Upload, X, Play, Image as ImageIcon, Video } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -52,7 +52,7 @@ interface UserShop {
 
 export function AddProductView() {
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { address, isConnected } = useUser()
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploadedVideo, setUploadedVideo] = useState<string | null>(null)
@@ -138,7 +138,7 @@ export function AddProductView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!connected || !publicKey) {
+    if (!isConnected || !address) {
       alert("Please connect your wallet")
       return
     }
@@ -152,7 +152,7 @@ export function AddProductView() {
 
     try {
       // Get user's shop
-      const userShop = localStorage.getItem(`shop_${publicKey.toString()}`)
+      const userShop = localStorage.getItem(`shop_${address}`)
       if (!userShop) {
         alert("You need to create a shop first")
         router.push("/shop")
@@ -195,7 +195,7 @@ export function AddProductView() {
         products: [...shop.products, newProduct]
       }
 
-      localStorage.setItem(`shop_${publicKey.toString()}`, JSON.stringify(updatedShop))
+      localStorage.setItem(`shop_${address}`, JSON.stringify(updatedShop))
       
       // Redirect back to shop
       router.push("/shop?tab=myshop")
@@ -207,7 +207,7 @@ export function AddProductView() {
     }
   }
 
-  if (!connected) {
+  if (!isConnected) {
     return (
       <div className="min-h-screen relative">
         <CelestialBackground intensity="light" />

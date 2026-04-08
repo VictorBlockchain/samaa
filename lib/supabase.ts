@@ -1,10 +1,10 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+  throw new Error("Missing Supabase environment variables")
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -21,59 +21,68 @@ export interface Database {
       users: {
         Row: {
           id: string
-          solana_address: string
-          dowry_wallet_address?: string
+          // Wallets
+          wallet?: string
+          mahr_wallet_address?: string
           purse_wallet_address?: string
-          first_name: string
-          last_name: string
-          age: number
-          gender: 'male' | 'female'
-          date_of_birth: string
-          location: string
+          mahr_xftId?: string
+          purse_xftId?: string
+          // Name
+          first_name?: string
+          last_name?: string
+          full_name?: string
+          // Basic profile
+          age?: number
+          gender?: "male" | "female"
+          date_of_birth?: string
+          location?: string
           latitude?: number
           longitude?: number
           location_point?: any
           city?: string
           state?: string
-          country: string
-          education?: 'high_school' | 'bachelors' | 'masters' | 'phd' | 'trade_school' | 'other'
+          country?: string
+          bio?: string
+          // Media & interests
+          bio_tagline?: string
+          education?: "high_school" | "bachelors" | "masters" | "phd" | "trade_school" | "other"
           profession?: string
           employer?: string
           job_title?: string
           ethnicity?: string
           nationality?: string
           languages?: string[]
-          religiosity?: 'very_religious' | 'religious' | 'moderate' | 'learning'
-          prayer_frequency?: 'five_times_daily' | 'regularly' | 'sometimes' | 'learning'
-          hijab_preference?: 'always' | 'sometimes' | 'planning' | 'no'
-          marriage_intention?: 'soon' | 'within_year' | 'future'
-          marital_status?: 'never_married' | 'divorced' | 'widowed'
+          religiosity?: "very_religious" | "religious" | "moderate" | "learning"
+          prayer_frequency?: "five_times_daily" | "regularly" | "sometimes" | "learning"
+          hijab_preference?: "always" | "sometimes" | "planning" | "no"
+          marriage_intention?: "soon" | "within_year" | "future"
+          marital_status?: "never_married" | "divorced" | "widowed"
           has_children?: boolean
           wants_children?: boolean
-          bio?: string
+          want_children?: string
+          is_revert?: boolean
+          alcohol?: string
+          smoking?: string
+          psychedelics?: string
+          halal_food?: string
           interests?: string[]
           profile_photo?: string
           profile_photos?: string[]
+          additional_photos?: string[]
           voice_intro?: string
           video_intro?: string
           is_verified?: boolean
           bio_rating?: number
+          pictures_rating?: number
           response_rate?: number
+          communication_rating?: number
           last_active?: string
           is_active?: boolean
           created_at?: string
           updated_at?: string
         }
         Insert: {
-          solana_address: string
-          first_name: string
-          last_name: string
-          age: number
-          gender: 'male' | 'female'
-          date_of_birth: string
-          location: string
-          country?: string
-          // All other fields are optional for insert
+          // All fields are optional per current schema defaults
           [key: string]: any
         }
         Update: {
@@ -128,14 +137,19 @@ export interface Database {
         Row: {
           id: string
           name: string
+          category_type: string
+          parent_id?: string
           description?: string
           image_url?: string
           is_active: boolean
           sort_order: number
           created_at?: string
+          updated_at?: string
         }
         Insert: {
           name: string
+          category_type: string
+          parent_id?: string
           description?: string
           image_url?: string
           is_active?: boolean
@@ -151,12 +165,18 @@ export interface Database {
           owner_id: string
           name: string
           description?: string
-          shop_image?: string
+          logo_url?: string
+          banner_url?: string
+          status?: string
+          verified?: boolean
+          address?: any
+          contact_info?: any
+          business_info?: any
+          policies?: any
           rating: number
           total_reviews: number
-          total_sales: number
-          is_active: boolean
-          is_verified: boolean
+          total_sales?: number
+          total_sold?: number
           created_at?: string
           updated_at?: string
         }
@@ -164,9 +184,14 @@ export interface Database {
           owner_id: string
           name: string
           description?: string
-          shop_image?: string
-          is_active?: boolean
-          is_verified?: boolean
+          logo_url?: string
+          banner_url?: string
+          status?: string
+          verified?: boolean
+          address?: any
+          contact_info?: any
+          business_info?: any
+          policies?: any
         }
         Update: {
           [key: string]: any
@@ -174,47 +199,36 @@ export interface Database {
       }
       products: {
         Row: {
-          id: number
-          uuid: string
+          id: string
           shop_id: string
           category_id?: string
           name: string
           description?: string
-          price: number
-          currency: 'SOL' | 'SAMAA' | 'USD'
-          images?: string[]
-          video_url?: string
-          stock_quantity: number
-          is_in_stock: boolean
+          short_description?: string
+          sku?: string
+          brand?: string
+          condition?: "new" | "like_new" | "good" | "fair"
+          base_price: number
+          compare_at_price?: number
+          cost_price?: number
+          weight?: number
+          dimensions?: any
+          images?: any
+          tags?: string[]
+          requires_shipping?: boolean
           is_digital: boolean
+          meta_description?: string
+          seo_handle?: string
           rating: number
           total_reviews: number
-          total_sales: number
+          total_sold?: number
           view_count: number
-          tags?: string[]
-          slug?: string
           is_active: boolean
           is_featured: boolean
           created_at?: string
           updated_at?: string
         }
-        Insert: {
-          shop_id: string
-          name: string
-          price: number
-          currency?: 'SOL' | 'SAMAA' | 'USD'
-          category_id?: string
-          description?: string
-          images?: string[]
-          video_url?: string
-          stock_quantity?: number
-          is_in_stock?: boolean
-          is_digital?: boolean
-          tags?: string[]
-          slug?: string
-          is_active?: boolean
-          is_featured?: boolean
-        }
+        Insert: { [key: string]: any }
         Update: {
           [key: string]: any
         }
@@ -227,14 +241,30 @@ export interface Database {
       [_ in never]: never
     }
     Enums: {
-      gender_type: 'male' | 'female'
-      religiosity_level: 'very_religious' | 'religious' | 'moderate' | 'learning'
-      prayer_frequency: 'five_times_daily' | 'regularly' | 'sometimes' | 'learning'
-      hijab_preference: 'always' | 'sometimes' | 'planning' | 'no'
-      marriage_intention: 'soon' | 'within_year' | 'future'
-      education_level: 'high_school' | 'bachelors' | 'masters' | 'phd' | 'trade_school' | 'other'
-      marital_status: 'never_married' | 'divorced' | 'widowed'
-      currency_type: 'SOL' | 'SAMAA' | 'USD'
+      gender_type: "male" | "female"
+      religiosity_level: "very_religious" | "religious" | "moderate" | "learning"
+      prayer_frequency: "five_times_daily" | "regularly" | "sometimes" | "learning"
+      hijab_preference: "always" | "sometimes" | "planning" | "no"
+      marriage_intention: "soon" | "within_year" | "future"
+      education_level: "high_school" | "bachelors" | "masters" | "phd" | "trade_school" | "other"
+      marital_status: "never_married" | "divorced" | "widowed"
+      currency_type: "SAKK" | "SEI"
+      product_condition: "new" | "like_new" | "good" | "fair"
+      shop_status: "pending" | "active" | "suspended" | "closed"
+      product_category:
+        | "womens_fashion"
+        | "mens_formal"
+        | "hijabs_scarves"
+        | "abayas_jilbabs"
+        | "thobes_kaftans"
+        | "prayer_items"
+        | "home_decor"
+        | "gifts"
+        | "books"
+        | "perfumes_oils"
+        | "children_clothing"
+        | "modest_swimwear"
+        | "undergarments"
     }
   }
 }

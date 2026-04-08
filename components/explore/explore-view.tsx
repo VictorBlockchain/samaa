@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { ArrowLeft, Users, Sparkles, Heart, MessageCircle, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { motion, AnimatePresence } from "framer-motion"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { ProfileCard } from "./profile-card"
@@ -20,31 +20,31 @@ export function ExploreView() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
 
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { address, isConnected } = useUser()
 
   // Load matches when component mounts or tab changes
   useEffect(() => {
-    if (connected && publicKey) {
+    if (isConnected && address) {
       loadMatches()
     }
-  }, [connected, publicKey, activeTab])
+  }, [isConnected, address, activeTab])
 
   const loadMatches = async () => {
-    if (!publicKey) return
+    if (!address) return
 
     setIsLoading(true)
     try {
       switch (activeTab) {
         case 'potentials':
-          const matches = await MatchingService.getPotentialMatches(publicKey.toString())
+          const matches = await MatchingService.getPotentialMatches(address)
           setPotentialMatches(matches)
           break
         case 'wants-you':
-          const messagesReceived = await MatchingService.getUsersWhoMessagedMe(publicKey.toString())
+          const messagesReceived = await MatchingService.getUsersWhoMessagedMe(address)
           setUsersWhoMessagedMe(messagesReceived)
           break
         case 'you-want-them':
-          const messagesSent = await MatchingService.getUsersIMessaged(publicKey.toString())
+          const messagesSent = await MatchingService.getUsersIMessaged(address)
           setUsersIMessaged(messagesSent)
           break
       }
@@ -56,17 +56,17 @@ export function ExploreView() {
   }
 
   const handleViewProfile = async (profile: UserProfile) => {
-    if (!publicKey) return
+    if (!address) return
 
     // Record profile view
-    await MatchingService.recordProfileView(publicKey.toString(), profile.wallet_address)
+    await MatchingService.recordProfileView(address, profile.wallet_address)
 
     // Navigate to profile page
-    router.push(`/profile/${profile.wallet_address}`)
+    router.push(`/profile?address=${profile.wallet_address}`)
   }
 
   const handleSendMessage = (profile: UserProfile) => {
-    if (!publicKey) return
+    if (!address) return
 
     // Navigate to messaging interface to compose message
     router.push(`/messages/compose/${profile.wallet_address}`)
@@ -158,7 +158,7 @@ export function ExploreView() {
 
         {/* Content */}
         <div className="p-6">
-          {!connected ? (
+          {!isConnected ? (
             /* Not Connected State */
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center max-w-md mx-auto">

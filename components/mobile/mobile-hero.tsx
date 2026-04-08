@@ -1,11 +1,10 @@
 "use client"
 
 import { motion, useScroll } from "framer-motion"
-import { useRef, useState, useEffect } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
-import { useWallet } from "@solana/wallet-adapter-react"
-import { CelestialBackground } from "@/components/ui/celestial-background"
-import { User, Camera, Heart, Search, MessageCircle } from "lucide-react"
+import { useAuth } from "@/app/context/AuthContext"
+import { User, Search, MessageCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { loadProfile, isProfileComplete } from "@/utils/profile-storage"
@@ -25,15 +24,15 @@ export function MobileHero() {
   const [profileComplete, setProfileComplete] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
 
-  const { connected, publicKey } = useWallet()
+  const { isAuthenticated, userId } = useAuth()
 
-  // Load user profile when wallet connects
+  // Load user profile when authenticated
   useEffect(() => {
     const checkProfile = async () => {
-      if (connected && publicKey) {
+      if (isAuthenticated && userId) {
         setIsLoadingProfile(true)
         try {
-          const profile = await loadProfile(publicKey.toString())
+          const profile = await loadProfile(userId)
           setUserProfile(profile)
           setProfileComplete(isProfileComplete(profile))
         } catch (error) {
@@ -48,7 +47,7 @@ export function MobileHero() {
     }
 
     checkProfile()
-  }, [connected, publicKey])
+  }, [isAuthenticated, userId])
 
   const features = [
     {
@@ -70,17 +69,17 @@ export function MobileHero() {
     },
     {
       id: 2,
-      icon: "👛",
-      title: "Financial Transparency",
-      description: "Dowry wallets and purses eliminate money worries. See financial intentions upfront, the halal way.",
+      icon: "🤝",
+      title: "Guardian Involvement",
+      description: "Wali/guardian involvement built into the process, following Islamic traditions and values.",
       color: "blue",
     },
     {
       id: 3,
-      icon: "🚀",
-      title: "The Future of Islamic Marriage",
+      icon: "🕌",
+      title: "Islamic Values",
       description:
-        "Blockchain-powered, Web3-native platform that respects Islamic values while embracing tomorrow's technology.",
+        "A platform built on Islamic principles, helping you find a spouse the halal way.",
       color: "indigo",
     },
   ]
@@ -88,34 +87,34 @@ export function MobileHero() {
   const secondFeatures = [
     {
       id: 0,
-      icon: "🪙",
-      title: "Samaa Token",
+      icon: "✅",
+      title: "Verified Profiles",
       description:
-        "Our native cryptocurrency that powers the entire ecosystem. Accept payments, build your business, and more.",
+        "Know who you're talking to with verified profiles and community references.",
       color: "indigo",
     },
     {
       id: 1,
-      icon: "💰",
-      title: "Dowry Wallets",
+      icon: "🔒",
+      title: "Privacy First",
       description:
-        "Transparent digital wallets for managing dowry arrangements. Built on blockchain for complete transparency and Islamic compliance.",
+        "Your privacy is protected. Control who sees your profile and information.",
       color: "purple",
     },
     {
       id: 2,
-      icon: "👛",
-      title: "Purses",
+      icon: "💬",
+      title: "Video Introductions",
       description:
-        "Muslima's can create a purse to showcase their crypto financial independence.",
+        "Share video and voice introductions to let others know the real you.",
       color: "blue",
     },
     {
       id: 3,
       icon: "🛍️",
-      title: "Shop",
+      title: "Wedding Shop",
       description:
-        "Create your own shop to sell items and accept payments in Samaa tokens or solana. Build your halal business within our community.",
+        "Plan your wedding with our marketplace for Muslim fashion and gifts.",
       color: "green",
     },
   ]
@@ -173,10 +172,10 @@ export function MobileHero() {
   // Add pull-to-refresh handler:
   const handleRefresh = async () => {
     // Refresh profile data
-    if (connected && publicKey) {
+    if (isAuthenticated && userId) {
       setIsLoadingProfile(true)
       try {
-        const profile = await loadProfile(publicKey.toString())
+        const profile = await loadProfile(userId)
         setUserProfile(profile)
         setProfileComplete(isProfileComplete(profile))
       } catch (error) {
@@ -188,9 +187,9 @@ export function MobileHero() {
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen relative">
+    <div ref={containerRef} className="min-h-screen relative pt-24">
       <div className="relative z-10 min-h-screen">
-        {connected ? (
+        {isAuthenticated ? (
           // Logged in version - Profile Setup or Messages
           <>
             {/* Header - Full Width Edge to Edge */}
@@ -258,7 +257,7 @@ export function MobileHero() {
                         <span>Explore</span>
                       </button>
                       <button
-                        onClick={() => router.push(`/profile/${publicKey?.toString()}`)}
+                        onClick={() => userId && router.push(`/profile?userId=${userId}`)}
                         className="bg-white/60 hover:bg-white/80 border border-indigo-200/50 text-slate-700 py-3 px-4 rounded-xl font-queensides font-medium transition-all duration-300 flex items-center justify-center space-x-2"
                       >
                         <User className="w-4 h-4" />
@@ -285,19 +284,19 @@ export function MobileHero() {
                       <span className="text-4xl">✨</span>
                     </motion.div>
                     <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-4">
-                      Wallet Connected!
+                      Welcome to Samaa!
                     </h2>
 
-                    {/* Wallet Address Card */}
+                    {/* Account Info Card */}
                     <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 mb-4 shadow-sm">
                       <div className="text-center">
-                        <p className="text-xs text-slate-500 font-queensides mb-1">Your Wallet Address</p>
+                        <p className="text-xs text-slate-500 font-queensides mb-1">Your Account</p>
                         <p className="text-lg font-bold text-slate-800 font-mono tracking-wider">
-                          {publicKey ? `${publicKey.toString().slice(0, 6)}...${publicKey.toString().slice(-6)}` : 'Wallet Address'}
+                          {userId ? `${userId.slice(0, 8)}...${userId.slice(-4)}` : 'Account'}
                         </p>
                         <div className="flex items-center justify-center space-x-2 mt-2">
                           <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                          <span className="text-xs text-green-600 font-queensides font-medium">Connected</span>
+                          <span className="text-xs text-green-600 font-queensides font-medium">Signed In</span>
                         </div>
                       </div>
                     </div>
@@ -316,7 +315,7 @@ export function MobileHero() {
                     </div>
                   </div>
 
-                  {/* New to Crypto Section */}
+                  {/* Getting Started Section */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -337,20 +336,20 @@ export function MobileHero() {
                         <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center">
                           <span className="text-xl">🚀</span>
                         </div>
-                        <h3 className="text-xl font-bold text-slate-800 font-qurova">New to Crypto?</h3>
+                        <h3 className="text-xl font-bold text-slate-800 font-qurova">Getting Started</h3>
                       </div>
 
                       <div className="space-y-3 text-slate-600 font-queensides">
                         <p className="leading-relaxed">
-                          You just logged in the <span className="font-semibold text-indigo-600">Web3 way</span> - no emails or passwords needed, just your wallet address.
+                          You're now signed in! Complete your profile to start <span className="font-semibold text-indigo-600">connecting with potential matches</span>.
                         </p>
 
                         <p className="leading-relaxed">
-                          Your wallet address can receive <span className="font-semibold text-purple-600">Solana</span> or <span className="font-semibold text-indigo-600">SAMAA tokens</span> from anyone, anywhere in the world.
+                          Your profile helps us find <span className="font-semibold text-purple-600">compatible matches</span> based on your preferences and Islamic values.
                         </p>
                       </div>
 
-                      {/* Crypto Benefits */}
+                      {/* Benefits */}
                       <div className="grid grid-cols-2 gap-3 mt-5">
                         <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 border border-indigo-200/50 shadow-sm hover:shadow-md transition-all duration-200">
                           <div className="text-center">
@@ -363,25 +362,25 @@ export function MobileHero() {
                         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200/50 shadow-sm hover:shadow-md transition-all duration-200">
                           <div className="text-center">
                             <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">🌍</span>
+                              <span className="text-white text-sm">🤝</span>
                             </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">Global</p>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">Halal</p>
                           </div>
                         </div>
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200/50 shadow-sm hover:shadow-md transition-all duration-200">
                           <div className="text-center">
                             <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">⚡</span>
+                              <span className="text-white text-sm">👨‍👩‍👧</span>
                             </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">Fast</p>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">Family Focus</p>
                           </div>
                         </div>
                         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200/50 shadow-sm hover:shadow-md transition-all duration-200">
                           <div className="text-center">
                             <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">🔓</span>
+                              <span className="text-white text-sm">🕌</span>
                             </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">No Passwords</p>
+                            <p className="text-sm font-queensides text-slate-700 font-semibold">Islamic Values</p>
                           </div>
                         </div>
                       </div>
@@ -866,38 +865,6 @@ export function MobileHero() {
                   <div className="w-1 h-1 bg-white/40 rounded-full"></div>
                 </div>
               </div>
-
-              {/* Get Started with Crypto Button */}
-              <button
-                onClick={() => router.push("/crypto-guide")}
-                className="relative w-full bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-slate-800 font-bold py-5 px-7 rounded-2xl border-2 border-purple-200/50 hover:border-purple-300/70 transition-all duration-300 shadow-lg hover:shadow-xl backdrop-blur-sm overflow-hidden group"
-              >
-                {/* Arabic-inspired corner decorations */}
-                <div className="absolute top-2 left-2 w-5 h-5 border-l-2 border-t-2 border-purple-300/50 rounded-tl-lg"></div>
-                <div className="absolute top-2 right-2 w-5 h-5 border-r-2 border-t-2 border-indigo-300/50 rounded-tr-lg"></div>
-                <div className="absolute bottom-2 left-2 w-5 h-5 border-l-2 border-b-2 border-indigo-300/50 rounded-bl-lg"></div>
-                <div className="absolute bottom-2 right-2 w-5 h-5 border-r-2 border-b-2 border-purple-300/50 rounded-br-lg"></div>
-
-                {/* Geometric pattern overlay */}
-                <div className="absolute inset-0 opacity-5 group-hover:opacity-10 transition-opacity duration-300">
-                  <div className="absolute top-3 left-3 w-2 h-2 border border-purple-300/40 transform rotate-45"></div>
-                  <div className="absolute top-5 right-5 w-1.5 h-1.5 bg-indigo-300/30 rounded-full"></div>
-                  <div className="absolute bottom-3 left-5 w-1.5 h-1.5 bg-purple-300/30 rounded-full"></div>
-                  <div className="absolute bottom-5 right-3 w-2 h-2 border border-indigo-300/40 transform rotate-45"></div>
-                </div>
-
-                <div className="relative z-10 flex items-center justify-center space-x-3">
-                  <div className="text-2xl">🚀</div>
-                  <span className="text-lg font-queensides tracking-wide">Get Started with Crypto</span>
-                </div>
-
-                {/* Subtle decorative divider */}
-                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center space-x-1">
-                  <div className="w-0.5 h-0.5 bg-purple-400/40 rounded-full"></div>
-                  <div className="w-1 h-1 border border-indigo-300/30 rounded-full"></div>
-                  <div className="w-0.5 h-0.5 bg-indigo-400/40 rounded-full"></div>
-                </div>
-              </button>
 
               {/* Support Center Button */}
               <button

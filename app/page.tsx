@@ -1,10 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import * as React from "react"
 import { SplashScreen } from "@/components/mobile/splash-screen"
 import { MobileLayout } from "@/components/mobile/mobile-layout"
 import { DesktopLayout } from "@/components/desktop/desktop-layout"
-import { WalletContextProvider } from "@/components/wallet/wallet-context-provider"
 import { Inter, Playfair_Display } from "next/font/google"
 
 const inter = Inter({
@@ -20,10 +19,10 @@ const playfair = Playfair_Display({
 })
 
 export default function HomePage() {
-  const [isMobile, setIsMobile] = useState(false)
-  const [showSplash, setShowSplash] = useState(true)
+  const [isMobile, setIsMobile] = React.useState(false)
+  const [showSplash, setShowSplash] = React.useState(true)
 
-  useEffect(() => {
+  React.useEffect(() => {
     const checkDevice = () => {
       setIsMobile(window.innerWidth < 768)
     }
@@ -56,18 +55,16 @@ export default function HomePage() {
 
   return (
     <main className={`${inter.variable} ${playfair.variable} font-sans`}>
-      <WalletContextProvider>
-        {showSplash ? (
-          <SplashScreen onComplete={() => {
-            setShowSplash(false)
-            sessionStorage.setItem('splashShown', 'true')
-          }} />
-        ) : isMobile ? (
-          <MobileLayout />
-        ) : (
-          <DesktopLayout />
-        )}
-      </WalletContextProvider>
+      {showSplash ? (
+        <SplashScreen onComplete={() => {
+          setShowSplash(false)
+          sessionStorage.setItem('splashShown', 'true')
+        }} />
+      ) : isMobile ? (
+        <MobileLayout />
+      ) : (
+        <DesktopLayout />
+      )}
     </main>
   )
 }

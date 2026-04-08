@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,7 +24,7 @@ import { CelestialBackground } from "@/components/ui/celestial-background"
 import { useRouter } from "next/navigation"
 
 export function ProfileMenu() {
-  const { publicKey, connected } = useWallet()
+  const { address, isConnected } = useUser()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("marriage")
 
@@ -116,7 +116,7 @@ export function ProfileMenu() {
 
         <div className="p-4 space-y-4">
           {/* Profile Preview */}
-          {connected && publicKey && (
+          {isConnected && address && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
               <div className="relative inline-block mb-4">
                 <div className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full border-4 border-pink-400 flex items-center justify-center">
@@ -132,7 +132,7 @@ export function ProfileMenu() {
                 variant="outline"
                 size="sm"
                 className="font-queensides"
-                onClick={() => router.push(`/profile/${publicKey.toString()}`)}
+                onClick={() => router.push(`/profile?address=${address}`)}
               >
                 View profile
               </Button>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ArrowLeft, Heart, Star, Play, ShoppingCart, Truck, Shield, RotateCcw, Eye, Edit3, Plus, Minus } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CelestialBackground } from "@/components/ui/celestial-background"
@@ -199,7 +199,7 @@ interface ShopItemViewProps {
 
 export function ShopItemView({ itemId }: ShopItemViewProps) {
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { address, isConnected } = useUser()
   const [product, setProduct] = useState<Product | null>(null)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
@@ -231,7 +231,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
 
   useEffect(() => {
     loadProduct()
-  }, [itemId, publicKey])
+  }, [itemId, address])
 
   const isClothingCategory = (category: string) => {
     return category === "Women's Clothes" ||
@@ -244,9 +244,9 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
     // First check global products
     let foundProduct = GLOBAL_PRODUCTS.find(p => p.id === itemId)
     
-    if (!foundProduct && publicKey) {
+    if (!foundProduct && address) {
       // Check user shops for the product
-      const userShop = localStorage.getItem(`shop_${publicKey.toString()}`)
+      const userShop = localStorage.getItem(`shop_${address}`)
       if (userShop) {
         const shop = JSON.parse(userShop)
         foundProduct = shop.products.find((p: Product) => p.id === itemId)
@@ -262,7 +262,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   }
 
   const handlePurchase = () => {
-    if (!connected) {
+    if (!isConnected) {
       alert("Please connect your wallet to make a purchase")
       return
     }
@@ -286,7 +286,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   }
 
   const handleAddToCart = (): boolean => {
-    if (!connected || !publicKey || !product) {
+    if (!isConnected || !address || !product) {
       alert("Please connect your wallet to add items to cart")
       return false
     }
@@ -318,7 +318,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
       sellerWallet: 'seller_wallet_address' // This should come from the product data
     }
 
-    const success = CartService.addToCart(publicKey.toString(), cartItem)
+    const success = CartService.addToCart(address, cartItem)
 
     if (success) {
       alert(`Added ${quantity} ${product.name} to cart!`)

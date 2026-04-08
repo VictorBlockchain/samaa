@@ -4,7 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, User, Camera, Heart, Search, MapPin, Calendar, Briefcase, GraduationCap } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { CelestialBackground } from "@/components/ui/celestial-background"
@@ -46,7 +46,7 @@ export default function ProfileSetupPage() {
   })
 
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { isConnected, address } = useUser()
 
   const steps = [
     { id: "basic", label: "Basic Info", icon: User },
@@ -69,7 +69,7 @@ export default function ProfileSetupPage() {
     // Save to JSON file (mock implementation)
     const profileWithId = {
       id: `user_${Date.now()}`,
-      walletAddress: publicKey?.toString(),
+      walletAddress: address || undefined,
       ...profileData,
       createdAt: new Date().toISOString(),
       isVerified: false,

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Bell, Heart, MessageCircle, UserPlus, Gift } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useAuth } from "@/app/context/AuthContext"
 import { Card } from "@/components/ui/card"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 
@@ -27,7 +27,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState(NOTIFICATIONS)
   
   const router = useRouter()
-  const { connected } = useWallet()
+  const { isAuthenticated: connected } = useAuth()
 
   const tabs = [
     { id: "all", label: "All", icon: Bell },

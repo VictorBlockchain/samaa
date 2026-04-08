@@ -1,10 +1,10 @@
 "use client"
 
 import React from "react"
-import { Heart, Search, ShoppingBag, User, Wallet, Home } from "lucide-react"
+import { Heart, Search, ShoppingBag, User, Inbox, Home } from "lucide-react"
 import { motion } from "framer-motion"
 import { useRouter, usePathname } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { useState } from "react"
 import { RandomMatchModal } from "@/components/mobile/random-match-modal"
 
@@ -20,11 +20,11 @@ export function MobileBottomNav({ currentTab, setCurrentTab }: MobileBottomNavPr
     { id: "suitors", icon: Search, label: "Suitors" },
     { id: "shop", icon: ShoppingBag, label: "Shop" },
     { id: "home", icon: Heart, label: "Home" },
-    { id: "wallet", icon: Wallet, label: "Wallet" },
+    { id: "Inbox", icon: Inbox, label: "Inbox" },
     { id: "profile", icon: User, label: "Profile" },
   ]
 
-  const { publicKey, connected } = useWallet()
+  const { userId, isAuthenticated } = useUser()
   const router = useRouter()
   const pathname = usePathname()
   const isOnHomePage = pathname === "/"
@@ -53,19 +53,15 @@ export function MobileBottomNav({ currentTab, setCurrentTab }: MobileBottomNavPr
 
     // Handle navigation for other specific tabs
     if (tabId === "profile") {
-      if (connected && publicKey) {
-        // Use the actual connected wallet address
-        router.push(`/profile/${publicKey.toString()}`)
+      if (isAuthenticated && userId) {
+        router.push(`/profile?userId=${userId}`)
       } else {
-        // If not connected, redirect to profile setup
-        router.push("/profile-setup")
+        router.push("/auth/login")
       }
     } else if (tabId === "suitors") {
       router.push("/explore")
     } else if (tabId === "shop") {
       router.push("/shop")
-    } else if (tabId === "wallet") {
-      router.push("/wallet")
     } else {
       setCurrentTab(tabId)
     }

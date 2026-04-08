@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { useWallet, useConnection } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { 
   X, 
   CreditCard, 
@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CartItem, OrderService, CartService } from "@/lib/cart"
-import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js"
 
 interface CheckoutModalProps {
   isOpen: boolean
@@ -52,8 +51,7 @@ export function CheckoutModal({
   currency,
   onSuccess 
 }: CheckoutModalProps) {
-  const { publicKey, sendTransaction } = useWallet()
-  const { connection } = useConnection()
+  const { address, isConnected } = useUser()
   const [currentStep, setCurrentStep] = useState<'shipping' | 'payment' | 'processing' | 'success'>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +88,7 @@ export function CheckoutModal({
   }
 
   const handlePayment = async () => {
-    if (!publicKey || !sendTransaction) {
+    if (!isConnected || !address) {
       setError('Wallet not connected')
       return
     }
@@ -100,42 +98,15 @@ export function CheckoutModal({
     setCurrentStep('processing')
 
     try {
-      // For SOL payments, create a transaction
-      if (currency === 'SOL') {
-        // In a real implementation, you would send to the seller's wallet
-        // For demo purposes, we'll send to a demo wallet
-        const demoSellerWallet = new PublicKey('11111111111111111111111111111112') // System program ID as demo
-        
-        const transaction = new Transaction().add(
-          SystemProgram.transfer({
-            fromPubkey: publicKey,
-            toPubkey: demoSellerWallet,
-            lamports: Math.floor(totalAmount * LAMPORTS_PER_SOL), // Convert SOL to lamports
-          })
-        )
-
-        // Get recent blockhash
-        const { blockhash } = await connection.getLatestBlockhash()
-        transaction.recentBlockhash = blockhash
-        transaction.feePayer = publicKey
-
-        // Send transaction
-        const signature = await sendTransaction(transaction, connection)
-        
-        // Wait for confirmation
-        await connection.confirmTransaction(signature, 'confirmed')
-        
-        setTxHash(signature)
-      } else {
-        // For SAMAA token payments, you would use SPL token transfer
-        // For demo purposes, we'll simulate the transaction
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        setTxHash('demo_samaa_transaction_hash')
-      }
+      // For EVM payments, integrate with wagmi or your payment flow.
+      // For now, simulate the transaction for both currencies.
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      const demoHash = currency === 'SOL' ? 'demo_evm_sol_tx_hash' : 'demo_evm_samaa_tx_hash'
+      setTxHash(demoHash)
 
       // Create order in database
       const order = await OrderService.createOrder(
-        publicKey.toString(),
+        address,
         cartItems,
         shippingForm,
         currency
@@ -147,7 +118,7 @@ export function CheckoutModal({
       }
 
       // Clear cart
-      CartService.clearCart(publicKey.toString())
+      CartService.clearCart(address)
 
       setCurrentStep('success')
       

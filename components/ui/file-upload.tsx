@@ -320,18 +320,28 @@ export function FileUpload({
               </motion.div>
             ))}
 
-            {/* Upload Button */}
-            {onUpload && files.some(f => f.status === 'pending') && (
+            <div className="flex items-center gap-2">
+              {onUpload && files.some(f => f.status === 'pending') && (
+                <motion.button
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  onClick={handleUpload}
+                  disabled={disabled}
+                  className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-queensides"
+                >
+                  Upload Files
+                </motion.button>
+              )}
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                onClick={handleUpload}
+                onClick={() => fileInputRef.current?.click()}
                 disabled={disabled}
-                className="w-full py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-queensides"
+                className="py-2 px-4 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-queensides"
               >
-                Upload Files
+                Add More
               </motion.button>
-            )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, ShoppingBag, Store, Package, Truck, Plus, Edit3, Eye, Trash2, Users, TrendingUp, Calendar, CreditCard, CheckCircle, Clock, X, Search, Star, Heart, Share2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -162,7 +162,7 @@ export function ShopView() {
   const [isSearching, setIsSearching] = useState(false)
 
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { address, isConnected } = useUser()
 
   // Handle tab parameter from URL
   useEffect(() => {
@@ -181,34 +181,34 @@ export function ShopView() {
 
   // Load user's shop on component mount
   useEffect(() => {
-    if (connected && publicKey) {
+    if (isConnected && address) {
       loadUserShop()
     }
-  }, [connected, publicKey])
+  }, [isConnected, address])
 
   // Load orders when orders tab is active
   useEffect(() => {
-    if (activeTab === "orders" && connected && publicKey) {
+    if (activeTab === "orders" && isConnected && address) {
       loadOrders()
     }
-  }, [activeTab, connected, publicKey])
+  }, [activeTab, isConnected, address])
 
   const loadUserShop = () => {
-    if (!publicKey) return
+    if (!address) return
 
-    const savedShop = localStorage.getItem(`shop_${publicKey.toString()}`)
+    const savedShop = localStorage.getItem(`shop_${address}`)
     if (savedShop) {
       setUserShop(JSON.parse(savedShop))
     }
   }
 
   const loadOrders = async () => {
-    if (!publicKey) return
+    if (!address) return
 
     setOrdersLoading(true)
     try {
       // Load orders placed by this user (as customer)
-      const userOrders = await OrderService.getUserOrders(publicKey.toString())
+      const userOrders = await OrderService.getUserOrders(address)
       setPlacedOrders(userOrders)
 
       // Load orders received by this user's shop (as seller)
@@ -223,30 +223,30 @@ export function ShopView() {
   }
 
   const createShop = (shopData: Omit<UserShop, 'id' | 'ownerWallet' | 'products' | 'createdAt'>) => {
-    if (!publicKey) return
+    if (!address) return
 
     const newShop: UserShop = {
       id: `shop_${Date.now()}`,
-      ownerWallet: publicKey.toString(),
+      ownerWallet: address,
       products: [],
       createdAt: new Date().toISOString(),
       ...shopData
     }
 
-    localStorage.setItem(`shop_${publicKey.toString()}`, JSON.stringify(newShop))
+    localStorage.setItem(`shop_${address}`, JSON.stringify(newShop))
     setUserShop(newShop)
     setShowCreateShop(false)
   }
 
   const updateShop = (shopData: Omit<UserShop, 'id' | 'ownerWallet' | 'products' | 'createdAt'>) => {
-    if (!publicKey || !userShop) return
+    if (!address || !userShop) return
 
     const updatedShop: UserShop = {
       ...userShop,
       ...shopData
     }
 
-    localStorage.setItem(`shop_${publicKey.toString()}`, JSON.stringify(updatedShop))
+    localStorage.setItem(`shop_${address}`, JSON.stringify(updatedShop))
     setUserShop(updatedShop)
     setShowEditShop(false)
   }
@@ -254,7 +254,7 @@ export function ShopView() {
 
 
   const updateProduct = (productId: string, productData: Partial<Product>) => {
-    if (!userShop || !publicKey) return
+    if (!userShop || !address) return
 
     const updatedProducts = userShop.products.map(product =>
       product.id === productId ? { ...product, ...productData } : product
@@ -265,13 +265,13 @@ export function ShopView() {
       products: updatedProducts
     }
 
-    localStorage.setItem(`shop_${publicKey.toString()}`, JSON.stringify(updatedShop))
+    localStorage.setItem(`shop_${address}`, JSON.stringify(updatedShop))
     setUserShop(updatedShop)
     setEditingProduct(null)
   }
 
   const deleteProduct = (productId: string) => {
-    if (!userShop || !publicKey) return
+    if (!userShop || !address) return
 
     const updatedProducts = userShop.products.filter(product => product.id !== productId)
     const updatedShop = {
@@ -279,7 +279,7 @@ export function ShopView() {
       products: updatedProducts
     }
 
-    localStorage.setItem(`shop_${publicKey.toString()}`, JSON.stringify(updatedShop))
+    localStorage.setItem(`shop_${address}`, JSON.stringify(updatedShop))
     setUserShop(updatedShop)
   }
 
@@ -310,7 +310,7 @@ export function ShopView() {
   }
 
   const handleViewProduct = (productId: string) => {
-    router.push(`/shop/item/${productId}`)
+    router.push(`/shop/item?id=${productId}`)
   }
 
   // Helper functions for orders
@@ -618,7 +618,7 @@ export function ShopView() {
                   </motion.div>
                 )}
 
-                {!connected && (
+        {!isConnected && (
                   <Card className="p-4 mt-6 bg-amber-50 border-amber-200">
                     <div className="flex items-center space-x-3">
                       <ShoppingBag className="w-5 h-5 text-amber-600" />
@@ -673,7 +673,7 @@ export function ShopView() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {!connected ? (
+        {!isConnected ? (
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1045,7 +1045,7 @@ export function ShopView() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {!connected ? (
+        {!isConnected ? (
                   <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}

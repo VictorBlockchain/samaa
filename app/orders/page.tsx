@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { 
   ArrowLeft, 
   Package, 
@@ -24,23 +24,23 @@ import { OrderService, Order } from "@/lib/cart"
 
 export default function OrdersPage() {
   const router = useRouter()
-  const { connected, publicKey } = useWallet()
+  const { isConnected, address } = useUser()
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     loadOrders()
-  }, [publicKey])
+  }, [address])
 
   const loadOrders = async () => {
-    if (!publicKey) {
+    if (!address) {
       setOrders([])
       setIsLoading(false)
       return
     }
 
     try {
-      const userOrders = await OrderService.getUserOrders(publicKey.toString())
+      const userOrders = await OrderService.getUserOrders(address)
       setOrders(userOrders)
     } catch (error) {
       console.error('Error loading orders:', error)
@@ -93,7 +93,7 @@ export default function OrdersPage() {
     })
   }
 
-  if (!connected) {
+  if (!isConnected) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative overflow-hidden">
         <CelestialBackground intensity="medium" />
@@ -274,16 +274,8 @@ export default function OrdersPage() {
                           <span className="text-slate-600 font-queensides">Transaction:</span>
                           <div className="flex items-center space-x-2">
                             <code className="text-xs bg-slate-100 px-2 py-1 rounded">
-                              {order.paymentTxHash.slice(0, 16)}...
+                              {order.paymentTxHash.slice(0, 24)}...
                             </code>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => window.open(`https://explorer.solana.com/tx/${order.paymentTxHash}`, '_blank')}
-                              className="p-1 h-auto"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </Button>
                           </div>
                         </div>
                       )}

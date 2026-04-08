@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useAuth } from "@/app/context/AuthContext"
 
 interface ProfileData {
   firstName: string
@@ -20,27 +20,28 @@ interface ProfileData {
   profilePhoto: File | null
   walletAddress: string
   createdAt: string
+  updatedAt?: string
 }
 
 export function useProfileStorage() {
-  const { publicKey, connected } = useWallet()
+  const { userId, isAuthenticated } = useAuth()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (connected && publicKey) {
+    if (isAuthenticated && userId) {
       loadProfile()
     } else {
       setProfile(null)
       setIsLoading(false)
     }
-  }, [connected, publicKey])
+  }, [isAuthenticated, userId])
 
   const loadProfile = () => {
-    if (!publicKey) return
+    if (!userId) return
 
     try {
-      const savedProfile = localStorage.getItem(`profile_${publicKey.toString()}`)
+      const savedProfile = localStorage.getItem(`profile_${userId}`)
       if (savedProfile) {
         setProfile(JSON.parse(savedProfile))
       }
@@ -52,17 +53,17 @@ export function useProfileStorage() {
   }
 
   const saveProfile = (profileData: Partial<ProfileData>) => {
-    if (!publicKey) return
+    if (!userId) return
 
     const updatedProfile = {
       ...profile,
       ...profileData,
-      walletAddress: publicKey.toString(),
+      walletAddress: userId,
       updatedAt: new Date().toISOString(),
     }
 
     try {
-      localStorage.setItem(`profile_${publicKey.toString()}`, JSON.stringify(updatedProfile))
+      localStorage.setItem(`profile_${userId}`, JSON.stringify(updatedProfile))
       setProfile(updatedProfile as ProfileData)
       return true
     } catch (error) {
@@ -97,6 +98,6 @@ export function useProfileStorage() {
     saveProfile,
     loadProfile,
     isProfileComplete: isProfileComplete(),
-    walletAddress: publicKey?.toString(),
+    walletAddress: userId ?? "",
   }
 }

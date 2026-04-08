@@ -13,7 +13,7 @@ import {
   User
 } from "lucide-react"
 import { MessageService, Conversation, Message } from "@/lib/messages"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useUser } from "@/app/context/UserContext"
 import { useRouter } from "next/navigation"
 
 interface MessageTabsProps {
@@ -29,31 +29,31 @@ export function MessageTabs({ className = "" }: MessageTabsProps) {
   
   const audioRef = useRef<HTMLAudioElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { publicKey } = useWallet()
+  const { address, isConnected } = useUser()
   const router = useRouter()
 
   // Load conversations when component mounts
   useEffect(() => {
-    if (publicKey) {
+    if (isConnected && address) {
       loadConversations()
     }
-  }, [publicKey, activeTab])
+  }, [address, isConnected, activeTab])
 
   const loadConversations = async () => {
-    if (!publicKey) return
+    if (!isConnected || !address) return
     
     setIsLoading(true)
     try {
-      const convs = await MessageService.getRecentConversations(publicKey.toString(), 5)
+      const convs = await MessageService.getRecentConversations(address, 5)
       
       // Filter based on active tab
       const filteredConvs = convs.filter(conv => {
         if (!conv.last_message) return false
         
         if (activeTab === 'received') {
-          return conv.last_message.recipient_wallet === publicKey.toString()
+          return conv.last_message.recipient_wallet === address
         } else {
-          return conv.last_message.sender_wallet === publicKey.toString()
+          return conv.last_message.sender_wallet === address
         }
       })
       
@@ -112,7 +112,7 @@ export function MessageTabs({ className = "" }: MessageTabsProps) {
   }
 
   const handleConversationClick = (conversation: Conversation) => {
-    const otherParticipant = conversation.participant_1 === publicKey?.toString() 
+    const otherParticipant = conversation.participant_1 === address 
       ? conversation.participant_2 
       : conversation.participant_1
     
@@ -145,7 +145,7 @@ export function MessageTabs({ className = "" }: MessageTabsProps) {
 
   const getOtherParticipantName = (conversation: Conversation) => {
     // In a real app, you'd fetch the user profile
-    const otherWallet = conversation.participant_1 === publicKey?.toString() 
+    const otherWallet = conversation.participant_1 === address 
       ? conversation.participant_2 
       : conversation.participant_1
     

@@ -1,20 +1,23 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, X, Bell, Settings, Clock, ShoppingCart } from "lucide-react"
-import { WalletButton } from "@/components/wallet/wallet-button"
+import { Menu, X, Bell, Clock, ShoppingCart } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { usePrayerTimes } from "@/app/hooks/use-prayer-times"
-import { useWallet } from "@solana/wallet-adapter-react"
+import { useAuth } from "@/app/context/AuthContext"
+import { useUser } from "@/app/context/UserContext"
 import { useRouter } from "next/navigation"
 import { CartService } from "@/lib/cart"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 
 export function MobileNavigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [lastScrollY, setLastScrollY] = useState(0)
   const [showNav, setShowNav] = useState(true)
   const [cartItemCount, setCartItemCount] = useState(0)
-  const { connected, disconnect, publicKey } = useWallet()
+  const { isAuthenticated, userId, signOut } = useAuth()
+  const { profile } = useUser()
   const { nextPrayer, timeToNext, isLoading: prayerLoading } = usePrayerTimes()
   const router = useRouter()
 
@@ -38,8 +41,8 @@ export function MobileNavigation() {
   // Update cart count
   useEffect(() => {
     const updateCartCount = () => {
-      if (publicKey) {
-        const count = CartService.getCartItemCount(publicKey.toString())
+      if (userId) {
+        const count = CartService.getCartItemCount(userId)
         setCartItemCount(count)
       } else {
         setCartItemCount(0)
@@ -53,7 +56,7 @@ export function MobileNavigation() {
     window.addEventListener('focus', handleFocus)
 
     return () => window.removeEventListener('focus', handleFocus)
-  }, [publicKey, isOpen]) // Update when wallet changes or menu opens
+  }, [userId, isOpen]) // Update when user changes or menu opens
 
   return (
     <>
@@ -87,7 +90,7 @@ export function MobileNavigation() {
               </motion.div>
             )}
 
-            {connected && (
+            {isAuthenticated && (
               <>
                 <motion.button
                   whileHover={{ scale: 1.1, rotate: 5 }}
@@ -128,19 +131,57 @@ export function MobileNavigation() {
                   </motion.button>
                 )}
 
-                <motion.button
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => router.push('/settings')}
-                  className="p-3 rounded-2xl glass-button focus-ring relative overflow-hidden group"
-                >
-                  <Settings className="w-5 h-5 text-indigo-600 relative z-10" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </motion.button>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="p-1 rounded-full focus-ring relative overflow-hidden group"
+                    >
+                      <Avatar className="h-10 w-10 ring-1 ring-indigo-200 shadow-sm">
+                        <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                        <AvatarFallback>U</AvatarFallback>
+                      </Avatar>
+                    </motion.button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="menu-dropdown">
+                    <div className="menu-section-title">Account</div>
+                    <button
+                      className="menu-item"
+                      onClick={() => router.push(userId ? `/profile?userId=${userId}` : '/profile-setup')}
+                    >
+                      View Profile
+                    </button>
+                    <button
+                      className="menu-item"
+                      onClick={() => router.push('/settings')}
+                    >
+                      Settings
+                    </button>
+                    <button
+                      className="menu-item menu-item-danger"
+                      onClick={async () => {
+                        try { await signOut() } catch {}
+                        router.push('/')
+                      }}
+                    >
+                      Sign Out
+                    </button>
+                  </PopoverContent>
+                </Popover>
               </>
             )}
 
-            {!connected && <WalletButton />}
+            {!isAuthenticated && (
+              <motion.button
+                onClick={() => router.push('/auth/login')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium"
+              >
+                Sign In
+              </motion.button>
+            )}
 
             <motion.button
               onClick={() => setIsOpen(!isOpen)}
@@ -214,10 +255,6 @@ export function MobileNavigation() {
                   {[
                     { title: "About Us", icon: "ℹ️", category: "info", href: "/about" },
                     { title: "Samaa Stats", icon: "📊", category: "info", href: "/samaa-stats" },
-                    { title: "SAMAA Token", icon: "🪙", category: "info", href: "/samaa-token" },
-                    { title: "Why Web3/Crypto", icon: "🚀", category: "info", href: "/why-web3" },
-                    { title: "Dowry/Purse Wallets", icon: "💰", category: "info", href: "/wallet-guide" },
-                    { title: "Get Started w/Crypto", icon: "🎓", category: "info", href: "/crypto-guide" },
                     { title: "Support Center", icon: "💬", category: "info", href: "/support" },
                   ].map((item, index) => (
                     <motion.button
@@ -332,8 +369,8 @@ export function MobileNavigation() {
                   ))}
                 </div>
 
-                {/* Account Section - Only show if connected */}
-                {connected && (
+                {/* Account Section - Only show if authenticated */}
+                {isAuthenticated && (
                   <>
                     <div className="px-6 py-3 border-t border-indigo-100/30">
                       <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Account</h3>
@@ -344,8 +381,8 @@ export function MobileNavigation() {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.4, duration: 0.4 }}
                         className="flex items-center space-x-4 py-3 px-6 hover:bg-red-50/50 transition-all duration-200 group w-full text-left"
-                        onClick={() => {
-                          disconnect()
+                        onClick={async () => {
+                          try { await signOut() } catch {}
                           setIsOpen(false)
                         }}
                       >
@@ -354,7 +391,7 @@ export function MobileNavigation() {
                         </div>
                         <div className="flex-1">
                           <span className="font-medium text-slate-700 font-queensides group-hover:text-red-600 transition-colors duration-200">
-                            Disconnect Wallet
+                            Sign Out
                           </span>
                         </div>
                         <svg

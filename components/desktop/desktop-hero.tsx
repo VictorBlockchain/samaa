@@ -387,7 +387,7 @@ export function DesktopHero() {
 
                 {/* Description */}
                 <p className="text-lg text-slate-600 mb-8 font-queensides leading-relaxed">
-                  Samaa is designed for mobile-first Islamic matrimony. For the best experience with wallet connections,
+                  Samaa is designed for mobile-first Islamic matrimony. For the best experience with profile setup,
                   messaging, and all features, please visit us on your mobile device.
                 </p>
 
@@ -395,7 +395,7 @@ export function DesktopHero() {
                 <div className="space-y-4 mb-8">
                   <div className="flex items-center space-x-3 text-left">
                     <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                    <span className="text-slate-600 font-queensides">Seamless wallet integration</span>
+                    <span className="text-slate-600 font-queensides">Easy profile management</span>
                   </div>
                   <div className="flex items-center space-x-3 text-left">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
