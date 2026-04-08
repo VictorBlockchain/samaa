@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
-import { useUser } from "@/app/context/UserContext"
+import { useAuth } from "@/app/context/AuthContext"
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -11,129 +11,82 @@ import {
   Plus, 
   Minus, 
   CreditCard,
-  Truck,
-  MapPin,
-  User,
-  Phone,
-  Mail,
-  Package
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { CartService, CartItem, ExchangeRateService } from "@/lib/cart"
+import { CartService, CartItem } from "@/lib/cart"
 import { CheckoutModal } from "@/components/shop/checkout-modal"
 
 export default function CartPage() {
   const router = useRouter()
-  const { isConnected, address } = useUser()
+  const { user, userId, isLoading: authLoading } = useAuth()
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCheckout, setShowCheckout] = useState(false)
-  const [selectedCurrency, setSelectedCurrency] = useState<'SOL' | 'SAMAA'>('SOL')
-  
-  // Shipping form state
-  const [shippingForm, setShippingForm] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: '',
-    notes: ''
-  })
 
   useEffect(() => {
-    loadCartItems()
-  }, [address])
+    if (!authLoading) {
+      loadCartItems()
+    }
+  }, [userId, authLoading])
 
-  const loadCartItems = () => {
-    if (!address) {
+  const loadCartItems = async () => {
+    if (!userId) {
       setCartItems([])
       setIsLoading(false)
       return
     }
 
-    const items = CartService.getCartItems(address)
+    const items = await CartService.getCartItems(userId)
     setCartItems(items)
     setIsLoading(false)
   }
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (!address) return
+  const updateQuantity = async (itemId: string, newQuantity: number) => {
+    if (!userId) return
 
-    const success = CartService.updateCartItemQuantity(address, itemId, newQuantity)
+    const success = await CartService.updateCartItemQuantity(userId, itemId, newQuantity)
     if (success) {
       loadCartItems()
     }
   }
 
-  const removeItem = (itemId: string) => {
-    if (!address) return
+  const removeItem = async (itemId: string) => {
+    if (!userId) return
 
-    const success = CartService.removeFromCart(address, itemId)
+    const success = await CartService.removeFromCart(userId, itemId)
     if (success) {
       loadCartItems()
     }
   }
 
-  const clearCart = () => {
-    if (!address) return
+  const clearCart = async () => {
+    if (!userId) return
 
-    const success = CartService.clearCart(address)
+    const success = await CartService.clearCart(userId)
     if (success) {
       loadCartItems()
     }
   }
 
-  const totals = CartService.getCartTotal(cartItems)
-  const totalInSelectedCurrency = selectedCurrency === 'SOL' 
-    ? totals.SOL + ExchangeRateService.convertBetweenCrypto(totals.SAMAA, 'SAMAA', 'SOL')
-    : totals.SAMAA + ExchangeRateService.convertBetweenCrypto(totals.SOL, 'SOL', 'SAMAA')
-
-  const totalUSD = ExchangeRateService.convertToUSD(totalInSelectedCurrency, selectedCurrency)
+  const totalAmount = CartService.getCartTotal(cartItems)
 
   const handleCheckout = () => {
-    if (!isConnected) {
-      alert("Please connect your wallet to proceed with checkout")
+    if (!userId) {
+      router.push('/auth/login?redirect=/cart')
       return
     }
     setShowCheckout(true)
   }
 
   const handleCheckoutSuccess = () => {
-    // Reload cart items after successful checkout
     loadCartItems()
     setShowCheckout(false)
   }
 
-  if (!isConnected) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative overflow-hidden">
-        <CelestialBackground intensity="medium" />
-        <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <Card className="p-8 text-center max-w-md">
-            <ShoppingCart className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-slate-800 font-qurova mb-2">Connect Your Wallet</h2>
-            <p className="text-slate-600 font-queensides mb-4">
-              Please connect your wallet to view your shopping cart
-            </p>
-            <Button onClick={() => router.push('/')} className="font-queensides">
-              Go Home
-            </Button>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative overflow-hidden">
         <CelestialBackground intensity="medium" />
@@ -142,6 +95,26 @@ export default function CartPage() {
             <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-slate-600 font-queensides">Loading your cart...</p>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative overflow-hidden">
+        <CelestialBackground intensity="medium" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <Card className="p-8 text-center max-w-md">
+            <ShoppingCart className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-slate-800 font-qurova mb-2">Sign In Required</h2>
+            <p className="text-slate-600 font-queensides mb-4">
+              Please sign in to view your shopping cart
+            </p>
+            <Button onClick={() => router.push('/auth/login?redirect=/cart')} className="font-queensides">
+              Sign In
+            </Button>
+          </Card>
         </div>
       </div>
     )
@@ -302,33 +275,15 @@ export default function CartPage() {
                     <CardTitle className="font-qurova">Order Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Currency Selection */}
-                    <div>
-                      <Label className="font-queensides mb-2 block">Payment Currency</Label>
-                      <Select value={selectedCurrency} onValueChange={(value: 'SOL' | 'SAMAA') => setSelectedCurrency(value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="SOL">Solana (SOL)</SelectItem>
-                          <SelectItem value="SAMAA">SAMAA Token</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
                     {/* Totals */}
                     <div className="space-y-2 py-4 border-t border-slate-200">
                       <div className="flex justify-between text-sm font-queensides">
-                        <span>Subtotal:</span>
-                        <span>{totalInSelectedCurrency.toFixed(4)} {selectedCurrency}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-queensides text-slate-600">
-                        <span>USD Value:</span>
-                        <span>${totalUSD.toFixed(2)}</span>
+                        <span>Subtotal ({cartItems.length} items):</span>
+                        <span>${totalAmount.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-lg font-bold font-qurova pt-2 border-t border-slate-200">
                         <span>Total:</span>
-                        <span>{totalInSelectedCurrency.toFixed(4)} {selectedCurrency}</span>
+                        <span>${totalAmount.toFixed(2)} USD</span>
                       </div>
                     </div>
 
@@ -361,8 +316,8 @@ export default function CartPage() {
         isOpen={showCheckout}
         onClose={() => setShowCheckout(false)}
         cartItems={cartItems}
-        totalAmount={totalInSelectedCurrency}
-        currency={selectedCurrency}
+        totalAmount={totalAmount}
+        currency="USD"
         onSuccess={handleCheckoutSuccess}
       />
     </div>

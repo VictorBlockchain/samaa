@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/app/context/AuthContext"
-import { loadStripe } from "@stripe/stripe-js"
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js"
 import { 
   X, 
   CreditCard, 
@@ -12,23 +10,22 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  Lock
+  Lock,
+  Tag
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { CartItem, OrderService, CartService } from "@/lib/cart"
-
-// Load Stripe outside of component render to avoid recreating on every render
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
+import { PromoService } from "@/lib/shop"
 
 interface CheckoutModalProps {
   isOpen: boolean
   onClose: () => void
   cartItems: CartItem[]
   totalAmount: number
-  currency: 'SOL' | 'SAMAA' | 'USD'
+  currency: 'USD'
   onSuccess: () => void
 }
 
@@ -44,76 +41,6 @@ interface ShippingForm {
   notes: string
 }
 
-function PaymentForm({ 
-  onSuccess, 
-  onError, 
-  isProcessing, 
-  setIsProcessing 
-}: { 
-  onSuccess: () => void
-  onError: (error: string) => void
-  isProcessing: boolean
-  setIsProcessing: (v: boolean) => void
-}) {
-  const stripe = useStripe()
-  const elements = useElements()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!stripe || !elements) {
-      return
-    }
-
-    setIsProcessing(true)
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/orders?payment=success`,
-      },
-    })
-
-    if (error) {
-      onError(error.message || 'Payment failed')
-      setIsProcessing(false)
-    } else {
-      onSuccess()
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="p-4 border border-slate-200 rounded-xl bg-slate-50">
-        <PaymentElement />
-      </div>
-      
-      <div className="flex items-center space-x-2 text-sm text-slate-500">
-        <Lock className="w-4 h-4" />
-        <span className="font-queensides">Your payment is secured with 256-bit encryption</span>
-      </div>
-
-      <Button
-        type="submit"
-        disabled={!stripe || !elements || isProcessing}
-        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 font-queensides"
-      >
-        {isProcessing ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          <>
-            <CreditCard className="w-4 h-4 mr-2" />
-            Pay Now
-          </>
-        )}
-      </Button>
-    </form>
-  )
-}
-
 export function CheckoutModal({ 
   isOpen, 
   onClose, 
@@ -123,10 +50,9 @@ export function CheckoutModal({
   onSuccess 
 }: CheckoutModalProps) {
   const { user, userId } = useAuth()
-  const [currentStep, setCurrentStep] = useState<'shipping' | 'payment' | 'processing' | 'success'>('shipping')
+  const [currentStep, setCurrentStep] = useState<'shipping' | 'review' | 'processing' | 'success'>('shipping')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [orderId, setOrderId] = useState<string | null>(null)
 
   const [shippingForm, setShippingForm] = useState<ShippingForm>({
@@ -140,6 +66,13 @@ export function CheckoutModal({
     country: 'United States',
     notes: ''
   })
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('')
+  const [promoDiscount, setPromoDiscount] = useState(0)
+  const [promoError, setPromoError] = useState<string | null>(null)
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false)
+  const [appliedPromoId, setAppliedPromoId] = useState<string | null>(null)
 
   useEffect(() => {
     if (user?.email) {
@@ -156,16 +89,57 @@ export function CheckoutModal({
     return required.every(field => shippingForm[field as keyof ShippingForm].trim() !== '')
   }
 
-  const handleShippingNext = async () => {
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a promo code')
+      return
+    }
+
+    setIsApplyingPromo(true)
+    setPromoError(null)
+
+    try {
+      const result = await PromoService.validatePromoCode(
+        promoCode.trim(),
+        totalAmount,
+        cartItems.map(item => item.productId)
+      )
+
+      if (result.valid && result.promo_code) {
+        setPromoDiscount(result.discount_amount)
+        setAppliedPromoId(result.promo_code.id)
+        setPromoError(null)
+      } else {
+        setPromoDiscount(0)
+        setAppliedPromoId(null)
+        setPromoError(result.error || 'Invalid promo code')
+      }
+    } catch (err: any) {
+      setPromoError('Failed to validate promo code')
+    } finally {
+      setIsApplyingPromo(false)
+    }
+  }
+
+  const handleRemovePromo = () => {
+    setPromoCode('')
+    setPromoDiscount(0)
+    setAppliedPromoId(null)
+    setPromoError(null)
+  }
+
+  const finalTotal = totalAmount - promoDiscount
+
+  const handleShippingNext = () => {
     if (!validateShippingForm()) {
       setError('Please fill in all required fields')
       return
     }
     setError(null)
-    setCurrentStep('payment')
+    setCurrentStep('review')
   }
 
-  const handleCreatePaymentIntent = async () => {
+  const handlePlaceOrder = async () => {
     if (!userId) {
       setError('Please sign in to continue')
       return
@@ -175,12 +149,15 @@ export function CheckoutModal({
     setError(null)
 
     try {
-      // Create order first
+      // Create order in Supabase
       const order = await OrderService.createOrder(
         userId,
         cartItems,
         shippingForm,
-        currency as 'SOL' | 'SAMAA'
+        {
+          promoCodeId: appliedPromoId || undefined,
+          promoDiscountAmount: promoDiscount
+        }
       )
 
       if (!order) {
@@ -189,57 +166,42 @@ export function CheckoutModal({
 
       setOrderId(order.id)
 
-      // Convert crypto to USD for Stripe payment
-      const usdAmount = totalAmount * (currency === 'SOL' ? 23.45 : 0.12) // Example rates
-
-      // Create payment intent
-      const response = await fetch('/api/stripe/create-payment-intent', {
+      // Create Stripe checkout session
+      const response = await fetch('/api/stripe/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: usdAmount,
           orderId: order.id,
-          userId,
+          items: cartItems.map(item => ({
+            productId: item.productId,
+            name: item.productName,
+            price: item.price,
+            quantity: item.quantity,
+            image: item.productImage
+          })),
+          totalAmount: finalTotal,
+          shippingAddress: shippingForm,
+          promoCode: promoCode,
+          promoDiscount
         }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create payment')
+        throw new Error(data.error || 'Failed to create checkout session')
       }
 
-      setClientSecret(data.clientSecret)
-      setCurrentStep('processing')
+      // Redirect to Stripe Checkout
+      window.location.href = data.checkoutUrl
     } catch (error: any) {
-      console.error('Payment setup error:', error)
-      setError(error.message || 'Failed to set up payment')
-      setCurrentStep('payment')
-    } finally {
+      console.error('Order creation error:', error)
+      setError(error.message || 'Failed to create order')
       setIsProcessing(false)
     }
   }
 
-  const handlePaymentSuccess = async () => {
-    if (orderId && userId) {
-      await OrderService.updateOrderStatus(orderId, 'paid')
-      CartService.clearCart(userId)
-    }
-    setCurrentStep('success')
-    setTimeout(() => {
-      onSuccess()
-      onClose()
-    }, 3000)
-  }
-
   if (!isOpen) return null
-
-  const appearance = {
-    theme: 'stripe' as const,
-    variables: {
-      colorPrimary: '#6366f1',
-    },
-  }
 
   return (
     <AnimatePresence>
@@ -262,7 +224,7 @@ export function CheckoutModal({
             <div>
               <h2 className="text-xl font-bold text-slate-800 font-qurova">Checkout</h2>
               <p className="text-sm text-slate-600 font-queensides">
-                Step {currentStep === 'shipping' ? '1' : currentStep === 'payment' || currentStep === 'processing' ? '2' : '3'} of 3
+                Step {currentStep === 'shipping' ? '1' : currentStep === 'review' ? '2' : '3'} of 3
               </p>
             </div>
             <button
@@ -385,28 +347,6 @@ export function CheckoutModal({
                   </div>
                 </div>
 
-                {/* Order Summary */}
-                <div className="bg-slate-50 rounded-xl p-4">
-                  <h4 className="font-semibold text-slate-800 font-queensides mb-3">Order Summary</h4>
-                  <div className="space-y-2">
-                    {cartItems.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm font-queensides">
-                        <span>{item.productName} x{item.quantity}</span>
-                        <span>{(item.price * item.quantity).toFixed(4)} {item.currency}</span>
-                      </div>
-                    ))}
-                    <div className="border-t pt-2 flex justify-between font-bold font-qurova">
-                      <span>Total:</span>
-                      <span>{totalAmount.toFixed(4)} {currency}</span>
-                    </div>
-                    {currency !== 'USD' && (
-                      <div className="text-xs text-slate-500 pt-1">
-                        Payment will be processed in USD
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {error && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="text-red-600 text-sm font-queensides">{error}</p>
@@ -417,13 +357,13 @@ export function CheckoutModal({
                   onClick={handleShippingNext}
                   className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 font-queensides"
                 >
-                  Continue to Payment
+                  Continue to Review
                 </Button>
               </motion.div>
             )}
 
-            {/* Payment - Initiate */}
-            {currentStep === 'payment' && (
+            {/* Review & Promo Code */}
+            {currentStep === 'review' && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -434,9 +374,90 @@ export function CheckoutModal({
                     <CreditCard className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-800 font-queensides">Payment</h3>
-                    <p className="text-sm text-slate-600 font-queensides">Secure payment with Stripe</p>
+                    <h3 className="font-semibold text-slate-800 font-queensides">Review & Payment</h3>
+                    <p className="text-sm text-slate-600 font-queensides">Review your order and apply promo code</p>
                   </div>
+                </div>
+
+                {/* Promo Code Section */}
+                <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Tag className="w-4 h-4 text-indigo-600" />
+                    <h4 className="font-semibold text-slate-800 font-queensides">Promo Code</h4>
+                  </div>
+                  
+                  {!appliedPromoId ? (
+                    <div className="flex space-x-2">
+                      <Input
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        placeholder="Enter promo code"
+                        className="font-queensides"
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
+                      />
+                      <Button
+                        onClick={handleApplyPromo}
+                        disabled={isApplyingPromo}
+                        variant="outline"
+                        className="font-queensides"
+                      >
+                        {isApplyingPromo ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div>
+                        <p className="font-semibold text-green-700 font-queensides">{promoCode}</p>
+                        <p className="text-sm text-green-600">-${promoDiscount.toFixed(2)} discount applied</p>
+                      </div>
+                      <Button
+                        onClick={handleRemovePromo}
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-700 hover:text-green-800"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+
+                  {promoError && (
+                    <p className="text-sm text-red-600 font-queensides">{promoError}</p>
+                  )}
+                </div>
+
+                {/* Order Summary */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  <h4 className="font-semibold text-slate-800 font-queensides mb-3">Order Summary</h4>
+                  <div className="space-y-2">
+                    {cartItems.map((item) => (
+                      <div key={item.id} className="flex justify-between text-sm font-queensides">
+                        <span>{item.productName} x{item.quantity}</span>
+                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 space-y-1">
+                      <div className="flex justify-between text-sm font-queensides">
+                        <span>Subtotal:</span>
+                        <span>${totalAmount.toFixed(2)}</span>
+                      </div>
+                      {promoDiscount > 0 && (
+                        <div className="flex justify-between text-sm font-queensides text-green-600">
+                          <span>Discount:</span>
+                          <span>-${promoDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-lg font-bold font-qurova pt-2 border-t">
+                        <span>Total:</span>
+                        <span>${finalTotal.toFixed(2)} USD</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 text-sm text-slate-500">
+                  <Lock className="w-4 h-4" />
+                  <span className="font-queensides">Secure payment powered by Stripe</span>
                 </div>
 
                 {error && (
@@ -457,19 +478,19 @@ export function CheckoutModal({
                     Back
                   </Button>
                   <Button
-                    onClick={handleCreatePaymentIntent}
+                    onClick={handlePlaceOrder}
                     disabled={isProcessing}
                     className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 font-queensides"
                   >
                     {isProcessing ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Setting up...
+                        Processing...
                       </>
                     ) : (
                       <>
                         <CreditCard className="w-4 h-4 mr-2" />
-                        Proceed to Payment
+                        Place Order & Pay
                       </>
                     )}
                   </Button>
@@ -477,28 +498,8 @@ export function CheckoutModal({
               </motion.div>
             )}
 
-            {/* Processing - Stripe Elements */}
-            {currentStep === 'processing' && clientSecret && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-              >
-                <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
-                  <PaymentForm 
-                    onSuccess={handlePaymentSuccess}
-                    onError={(err) => {
-                      setError(err)
-                      setCurrentStep('payment')
-                    }}
-                    isProcessing={isProcessing}
-                    setIsProcessing={setIsProcessing}
-                  />
-                </Elements>
-              </motion.div>
-            )}
-
-            {/* Processing - Loading */}
-            {currentStep === 'processing' && !clientSecret && (
+            {/* Processing */}
+            {currentStep === 'processing' && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -506,7 +507,7 @@ export function CheckoutModal({
               >
                 <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-6"></div>
                 <h3 className="text-lg font-semibold text-slate-800 font-queensides mb-2">
-                  Setting up Payment...
+                  Redirecting to Stripe...
                 </h3>
                 <p className="text-slate-600 font-queensides">
                   Please wait while we prepare your secure checkout
