@@ -4,10 +4,11 @@ import { motion, useScroll } from "framer-motion"
 import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useAuth } from "@/app/context/AuthContext"
-import { User, Search, MessageCircle } from "lucide-react"
+import { User, Search, MessageCircle, Heart, MessageSquare, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { loadProfile, isProfileComplete } from "@/utils/profile-storage"
+import { supabase } from "@/lib/supabase"
 
 export function MobileHero() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -23,6 +24,9 @@ export function MobileHero() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [profileComplete, setProfileComplete] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+  const [availableLikes, setAvailableLikes] = useState(0)
+  const [availableCompliments, setAvailableCompliments] = useState(0)
+  const [isLoadingCredits, setIsLoadingCredits] = useState(false)
 
   const { isAuthenticated, userId } = useAuth()
 
@@ -35,6 +39,17 @@ export function MobileHero() {
           const profile = await loadProfile(userId)
           setUserProfile(profile)
           setProfileComplete(isProfileComplete(profile))
+          
+          // Check if user has profile photo
+          if (!profile?.profilePhoto && (!profile?.photos || profile.photos.length === 0)) {
+            // No profile photos - redirect to profile setup
+            console.log('[MobileHero] No profile photos found, redirecting to setup')
+            router.push('/profile/setup')
+            return
+          }
+          
+          // Load available likes and compliments
+          await loadUserCredits()
         } catch (error) {
           console.error('Error loading profile:', error)
         } finally {
@@ -48,6 +63,35 @@ export function MobileHero() {
 
     checkProfile()
   }, [isAuthenticated, userId])
+
+  // Load user's available likes and compliments
+  const loadUserCredits = async () => {
+    if (!userId) return
+    
+    setIsLoadingCredits(true)
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('available_likes, available_compliments')
+        .eq('id', userId)
+        .single()
+      
+      if (error) {
+        console.error('[MobileHero] Error loading credits:', error)
+        return
+      }
+      
+      if (data) {
+        setAvailableLikes(data.available_likes || 0)
+        setAvailableCompliments(data.available_compliments || 0)
+        console.log('[MobileHero] Loaded credits:', { likes: data.available_likes, compliments: data.available_compliments })
+      }
+    } catch (error) {
+      console.error('[MobileHero] Error loading credits:', error)
+    } finally {
+      setIsLoadingCredits(false)
+    }
+  }
 
   const features = [
     {
@@ -178,6 +222,9 @@ export function MobileHero() {
         const profile = await loadProfile(userId)
         setUserProfile(profile)
         setProfileComplete(isProfileComplete(profile))
+        
+        // Reload credits
+        await loadUserCredits()
       } catch (error) {
         console.error('Error refreshing profile:', error)
       } finally {
@@ -192,19 +239,6 @@ export function MobileHero() {
         {isAuthenticated ? (
           // Logged in version - Profile Setup or Messages
           <>
-            {/* Header - Full Width Edge to Edge */}
-            <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
-              <div className="flex items-center justify-center p-4">
-                <div className="text-center pt-3">
-                  <h1 className="text-xl font-bold text-slate-800 font-qurova">
-                    {profileComplete ? 'Your Messages' : 'Welcome to Samaa'}
-                  </h1>
-                  <p className="text-sm text-slate-600 font-queensides">
-                    {profileComplete ? 'Recent conversations' : 'Let\'s set up your profile'}
-                  </p>
-                </div>
-              </div>
-            </div>
 
             {/* Content with padding */}
             <div className="p-4 pb-32">
@@ -226,23 +260,111 @@ export function MobileHero() {
                     transition={{ duration: 0.5, ease: "easeOut" }}
                     className="space-y-6"
                   >
-                    {/* Welcome Back Message */}
+                    {/* Welcome Back Message with Profile Picture */}
                     <div className="text-center mb-6">
+                      {/* Circular Profile Picture */}
                       <motion.div
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ delay: 0.2, duration: 0.6 }}
-                        className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                        className="relative mb-4"
                       >
-                        <MessageCircle className="w-8 h-8 text-indigo-600" />
+                        <div className="relative w-24 h-24 mx-auto">
+                          {/* Gradient Border */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 p-1 shadow-2xl">
+                            <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                              {userProfile?.profilePhoto || (userProfile?.photos && userProfile.photos[0]) ? (
+                                <img
+                                  src={userProfile.profilePhoto || userProfile.photos[0]}
+                                  alt={`${userProfile.firstName} ${userProfile.lastName}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                                  <User className="w-12 h-12 text-indigo-600" />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Online Status Indicator */}
+                          <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-400 rounded-full border-3 border-white shadow-lg"></div>
+                        </div>
                       </motion.div>
+                      
                       <h2 className="text-xl font-bold text-slate-800 font-qurova mb-2">
-                        Welcome back, {userProfile?.firstName}!
+                        Welcome back, {userProfile?.firstName}! ✨
                       </h2>
                       <p className="text-slate-600 font-queensides">
                         Here are your recent messages and conversations
                       </p>
                     </div>
+
+                    {/* Likes & Compliments - Two Column Layout */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3, duration: 0.6 }}
+                      className="grid grid-cols-2 gap-3"
+                    >
+                      {/* Likes Card */}
+                      <div className="relative group bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200/60 rounded-2xl p-3 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                        <div className="absolute inset-0 opacity-5">
+                          <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
+                            <pattern id="likes-pattern-complete" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                              <circle cx="4" cy="4" r="0.5" fill="currentColor" />
+                              <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
+                            </pattern>
+                            <rect width="100%" height="100%" fill="url(#likes-pattern-complete)" />
+                          </svg>
+                        </div>
+                        
+                        <div className="relative z-10 text-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md">
+                            <Heart className="w-5 h-5 text-white" />
+                          </div>
+                          {isLoadingCredits ? (
+                            <div className="w-6 h-6 border-2 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                          ) : (
+                            <p className="text-2xl font-bold text-slate-800 font-qurova mb-1">
+                              {availableLikes}
+                            </p>
+                          )}
+                          <p className="text-xs font-medium text-rose-600 font-queensides">Likes Left</p>
+                        </div>
+                        
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-rose-400/20 rounded-full blur-lg group-hover:bg-rose-400/30 transition-all duration-300"></div>
+                      </div>
+
+                      {/* Compliments Card */}
+                      <div className="relative group bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl p-3 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                        <div className="absolute inset-0 opacity-5">
+                          <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
+                            <pattern id="compliments-pattern-complete" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                              <circle cx="4" cy="4" r="0.5" fill="currentColor" />
+                              <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
+                            </pattern>
+                            <rect width="100%" height="100%" fill="url(#compliments-pattern-complete)" />
+                          </svg>
+                        </div>
+                        
+                        <div className="relative z-10 text-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md">
+                            <MessageSquare className="w-5 h-5 text-white" />
+                          </div>
+                          {isLoadingCredits ? (
+                            <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
+                          ) : (
+                            <p className="text-2xl font-bold text-slate-800 font-qurova mb-1">
+                              {availableCompliments}
+                            </p>
+                          )}
+                          <p className="text-xs font-medium text-amber-600 font-queensides">Compliments Left</p>
+                        </div>
+                        
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-amber-400/20 rounded-full blur-lg group-hover:bg-amber-400/30 transition-all duration-300"></div>
+                      </div>
+                    </motion.div>
 
                     {/* Message Tabs Component */}
                     <MessageTabs className="mb-6" />
@@ -275,43 +397,153 @@ export function MobileHero() {
                   >
                   {/* Welcome Message */}
                   <div className="text-center mb-8">
+                    {/* Circular Profile Picture */}
                     <motion.div
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.2, duration: 0.6 }}
-                      className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4"
+                      className="relative mb-6"
                     >
-                      <span className="text-4xl">✨</span>
-                    </motion.div>
-                    <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-4">
-                      Welcome to Samaa!
-                    </h2>
-
-                    {/* Account Info Card */}
-                    <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 mb-4 shadow-sm">
-                      <div className="text-center">
-                        <p className="text-xs text-slate-500 font-queensides mb-1">Your Account</p>
-                        <p className="text-lg font-bold text-slate-800 font-mono tracking-wider">
-                          {userId ? `${userId.slice(0, 8)}...${userId.slice(-4)}` : 'Account'}
-                        </p>
-                        <div className="flex items-center justify-center space-x-2 mt-2">
-                          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                          <span className="text-xs text-green-600 font-queensides font-medium">Signed In</span>
+                      <div className="relative w-32 h-32 mx-auto">
+                        {/* Gradient Border */}
+                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 p-1 shadow-2xl">
+                          <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                            {userProfile?.profilePhoto || (userProfile?.photos && userProfile.photos[0]) ? (
+                              <img
+                                src={userProfile.profilePhoto || userProfile.photos[0]}
+                                alt={`${userProfile.firstName} ${userProfile.lastName}`}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
+                                <User className="w-16 h-16 text-indigo-600" />
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        
+                        {/* Online Status Indicator */}
+                        <div className="absolute bottom-1 right-1 w-6 h-6 bg-green-400 rounded-full border-4 border-white shadow-lg"></div>
+                        
+                        {/* Add Photo Button (if no photos) */}
+                        {(!userProfile?.profilePhoto && (!userProfile?.photos || userProfile.photos.length === 0)) && (
+                          <button
+                            onClick={() => router.push('/profile/setup')}
+                            className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white p-2 rounded-full shadow-lg transition-all duration-300"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
+                    </motion.div>
+
+                    {/* Welcome Text */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3, duration: 0.5 }}
+                    >
+                      <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-2">
+                        Welcome back, {userProfile?.firstName}! ✨
+                      </h2>
+                      <p className="text-slate-600 font-queensides">
+                        Ready to find your perfect match?
+                      </p>
+                    </motion.div>
+                  </div>
+
+                  {/* Likes & Compliments - Two Column Layout */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.6 }}
+                    className="grid grid-cols-2 gap-4 mb-6"
+                  >
+                    {/* Likes Card */}
+                    <div className="relative group bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200/60 rounded-2xl p-4 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      {/* Islamic pattern overlay */}
+                      <div className="absolute inset-0 opacity-5">
+                        <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
+                          <pattern id="likes-pattern" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                            <circle cx="4" cy="4" r="0.5" fill="currentColor" />
+                            <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
+                          </pattern>
+                          <rect width="100%" height="100%" fill="url(#likes-pattern)" />
+                        </svg>
+                      </div>
+                      
+                      <div className="relative z-10 text-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                          <Heart className="w-6 h-6 text-white" />
+                        </div>
+                        {isLoadingCredits ? (
+                          <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        ) : (
+                          <p className="text-3xl font-bold text-slate-800 font-qurova mb-1">
+                            {availableLikes}
+                          </p>
+                        )}
+                        <p className="text-sm font-medium text-rose-600 font-queensides">Likes Remaining</p>
+                        <button
+                          onClick={() => router.push('/wallet')}
+                          className="mt-3 text-xs font-medium text-rose-500 hover:text-rose-600 transition-colors"
+                        >
+                          Get More →
+                        </button>
+                      </div>
+                      
+                      {/* Bottom glow effect */}
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-rose-400/20 rounded-full blur-lg group-hover:bg-rose-400/30 transition-all duration-300"></div>
                     </div>
 
-                    {/* Profile Setup Instructions */}
-                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-4 mb-6">
-                      <div className="text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <User className="w-6 h-6 text-white" />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Ready to Find Your Match?</h3>
-                        <p className="text-slate-700 font-queensides leading-relaxed">
-                          Click the <span className="font-semibold text-indigo-600">profile icon</span> in the bottom menu to set up your profile and start connecting
-                        </p>
+                    {/* Compliments Card */}
+                    <div className="relative group bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl p-4 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                      {/* Islamic pattern overlay */}
+                      <div className="absolute inset-0 opacity-5">
+                        <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
+                          <pattern id="compliments-pattern" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                            <circle cx="4" cy="4" r="0.5" fill="currentColor" />
+                            <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
+                          </pattern>
+                          <rect width="100%" height="100%" fill="url(#compliments-pattern)" />
+                        </svg>
                       </div>
+                      
+                      <div className="relative z-10 text-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
+                          <MessageSquare className="w-6 h-6 text-white" />
+                        </div>
+                        {isLoadingCredits ? (
+                          <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        ) : (
+                          <p className="text-3xl font-bold text-slate-800 font-qurova mb-1">
+                            {availableCompliments}
+                          </p>
+                        )}
+                        <p className="text-sm font-medium text-amber-600 font-queensides">Compliments Remaining</p>
+                        <button
+                          onClick={() => router.push('/wallet')}
+                          className="mt-3 text-xs font-medium text-amber-500 hover:text-amber-600 transition-colors"
+                        >
+                          Get More →
+                        </button>
+                      </div>
+                      
+                      {/* Bottom glow effect */}
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-amber-400/20 rounded-full blur-lg group-hover:bg-amber-400/30 transition-all duration-300"></div>
+                    </div>
+                  </motion.div>
+
+                  {/* Profile Setup Instructions */}
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-4 mb-6">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <User className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Ready to Find Your Match?</h3>
+                      <p className="text-slate-700 font-queensides leading-relaxed">
+                        Click the <span className="font-semibold text-indigo-600">profile icon</span> in the bottom menu to set up your profile and start connecting
+                      </p>
                     </div>
                   </div>
 
