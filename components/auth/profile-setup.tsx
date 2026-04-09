@@ -147,6 +147,8 @@ export function ProfileSetup() {
   const { userId, isAuthenticated } = useUser()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
+  const [originalProfileData, setOriginalProfileData] = useState<Partial<ProfileData>>({})
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set())
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: "",
     lastName: "",
@@ -307,6 +309,7 @@ export function ProfileSetup() {
               voiceIntro: null,
             }
             setProfileData((prev) => ({ ...prev, ...mapped }))
+            setOriginalProfileData(mapped)
             console.log('[Profile Setup] Profile data loaded and merged successfully')
 
             if (user.latitude && user.longitude) {
@@ -335,6 +338,18 @@ export function ProfileSetup() {
 
   const updateProfileData = (field: keyof ProfileData, value: any) => {
     setProfileData((prev) => ({ ...prev, [field]: value }))
+    
+    // Track if field has been edited (different from original)
+    const originalValue = originalProfileData[field]
+    if (value !== originalValue) {
+      setEditedFields(prev => new Set(prev).add(field))
+    } else {
+      setEditedFields(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(field)
+        return newSet
+      })
+    }
   }
 
   // Media upload handlers
@@ -665,10 +680,38 @@ export function ProfileSetup() {
       }
       console.log("6")
 
-      // Prepare profile data for saving
+      // Prepare profile data for saving - only include edited fields
       const profileWithWallet = {
         ...profileData,
-        location: composedLocation,
+        // Only override fields that have been edited
+        ...(editedFields.has('firstName') && { firstName: profileData.firstName }),
+        ...(editedFields.has('lastName') && { lastName: profileData.lastName }),
+        ...(editedFields.has('age') && { age: profileData.age }),
+        ...(editedFields.has('gender') && { gender: profileData.gender }),
+        ...(editedFields.has('maritalStatus') && { maritalStatus: profileData.maritalStatus }),
+        ...(editedFields.has('hasChildren') && { hasChildren: profileData.hasChildren }),
+        ...(editedFields.has('wantChildren') && { wantChildren: profileData.wantChildren }),
+        ...(editedFields.has('bioTagline') && { bioTagline: profileData.bioTagline }),
+        ...(editedFields.has('location') && { location: composedLocation }),
+        ...(editedFields.has('city') && { city: profileData.city }),
+        ...(editedFields.has('state') && { state: profileData.state }),
+        ...(editedFields.has('country') && { country: profileData.country }),
+        ...(editedFields.has('education') && { education: profileData.education }),
+        ...(editedFields.has('profession') && { profession: profileData.profession }),
+        ...(editedFields.has('religiosity') && { religiosity: profileData.religiosity }),
+        ...(editedFields.has('prayerFrequency') && { prayerFrequency: profileData.prayerFrequency }),
+        ...(editedFields.has('hijabPreference') && { hijabPreference: profileData.hijabPreference }),
+        ...(editedFields.has('marriageIntention') && { marriageIntention: profileData.marriageIntention }),
+        ...(editedFields.has('isRevert') && { isRevert: profileData.isRevert }),
+        ...(editedFields.has('alcohol') && { alcohol: profileData.alcohol }),
+        ...(editedFields.has('smoking') && { smoking: profileData.smoking }),
+        ...(editedFields.has('psychedelics') && { psychedelics: profileData.psychedelics }),
+        ...(editedFields.has('halalFood') && { halalFood: profileData.halalFood }),
+        ...(editedFields.has('bio') && { bio: profileData.bio }),
+        ...(editedFields.has('interests') && { interests: profileData.interests }),
+        location: editedFields.has('location') || editedFields.has('city') || editedFields.has('state') || editedFields.has('country') 
+          ? composedLocation 
+          : profileData.location,
         userId: userId,
         createdAt: new Date().toISOString(),
         media: mediaUrls,
@@ -1073,10 +1116,10 @@ export function ProfileSetup() {
                           </Label>
                           <Input
                             id="firstName"
-                            value={profileData.firstName}
+                            value={editedFields.has('firstName') ? profileData.firstName : ''}
                             onChange={(e) => updateProfileData("firstName", e.target.value)}
                             className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
-                            placeholder="Enter your first name"
+                            placeholder={originalProfileData.firstName || "Enter your first name"}
                           />
                         </div>
 
@@ -1090,10 +1133,10 @@ export function ProfileSetup() {
                           </Label>
                           <Input
                             id="lastName"
-                            value={profileData.lastName}
+                            value={editedFields.has('lastName') ? profileData.lastName : ''}
                             onChange={(e) => updateProfileData("lastName", e.target.value)}
                             className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
-                            placeholder="Enter your last name"
+                            placeholder={originalProfileData.lastName || "Enter your last name"}
                           />
                         </div>
 
@@ -1110,13 +1153,13 @@ export function ProfileSetup() {
                             min={18}
                             max={60}
                             step={1}
-                            value={profileData.age ?? ""}
+                            value={editedFields.has('age') ? profileData.age : ''}
                             onChange={(e) => {
                               const v = e.target.value
                               updateProfileData("age", v)
                             }}
                             className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
-                            placeholder="Enter your age (21+)"
+                            placeholder={originalProfileData.age || "Enter your age (21+)"}
                           />
                         </div>
 
@@ -1381,30 +1424,30 @@ export function ProfileSetup() {
                                 <Label htmlFor="city" className="font-queensides text-black">City</Label>
                                 <Input
                                   id="city"
-                                  value={profileData.city}
+                                  value={editedFields.has('city') ? profileData.city : ''}
                                   onChange={(e) => updateProfileData("city", e.target.value)}
                                   className="mt-1"
-                                  placeholder="e.g., Cairo"
+                                  placeholder={originalProfileData.city || "e.g., Cairo"}
                                 />
                               </div>
                               <div>
                                 <Label htmlFor="state" className="font-queensides text-black">State / Region</Label>
                                 <Input
                                   id="state"
-                                  value={profileData.state}
+                                  value={editedFields.has('state') ? profileData.state : ''}
                                   onChange={(e) => updateProfileData("state", e.target.value)}
                                   className="mt-1"
-                                  placeholder="e.g., Giza"
+                                  placeholder={originalProfileData.state || "e.g., Giza"}
                                 />
                               </div>
                               <div>
                                 <Label htmlFor="country" className="font-queensides text-black">Country</Label>
                                 <Input
                                   id="country"
-                                  value={profileData.country}
+                                  value={editedFields.has('country') ? profileData.country : ''}
                                   onChange={(e) => updateProfileData("country", e.target.value)}
                                   className="mt-1"
-                                  placeholder="e.g., Egypt"
+                                  placeholder={originalProfileData.country || "e.g., Egypt"}
                                 />
                               </div>
                             </div>
@@ -1451,10 +1494,10 @@ export function ProfileSetup() {
                           </Label>
                           <Input
                             id="profession"
-                            value={profileData.profession}
+                            value={editedFields.has('profession') ? profileData.profession : ''}
                             onChange={(e) => updateProfileData("profession", e.target.value)}
                             className="mt-1"
-                            placeholder="Your profession or field of work"
+                            placeholder={originalProfileData.profession || "Your profession or field of work"}
                           />
                         </div>
 
@@ -1901,7 +1944,7 @@ export function ProfileSetup() {
 
                           <Textarea
                             id="bio"
-                            value={profileData.bio}
+                            value={editedFields.has('bio') ? profileData.bio : ''}
                             onChange={(e) => {
                               updateProfileData("bio", e.target.value)
                               setBioHasBeenEdited(true)
@@ -1912,7 +1955,7 @@ export function ProfileSetup() {
                               }
                             }}
                             className="mt-1 min-h-[150px] text-base leading-relaxed"
-                            placeholder="Share your story... What makes you unique? What are your values? What do you love doing? What are you looking for in a partner? Be authentic and specific!"
+                            placeholder={originalProfileData.bio || "Share your story... What makes you unique? What are your values? What do you love doing? What are you looking for in a partner? Be authentic and specific!"}
                           />
 
                           {/* AI Rating Button - directly under textarea */}

@@ -480,7 +480,7 @@ export function MobileHero() {
                           <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                         ) : (
                           <p className="text-3xl font-bold text-slate-800 font-qurova mb-1">
-                            {availableLikes}
+                            {availableLikes || 0}
                           </p>
                         )}
                         <p className="text-sm font-medium text-rose-600 font-queensides">Likes Remaining</p>
@@ -517,7 +517,7 @@ export function MobileHero() {
                           <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                         ) : (
                           <p className="text-3xl font-bold text-slate-800 font-qurova mb-1">
-                            {availableCompliments}
+                            {availableCompliments || 0}
                           </p>
                         )}
                         <p className="text-sm font-medium text-amber-600 font-queensides">Compliments Remaining</p>
