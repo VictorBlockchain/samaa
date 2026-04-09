@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/app/context/AuthContext'
+import { useUser } from '@/app/context/UserContext'
 import { CelestialBackground } from '@/components/ui/celestial-background'
 
 export default function LoginPage() {
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [resendSuccess, setResendSuccess] = useState(false)
   
   const { signIn } = useAuth()
+  const { userId, isAuthenticated, profile, loading: profileLoading } = useUser()
   const router = useRouter()
 
   const handleResendVerification = async () => {
@@ -69,7 +71,63 @@ export default function LoginPage() {
           setError(signInError.message)
         }
       } else {
-        router.push('/')
+        // Login successful - check if profile is complete
+        console.log('[Login] Sign in successful, checking profile completion...')
+        
+        // Wait a moment for the user context to update
+        setTimeout(async () => {
+          try {
+            // Import ProfileService dynamically
+            const { ProfileService } = await import('@/lib/database')
+            
+            // Get user profile
+            const userProfile = await ProfileService.getProfileByUserId(userId!)
+            
+            if (!userProfile) {
+              console.log('[Login] No profile found, redirecting to profile setup')
+              router.push('/profile/setup')
+              return
+            }
+
+            // Check if essential fields are filled
+            const requiredFields = [
+              userProfile.first_name,
+              userProfile.last_name,
+              userProfile.age,
+              userProfile.gender,
+              userProfile.location,
+              userProfile.education,
+              userProfile.profession,
+              userProfile.religiosity,
+              userProfile.prayer_frequency,
+              userProfile.marriage_intention,
+              userProfile.bio,
+            ]
+
+            // Count how many required fields are filled
+            const filledFields = requiredFields.filter(field => field !== null && field !== undefined && field !== '').length
+            const completionPercentage = (filledFields / requiredFields.length) * 100
+
+            console.log('[Login] Profile completion:', {
+              filledFields,
+              totalFields: requiredFields.length,
+              percentage: completionPercentage.toFixed(0) + '%'
+            })
+
+            // If less than 50% complete, redirect to profile setup
+            if (completionPercentage < 50) {
+              console.log('[Login] Profile incomplete (< 50%), redirecting to profile setup')
+              router.push('/profile/setup')
+            } else {
+              console.log('[Login] Profile complete, redirecting to home')
+              router.push('/')
+            }
+          } catch (error) {
+            console.error('[Login] Error checking profile:', error)
+            // If there's an error, just redirect to home
+            router.push('/')
+          }
+        }, 500)
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign in')
