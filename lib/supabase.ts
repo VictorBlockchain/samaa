@@ -56,10 +56,15 @@ export interface Database {
           prayer_frequency?: "five_times_daily" | "regularly" | "sometimes" | "learning"
           hijab_preference?: "always" | "sometimes" | "planning" | "no"
           marriage_intention?: "soon" | "within_year" | "future"
-          marital_status?: "never_married" | "divorced" | "widowed"
+          marital_status?: "never_married" | "divorced" | "widowed" | "seeking_2nd_wife" | "seeking_3rd_wife" | "seeking_4th_wife"
           has_children?: boolean
           wants_children?: boolean
           want_children?: string
+          willing_to_relocate?: boolean
+          mahr_max_amount?: number
+          mahr_requirement?: number
+          work_preference?: "home_maker" | "self_employed" | "career"
+          style_preference?: "traditional" | "modern" | "feminist"
           is_revert?: boolean
           alcohol?: string
           smoking?: string

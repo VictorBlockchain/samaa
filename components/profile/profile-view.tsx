@@ -3,47 +3,40 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-
 import {
   ArrowLeft,
-  Edit3,
-  Heart,
+  MapPin,
   Star,
   Shield,
-  Crown,
-  Sparkles,
-  Moon,
-  Share,
-  QrCode,
-  Gift,
-  Users,
-  Plus,
-  UserPlus,
-  Settings,
-  MapPin,
   MessageCircle,
-  Wallet,
-  Baby,
-  UserCheck,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  UserCircle,
-  Zap,
   Camera,
-  Video as VideoIcon,
+  Video,
   Mic,
+  UserCircle,
+  Heart,
+  Briefcase,
+  GraduationCap,
+  Home,
+  Plane,
+  DollarSign,
+  Utensils,
+  Palette,
+  Users,
+  BookOpen,
+  Moon,
+  Sparkles,
+  CheckCircle,
+  Clock,
+  Globe,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { MobileBottomNav } from "@/components/mobile/mobile-bottom-nav"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/app/context/UserContext"
 import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
-import { ProfileService, UserSettingsService } from "@/lib/database"
-import { supabase } from "@/lib/supabase"
+import { ProfileService } from "@/lib/database"
+import { getSignedUrlForPath, storagePathFromUrlOrPath, STORAGE_CONFIG } from "@/lib/storage"
 
 interface ProfileData {
   // Basic Info
@@ -51,480 +44,343 @@ interface ProfileData {
   lastName: string
   age: string
   gender: string
-  height: string
   maritalStatus: string
-  children: string
-  tagline: string
   bio: string
   location?: string
-  bioTagline?: string
-  wantChildren?: string
-  hasChildren?: string
-
-  // Location
-  currentLocation: string
-  grewUpIn: string
-  livingArrangements: string
-
-  // Education & Career
-  education: string
-  profession: string
-  employer: string
-  jobTitle: string
-
-  // Languages & Ethnicity
-  ethnicity: string
-  nationality: string
-  languages: string[]
-
-  // Islamic Values & Religiosity
-  sect: string
-  bornMuslim: string
-  religiousPractice: string
-  faith: string
-  diet: string
-  alcohol: string
-  smoking: string
-  psychedelics?: string
-  halalFood?: string
-  isRevert?: string
-  hijabChoice?: string
-  islamicValues?: string
-  prayerFrequency?: string
-  quranReading?: string
-  islamicEducation?: string
+  city?: string
+  state?: string
+  country?: string
+  education?: string
+  profession?: string
+  
+  // Islamic Values
   religiosity?: string
+  prayerFrequency?: string
   hijabPreference?: string
   marriageIntention?: string
-
-  // Marriage Intentions
-  chattingTimeline: string
-  familyInvolvement: string
-  marriageTimeline: string
-  lookingFor?: string
-  familyPlans?: string
-
-  // Future Plans
-  relocationPlans: string
-  polygamyPlan: string
-
-  // Interests & Personality
-  interests: string[]
-  personality: string[]
-
-  // Wallet Information
-  dowryWallet?: {
-    isSetup: boolean
-    address?: string
-    solanaBalance?: number
-    samaaBalance?: number
-  }
-  purseWallet?: {
-    isSetup: boolean
-    address?: string
-    solanaBalance?: number
-    samaaBalance?: number
-  }
-
-  // Media from profile setup
-  media?: {
-    photos: string[]
-    videoIntro?: string
-    voiceNote?: string
-    audioMessages?: string[]
-  }
+  sect?: string
+  islamicValues?: string
+  isRevert?: string
+  alcohol?: string
+  smoking?: string
+  psychedelics?: string
+  psychedelicsTypes?: string[]
+  halalFood?: string
+  familyInvolvement?: string
+  
+  // Lifestyle Preferences
+  financeStyle?: string
+  diningFrequency?: string
+  travelFrequency?: string
+  hairStyle?: string
+  polygamyReason?: string
+  
+  // Living & Family
+  livingArrangements?: string
+  willingToRelocate?: string
+  
+  // Interests
+  interests?: string[]
+  personality?: string[]
+  
+  // Media
   profilePhoto?: string
+  profile_photos?: string[]
   voiceIntro?: string
-  video?: string
-
-  // Verification & Premium
-  userId?: string
-  createdAt: string
-  isVerified?: boolean
-  premiumMember?: boolean
-  idVerified?: boolean
+  videoIntro?: string
+  
+  // Stats
   bioRating?: number
   responseRate?: number
-  profileComplete?: boolean
+  isVerified?: boolean
 }
 
-interface ProfileViewProps {
-  userId: string
+// UI Kit Section Divider Component
+function SectionDivider({ icon: Icon, title, color = "pink" }: { 
+  icon: any
+  title: string
+  color?: "pink" | "purple" | "blue" | "emerald" | "amber" | "violet"
+}) {
+  const colorMap = {
+    pink: {
+      gradient: "from-pink-50 to-rose-50",
+      border: "border-pink-200",
+      iconBg: "from-pink-400 to-rose-500",
+      text: "text-pink-800",
+      line: "via-pink-300",
+    },
+    purple: {
+      gradient: "from-purple-50 to-pink-50",
+      border: "border-purple-200",
+      iconBg: "from-purple-400 to-pink-500",
+      text: "text-purple-800",
+      line: "via-purple-300",
+    },
+    blue: {
+      gradient: "from-blue-50 to-indigo-50",
+      border: "border-blue-200",
+      iconBg: "from-blue-400 to-indigo-500",
+      text: "text-blue-800",
+      line: "via-blue-300",
+    },
+    emerald: {
+      gradient: "from-emerald-50 to-teal-50",
+      border: "border-emerald-200",
+      iconBg: "from-emerald-400 to-teal-500",
+      text: "text-emerald-800",
+      line: "via-emerald-300",
+    },
+    amber: {
+      gradient: "from-amber-50 to-orange-50",
+      border: "border-amber-200",
+      iconBg: "from-amber-400 to-orange-500",
+      text: "text-amber-800",
+      line: "via-amber-300",
+    },
+    violet: {
+      gradient: "from-violet-50 to-purple-50",
+      border: "border-violet-200",
+      iconBg: "from-violet-400 to-purple-500",
+      text: "text-violet-800",
+      line: "via-violet-300",
+    },
+  }
+
+  const colors = colorMap[color]
+
+  return (
+    <div className="relative py-6">
+      <div className="absolute inset-0 flex items-center">
+        <div className={`w-full h-px bg-gradient-to-r from-transparent ${colors.line} to-transparent`} />
+      </div>
+      <div className="relative flex justify-center">
+        <div className={`bg-gradient-to-r ${colors.gradient} px-6 py-2 rounded-full border ${colors.border} shadow-sm`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-8 h-8 bg-gradient-to-r ${colors.iconBg} rounded-xl flex items-center justify-center`}>
+              <Icon className="w-4 h-4 text-white" />
+            </div>
+            <span className={`font-queensides font-semibold ${colors.text}`}>{title}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
-export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
+// Photo Preview Component
+function PhotoGallery({ photos }: { photos: string[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  if (!photos || photos.length === 0) return null
+
+  return (
+    <div className="px-4 py-6">
+      <SectionDivider icon={Camera} title="Photos" color="blue" />
+      
+      <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-3xl border border-blue-200/50 p-6 shadow-xl">
+        {/* Main Photo Display */}
+        <div className="relative aspect-square max-w-md mx-auto mb-4 rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+          <img
+            src={photos[currentIndex]}
+            alt={`Photo ${currentIndex + 1}`}
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Photo Counter */}
+          <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-queensides">
+            {currentIndex + 1} / {photos.length}
+          </div>
+        </div>
+        
+        {/* Navigation Controls */}
+        {photos.length > 1 && (
+          <div className="flex items-center justify-between gap-4">
+            <button
+              onClick={() => setCurrentIndex(prev => prev > 0 ? prev - 1 : photos.length - 1)}
+              className="p-3 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            
+            <button
+              onClick={() => setCurrentIndex(prev => prev < photos.length - 1 ? prev + 1 : 0)}
+              className="p-3 rounded-xl bg-white hover:bg-blue-50 border border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Audio Preview Component
+function AudioPlayer({ audioUrl }: { audioUrl: string }) {
+  if (!audioUrl) return null
+
+  return (
+    <div className="px-4 py-6">
+      <SectionDivider icon={Mic} title="Voice Introduction" color="purple" />
+      
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-100 border border-purple-200 shadow-lg">
+        <div className="p-4">
+          <audio controls className="w-full">
+            <source src={audioUrl} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+        
+        <div className="px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm border-t border-purple-200/50">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+            <span className="text-xs font-queensides text-purple-700 font-medium">Voice Message</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Video Preview Component
+function VideoPlayer({ videoUrl }: { videoUrl: string }) {
+  if (!videoUrl) return null
+
+  return (
+    <div className="px-4 py-6">
+      <SectionDivider icon={Video} title="Video Introduction" color="blue" />
+      
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 shadow-xl">
+        <div className="p-2">
+          <video controls className="w-full rounded-xl shadow-lg bg-black" style={{ maxHeight: '400px' }}>
+            <source src={videoUrl} type="video/mp4" />
+            Your browser does not support the video element.
+          </video>
+        </div>
+        
+        <div className="px-4 py-3 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 backdrop-blur-sm border-t border-blue-200/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+              <span className="text-xs font-queensides text-blue-700 font-medium">Video Introduction</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-blue-600 font-queensides">
+              <CheckCircle className="w-3.5 h-3.5" />
+              <span>Ready</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function ProfileViewNew({ userId: profileUserId }: { userId: string }) {
   const router = useRouter()
+  const { userId, isAuthenticated } = useUser()
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
-  const [currentTab, setCurrentTab] = useState("home")
-  const [showMessagePermissions, setShowMessagePermissions] = useState(false)
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
-  const [sliderIndex, setSliderIndex] = useState(1)
-  const [messagePermissions, setMessagePermissions] = useState({
-    requireFinancialSetup: true,
-    minBioRating: 75,
-    minResponseRate: 60,
-    allowVideoMessages: true,
-  })
-  const [userSettings, setUserSettings] = useState({
-    ageRange: [22, 35],
-    maxDistance: 50,
-    anywhereInWorld: false,
-    showOnlyVerified: true,
-    showOnlyPracticing: true,
-    interests: [] as string[],
-    faithAndPractice: {
-      prayerFrequency: "No preference",
-      hijabPreference: "No preference",
-      marriageIntention: "No preference",
-      halalFood: "No preference",
-      diet: "No preference",
-      alcohol: "No preference",
-      smoking: "No preference",
-      psychedelics: "No preference",
-      bornMuslim: "No preference",
-    },
-    aboutThem: {
-      nationality: "No preference",
-      height: "No preference",
-      maritalStatus: "No preference",
-      children: "No preference",
-      grewUpIn: "No preference",
-      languages: "No preference",
-      willingToRelocate: "No preference",
-      education: "No preference",
-    },
-    notifications: {
-      matches: true,
-      messages: true,
-      profileViews: false,
-    },
-    privacy: {
-      showAge: true,
-      showLocation: true,
-      showLastSeen: false,
-    },
-    userGender: "female",
-    requireFinancialSetup: false,
-    bioRatingMinimum: 70,
-    responseRateMinimum: 50,
-  })
 
-  const { userId, isAuthenticated } = useUser()
-
-  // Keyboard navigation for photo modal
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (selectedPhotoIndex === null || !profile?.media?.photos) return
-
-      if (e.key === "Escape") {
-        setSelectedPhotoIndex(null)
-      } else if (e.key === "ArrowLeft" && selectedPhotoIndex > 0) {
-        setSelectedPhotoIndex(selectedPhotoIndex - 1)
-      } else if (e.key === "ArrowRight" && selectedPhotoIndex < profile.media.photos.length - 1) {
-        setSelectedPhotoIndex(selectedPhotoIndex + 1)
-      }
-    }
-
-    if (selectedPhotoIndex !== null) {
-      document.addEventListener("keydown", handleKeyDown)
-      return () => document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [selectedPhotoIndex, profile?.media?.photos])
-
-  const checkIfOwnProfile = () => {
-    console.log("Checking if own profile...")
-    console.log("Signed in:", isAuthenticated)
-    console.log("User ID:", userId)
-    console.log("Profile User ID from URL:", profileUserId)
-
     if (isAuthenticated && userId) {
-      const isOwn = userId === profileUserId
-      console.log("Is own profile:", isOwn)
-      setIsOwnProfile(isOwn)
-    } else {
-      console.log("Not signed in, setting isOwnProfile to false")
-      setIsOwnProfile(false)
+      setIsOwnProfile(userId === profileUserId)
     }
-  }
-
-  useEffect(() => {
-    console.log("Profile component mounted with userId:", profileUserId)
-    console.log("Signed in:", isAuthenticated, "User ID:", userId)
-    checkIfOwnProfile()
     loadProfile()
   }, [profileUserId, userId, isAuthenticated])
 
-  const photosCount = (profile?.media?.photos || []).filter(Boolean).length
-  const hasVideo = !!profile?.media?.videoIntro
-  const hasAudio = !!profile?.media?.voiceNote
-
-  // Migrate old settings format to new format
-  const migrateSettings = (oldSettings: any) => {
-    const newSettings = {
-      ageRange: oldSettings.ageRange || [22, 35],
-      maxDistance: oldSettings.maxDistance || 50,
-      anywhereInWorld: oldSettings.anywhereInWorld || false,
-      showOnlyVerified: oldSettings.showOnlyVerified || true,
-      showOnlyPracticing: oldSettings.showOnlyPracticing || true,
-      interests: oldSettings.interests || [],
-      faithAndPractice: {
-        prayerFrequency: oldSettings.faithAndPractice?.prayerFrequency || "No preference",
-        hijabPreference: oldSettings.faithAndPractice?.hijabPreference || "No preference",
-        marriageIntention: oldSettings.faithAndPractice?.marriageIntention || "No preference",
-        halalFood: oldSettings.faithAndPractice?.halalFood || "No preference",
-        diet: oldSettings.faithAndPractice?.diet || "No preference",
-        alcohol: oldSettings.faithAndPractice?.alcohol || "No preference",
-        smoking: oldSettings.faithAndPractice?.smoking || "No preference",
-        psychedelics: oldSettings.faithAndPractice?.psychedelics || "No preference",
-        bornMuslim: oldSettings.faithAndPractice?.bornMuslim || "No preference",
-      },
-      aboutThem: {
-        nationality: oldSettings.aboutThem?.nationality || "No preference",
-        height: oldSettings.aboutThem?.height || "No preference",
-        maritalStatus: oldSettings.aboutThem?.maritalStatus || "No preference",
-        children: oldSettings.aboutThem?.children || "No preference",
-        grewUpIn: oldSettings.aboutThem?.grewUpIn || "No preference",
-        languages: oldSettings.aboutThem?.languages || "No preference",
-        willingToRelocate: oldSettings.aboutThem?.willingToRelocate || "No preference",
-        education: oldSettings.aboutThem?.education || "No preference",
-      },
-      notifications: oldSettings.notifications || {
-        matches: true,
-        messages: true,
-        profileViews: false,
-      },
-      privacy: oldSettings.privacy || {
-        showAge: true,
-        showLocation: true,
-        showLastSeen: false,
-      },
-      userGender: oldSettings.userGender || "female",
-      requireFinancialSetup: oldSettings.requireFinancialSetup || false,
-      bioRatingMinimum: oldSettings.bioRatingMinimum || 70,
-      responseRateMinimum: oldSettings.responseRateMinimum || 50,
-    }
-
-    // Save the migrated settings
-    localStorage.setItem("userSettings", JSON.stringify(newSettings))
-    console.log("Settings migrated to new format:", newSettings)
-
-    return newSettings
-  }
-
   const loadProfile = async () => {
     try {
-      console.log("Loading profile for user ID:", profileUserId)
-
-      // Load profile from Supabase by user ID
       const supabaseProfile = await ProfileService.getProfileByUserId(profileUserId)
-      console.log("Loaded profile data from Supabase:", supabaseProfile)
-
+      
       if (supabaseProfile) {
-        // Get public URLs for media from Supabase storage
+        // Get signed URLs for photos
         let photos: string[] = []
         if (supabaseProfile.profile_photos && Array.isArray(supabaseProfile.profile_photos)) {
-          photos = supabaseProfile.profile_photos.map((path: string) => {
-            // If already a full URL, return as-is
-            if (path.startsWith('http')) return path
-            // Otherwise, get public URL from Supabase storage
-            const { data } = supabase.storage.from('profiles').getPublicUrl(path)
-            return data.publicUrl
-          })
+          const resolved = await Promise.all(
+            supabaseProfile.profile_photos.map(async (raw: string) => {
+              const path = storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, raw)
+              const signed = await getSignedUrlForPath(STORAGE_CONFIG.BUCKETS.PROFILES, path, 7200)
+              return signed || raw
+            })
+          )
+          photos = resolved.filter(Boolean)
         }
 
-        // Get video intro URL
+        // Get signed URL for video
         let videoIntro: string | undefined
         if (supabaseProfile.video_intro) {
-          videoIntro = supabaseProfile.video_intro.startsWith('http')
-            ? supabaseProfile.video_intro
-            : supabase.storage.from('videos').getPublicUrl(supabaseProfile.video_intro).data.publicUrl
+          const path = storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.VIDEOS, supabaseProfile.video_intro)
+          const signed = await getSignedUrlForPath(STORAGE_CONFIG.BUCKETS.VIDEOS, path, 7200)
+          videoIntro = signed || undefined
         }
 
-        // Get voice intro URL
-        let voiceNote: string | undefined
+        // Get signed URL for audio
+        let voiceIntro: string | undefined
         if (supabaseProfile.voice_intro) {
-          voiceNote = supabaseProfile.voice_intro.startsWith('http')
-            ? supabaseProfile.voice_intro
-            : supabase.storage.from('voice-notes').getPublicUrl(supabaseProfile.voice_intro).data.publicUrl
+          const path = storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.VOICE_NOTES, supabaseProfile.voice_intro)
+          const signed = await getSignedUrlForPath(STORAGE_CONFIG.BUCKETS.VOICE_NOTES, path, 7200)
+          voiceIntro = signed || undefined
         }
 
-        // Get profile photo URL
-        let profilePhoto: string | undefined
-        if (supabaseProfile.profile_photo) {
-          profilePhoto = supabaseProfile.profile_photo.startsWith('http')
-            ? supabaseProfile.profile_photo
-            : supabase.storage.from('profiles').getPublicUrl(supabaseProfile.profile_photo).data.publicUrl
-        }
-
-        const normalizedMedia = {
-          photos,
+        setProfile({
+          firstName: supabaseProfile.first_name || "",
+          lastName: supabaseProfile.last_name || "",
+          age: supabaseProfile.age ? String(supabaseProfile.age) : "",
+          gender: supabaseProfile.gender || "",
+          maritalStatus: supabaseProfile.marital_status || "",
+          bio: supabaseProfile.bio || "",
+          location: supabaseProfile.location || "",
+          city: supabaseProfile.city || "",
+          state: (supabaseProfile as any).state || "",
+          country: (supabaseProfile as any).country || "",
+          education: supabaseProfile.education || "",
+          profession: supabaseProfile.profession || "",
+          
+          // Islamic Values
+          religiosity: supabaseProfile.religiosity || "",
+          prayerFrequency: supabaseProfile.prayer_frequency || "",
+          hijabPreference: supabaseProfile.hijab_preference || "",
+          marriageIntention: supabaseProfile.marriage_intention || "",
+          sect: (supabaseProfile as any).sect || "",
+          islamicValues: (supabaseProfile as any).islamic_values || "",
+          isRevert: supabaseProfile.is_revert ? "yes" : "no",
+          alcohol: supabaseProfile.alcohol || "",
+          smoking: supabaseProfile.smoking || "",
+          psychedelics: supabaseProfile.psychedelics || "",
+          psychedelicsTypes: (supabaseProfile as any).psychedelics_types || [],
+          halalFood: supabaseProfile.halal_food || "",
+          familyInvolvement: (supabaseProfile as any).family_involvement || "",
+          
+          // Lifestyle
+          financeStyle: (supabaseProfile as any).finance_style || "",
+          diningFrequency: (supabaseProfile as any).dining_frequency || "",
+          travelFrequency: (supabaseProfile as any).travel_frequency || "",
+          hairStyle: (supabaseProfile as any).hair_style || "",
+          polygamyReason: (supabaseProfile as any).polygamy_reason || "",
+          
+          // Living
+          livingArrangements: (supabaseProfile as any).living_arrangements || "",
+          willingToRelocate: (supabaseProfile as any).willing_to_relocate === true ? "yes" : "no",
+          
+          // Interests
+          interests: Array.isArray(supabaseProfile.interests) ? supabaseProfile.interests : [],
+          personality: Array.isArray((supabaseProfile as any).personality) ? (supabaseProfile as any).personality : [],
+          
+          // Media
+          profile_photos: photos,
+          voiceIntro,
           videoIntro,
-          voiceNote,
-          audioMessages: [],
-        }
-
-        const normalized: ProfileData = {
-          firstName: supabaseProfile.first_name || '',
-          lastName: supabaseProfile.last_name || '',
-          age: supabaseProfile.age?.toString() || '',
-          gender: supabaseProfile.gender || '',
-          height: (supabaseProfile as any).height || '',
-          maritalStatus: supabaseProfile.marital_status || '',
-          children: supabaseProfile.has_children ? 'yes' : 'no',
-          tagline: supabaseProfile.bio?.substring(0, 100) || '',
-          bio: supabaseProfile.bio || '',
-          location: supabaseProfile.location || '',
-          bioTagline: supabaseProfile.bio_tagline || '',
-          wantChildren: supabaseProfile.wants_children ? 'yes' : 'no',
-          hasChildren: supabaseProfile.has_children ? 'yes' : 'no',
-          currentLocation: supabaseProfile.location || '',
-          grewUpIn: supabaseProfile.city || supabaseProfile.location || '',
-          livingArrangements: (supabaseProfile as any).living_arrangements || '',
-          education: supabaseProfile.education || '',
-          profession: supabaseProfile.profession || '',
-          employer: supabaseProfile.employer || '',
-          jobTitle: supabaseProfile.job_title || '',
-          ethnicity: supabaseProfile.ethnicity || '',
-          nationality: supabaseProfile.nationality || '',
-          languages: supabaseProfile.languages || [],
-          sect: 'Sunni',
-          bornMuslim: 'yes',
-          religiousPractice: supabaseProfile.religiosity || '',
-          faith: 'strong',
-          diet: 'halal_only',
-          alcohol: supabaseProfile.alcohol || 'never',
-          smoking: supabaseProfile.smoking || 'never',
-          psychedelics: supabaseProfile.psychedelics || 'never',
-          halalFood: supabaseProfile.halal_food || 'always',
-          isRevert: supabaseProfile.is_revert ? 'yes' : 'no',
-          hijabChoice: supabaseProfile.hijab_preference || '',
-          islamicValues: 'traditional',
-          prayerFrequency: supabaseProfile.prayer_frequency || '',
-          quranReading: 'daily',
-          islamicEducation: 'self_taught',
-          religiosity: supabaseProfile.religiosity || '',
-          hijabPreference: supabaseProfile.hijab_preference || '',
-          marriageIntention: supabaseProfile.marriage_intention || '',
-          chattingTimeline: 'few_weeks',
-          familyInvolvement: 'involved',
-          marriageTimeline: supabaseProfile.marriage_intention || '',
-          lookingFor: 'practicing_muslim',
-          familyPlans: 'children_soon',
-          relocationPlans: 'open_to_relocate',
-          polygamyPlan: 'not_interested',
-          interests: supabaseProfile.interests || [],
-          personality: ['Kind', 'Religious'],
-          dowryWallet: {
-            isSetup: !!supabaseProfile.mahr_wallet_address,
-            address: supabaseProfile.mahr_wallet_address || undefined,
-            solanaBalance: 0,
-            samaaBalance: 0,
-          },
-          purseWallet: {
-            isSetup: !!supabaseProfile.purse_wallet_address,
-            address: supabaseProfile.purse_wallet_address || undefined,
-            solanaBalance: 0,
-            samaaBalance: 0,
-          },
-          media: normalizedMedia,
-          profilePhoto,
-          voiceIntro: voiceNote,
-          video: videoIntro,
-          userId: supabaseProfile.id,
-          createdAt: supabaseProfile.created_at || new Date().toISOString(),
+          
+          // Stats
+          bioRating: (supabaseProfile as any).bio_rating || 0,
+          responseRate: (supabaseProfile as any).response_rate || 0,
           isVerified: supabaseProfile.is_verified || false,
-          premiumMember: false,
-          idVerified: supabaseProfile.is_verified || false,
-          bioRating: supabaseProfile.bio_rating || 0,
-          responseRate: supabaseProfile.response_rate || 0,
-          profileComplete: true,
-        }
-        console.log("Profile data with media", normalized)
-        setProfile(normalized)
-      } else {
-        console.log("No profile found for user ID:", profileUserId)
-      }
-
-      // Load user settings from Supabase if this is own profile
-      const isOwn = isAuthenticated && userId && userId === profileUserId
-      console.log(
-        "Loading settings - isOwn:",
-        isOwn,
-        "authenticated:",
-        isAuthenticated,
-        "userId:",
-        userId,
-        "profileUserId:",
-        profileUserId
-      )
-
-      if (isOwn) {
-        // Load settings from Supabase
-        const dbSettings = await UserSettingsService.getUserSettings(userId)
-        if (dbSettings) {
-          console.log("Loaded settings from Supabase:", dbSettings)
-          setUserSettings({
-            ageRange: [dbSettings.age_range_min || 22, dbSettings.age_range_max || 35],
-            maxDistance: dbSettings.max_distance || 50,
-            anywhereInWorld: dbSettings.anywhere_in_world || false,
-            showOnlyVerified: dbSettings.show_only_verified ?? true,
-            showOnlyPracticing: dbSettings.show_only_practicing ?? true,
-            interests: dbSettings.preferred_interests || [],
-            faithAndPractice: {
-              prayerFrequency: (dbSettings as any).prayer_frequency || "No preference",
-              hijabPreference: (dbSettings as any).hijab_preference || "No preference",
-              marriageIntention: (dbSettings as any).marriage_intention || "No preference",
-              halalFood: (dbSettings as any).halal_food || "No preference",
-              diet: (dbSettings as any).diet || "No preference",
-              alcohol: (dbSettings as any).alcohol || "No preference",
-              smoking: (dbSettings as any).smoking || "No preference",
-              psychedelics: (dbSettings as any).psychedelics || "No preference",
-              bornMuslim: (dbSettings as any).born_muslim || "No preference",
-            },
-            aboutThem: {
-              nationality: (dbSettings as any).nationality || "No preference",
-              height: (dbSettings as any).height || "No preference",
-              maritalStatus: (dbSettings as any).marital_status || "No preference",
-              children: (dbSettings as any).children || "No preference",
-              grewUpIn: (dbSettings as any).grew_up_in || "No preference",
-              languages: (dbSettings as any).languages || "No preference",
-              willingToRelocate: (dbSettings as any).willing_to_relocate || "No preference",
-              education: (dbSettings as any).education || "No preference",
-            },
-            notifications: {
-              matches: dbSettings.notifications_matches ?? true,
-              messages: dbSettings.notifications_messages ?? true,
-              profileViews: dbSettings.notifications_profile_views ?? false,
-            },
-            privacy: {
-              showAge: dbSettings.show_age ?? true,
-              showLocation: dbSettings.show_location ?? true,
-              showLastSeen: dbSettings.show_last_seen ?? false,
-            },
-            userGender: supabaseProfile?.gender || "female",
-            requireFinancialSetup: dbSettings.require_financial_setup || false,
-            bioRatingMinimum: dbSettings.bio_rating_minimum || 70,
-            responseRateMinimum: dbSettings.response_rate_minimum || 50,
-          })
-          // Load message permissions from settings
-          setMessagePermissions({
-            requireFinancialSetup: dbSettings.require_financial_setup || false,
-            minBioRating: dbSettings.bio_rating_minimum || 75,
-            minResponseRate: dbSettings.response_rate_minimum || 60,
-            allowVideoMessages: (dbSettings as any).allow_video_messages ?? true,
-          })
-        } else {
-          // Fallback to localStorage if no Supabase settings
-          const savedSettings = localStorage.getItem("userSettings")
-          if (savedSettings) {
-            const parsedSettings = JSON.parse(savedSettings)
-            setUserSettings(parsedSettings)
-          }
-        }
-      } else {
-        console.log("Not own profile, skipping settings load")
+        })
       }
     } catch (error) {
       console.error("Error loading profile:", error)
@@ -535,584 +391,60 @@ export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-8 h-8 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-slate-600 font-queensides">Loading profile...</p>
         </div>
       </div>
     )
   }
 
-  console.log("Render state:")
-  console.log("- isLoading:", isLoading)
-  console.log("- profile:", !!profile)
-  console.log("- isOwnProfile:", isOwnProfile)
-  console.log("- profileUserId:", profileUserId)
-
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative pt-24 pb-24">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 relative pt-24 pb-24">
         <CelestialBackground intensity="light" />
-
-        <div className="relative z-10">
-          {/* Header */}
-          {/* Mobile Navigation */}
-          <div className="md:hidden">
-            <MobileNavigation />
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <DesktopNavigation />
-          </div>
-
-          <div className="flex items-center justify-center min-h-[calc(100vh-120px)] px-4 pt-20">
-            {isOwnProfile ? (
-              // Own profile - encourage to create profile
-              <div className="w-full max-w-md space-y-8">
-                {/* Profile Setup Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+        <div className="md:hidden"><MobileNavigation /></div>
+        <div className="hidden md:block"><DesktopNavigation /></div>
+        
+        <div className="flex items-center justify-center min-h-[calc(100vh-120px)] px-4">
+          <Card className="w-full max-w-md border-2 border-pink-200/50">
+            <CardContent className="p-8 text-center">
+              <UserCircle className="w-24 h-24 text-pink-300 mx-auto mb-6" />
+              <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-4">Profile Not Found</h2>
+              <p className="text-slate-600 font-queensides mb-6">
+                {isOwnProfile 
+                  ? "Create your profile to start finding meaningful connections"
+                  : "This user profile is not available"}
+              </p>
+              {isOwnProfile && (
+                <button
+                  onClick={() => router.push("/profile/setup")}
+                  className="w-full bg-gradient-to-r from-pink-400 to-rose-500 hover:from-pink-500 hover:to-rose-600 text-white font-queensides py-3 px-6 rounded-xl shadow-lg"
                 >
-                  <Card className="arabic-border bg-gradient-to-br from-indigo-50 to-purple-50">
-                    <CardContent className="p-8 text-center">
-                      <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
-                        Create Your Profile
-                      </h3>
-                      <p className="text-slate-600 font-queensides mb-6 leading-relaxed">
-                        Share your values, interests, and what you're looking for in a life partner.
-                      </p>
-                      <Button
-                        onClick={() => router.push("/profile-setup")}
-                        className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides py-4 text-lg"
-                      >
-                        <Plus className="w-5 h-5 mr-2" />
-                        Create My Profile
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Audio/Video Message Permissions Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <Card className="arabic-border bg-gradient-to-br from-emerald-50 to-teal-50">
-                    <CardContent className="p-8 text-center">
-                      <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
-                        Message Permissions
-                      </h3>
-                      <p className="text-slate-600 font-queensides mb-6 leading-relaxed">
-                        Control who can send you audio and video messages. These are separate from
-                        your match preferences.
-                      </p>
-
-                      <div className="space-y-4 mb-6">
-                        <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
-                          <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">
-                              Require Financial Setup
-                            </p>
-                            <p className="text-sm text-slate-600 font-queensides">
-                              Only users with dowry wallet/purse can message me
-                            </p>
-                          </div>
-                          <div className="w-12 h-6 bg-slate-200 rounded-full relative cursor-pointer">
-                            <div className="w-5 h-5 bg-emerald-500 rounded-full absolute top-0.5 left-0.5 transition-transform"></div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
-                          <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">
-                              Minimum Bio Rating
-                            </p>
-                            <p className="text-sm text-slate-600 font-queensides">
-                              Require 75%+ profile completion to message me
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-emerald-600">75%</span>
-                            <div className="w-16 h-2 bg-slate-200 rounded-full">
-                              <div className="w-3/4 h-2 bg-emerald-500 rounded-full"></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
-                          <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">
-                              Response Rate Filter
-                            </p>
-                            <p className="text-sm text-slate-600 font-queensides">
-                              Only users with 60%+ response rate can message me
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-emerald-600">60%</span>
-                            <div className="w-16 h-2 bg-slate-200 rounded-full">
-                              <div className="w-3/5 h-2 bg-emerald-500 rounded-full"></div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-4 bg-white/60 rounded-lg">
-                          <div className="text-left">
-                            <p className="font-medium text-slate-800 font-qurova">
-                              Allow Video Messages
-                            </p>
-                            <p className="text-sm text-slate-600 font-queensides">
-                              Users can send video messages to me
-                            </p>
-                          </div>
-                          <div className="w-12 h-6 bg-emerald-200 rounded-full relative cursor-pointer">
-                            <div className="w-5 h-5 bg-emerald-500 rounded-full absolute top-0.5 right-0.5 transition-transform"></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200/30 mb-6">
-                        <p className="text-sm text-emerald-700 font-queensides">
-                          These settings only control who can send you messages. Your match
-                          preferences are configured separately in Settings.
-                        </p>
-                      </div>
-
-                      <Button
-                        onClick={() => setShowMessagePermissions(true)}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-queensides py-4 text-lg"
-                      >
-                        <Settings className="w-5 h-5 mr-2" />
-                        Configure Message Permissions
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Explore Options Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Card className="arabic-border bg-white/80 backdrop-blur-xl">
-                    <CardContent className="p-8 text-center">
-                      <h3 className="text-lg font-bold text-slate-800 font-qurova mb-4">
-                        Explore Samaa
-                      </h3>
-                      <p className="text-slate-600 font-queensides mb-6">
-                        Take a look around and see what Samaa has to offer before creating your
-                        profile.
-                      </p>
-                      <div className="space-y-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => router.push("/")}
-                          className="w-full font-queensides py-3"
-                        >
-                          Browse Features
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => router.push("/ui-kit")}
-                          className="w-full font-queensides py-3 text-slate-500"
-                        >
-                          View UI Components
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Islamic Blessing Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                >
-                  <Card className="arabic-border bg-gradient-to-br from-slate-50 to-slate-100">
-                    <CardContent className="p-10 text-center">
-                      {/* Islamic Divider */}
-                      <div className="flex items-center justify-center mb-6">
-                        <div className="flex items-center space-x-3">
-                          <Star className="w-3 h-3 text-indigo-300" />
-                          <div className="w-6 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
-                          <Moon className="w-3 h-3 text-purple-300" />
-                          <div className="w-6 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
-                          <Sparkles className="w-3 h-3 text-blue-300" />
-                        </div>
-                      </div>
-
-                      <p className="text-base text-slate-500 font-queensides italic mb-3">
-                        "And among His signs is that He created for you mates from among yourselves"
-                      </p>
-                      <p className="text-sm text-slate-400 font-queensides">- Quran 30:21</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Message Permissions Modal */}
-                {showMessagePermissions && (
-                  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-xl font-bold text-slate-800 font-qurova">
-                            Message Permissions
-                          </h3>
-                          <button
-                            onClick={() => setShowMessagePermissions(false)}
-                            className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
-                          >
-                            ✕
-                          </button>
-                        </div>
-
-                        <div className="space-y-6">
-                          {/* Financial Setup Toggle */}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-slate-800 font-qurova">
-                                Require Financial Setup
-                              </p>
-                              <p className="text-sm text-slate-600 font-queensides">
-                                Only users with dowry wallet/purse
-                              </p>
-                            </div>
-                            <button
-                              onClick={() =>
-                                setMessagePermissions((prev) => ({
-                                  ...prev,
-                                  requireFinancialSetup: !prev.requireFinancialSetup,
-                                }))
-                              }
-                              className={`w-12 h-6 rounded-full relative transition-colors ${
-                                messagePermissions.requireFinancialSetup
-                                  ? "bg-emerald-500"
-                                  : "bg-slate-200"
-                              }`}
-                            >
-                              <div
-                                className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                                  messagePermissions.requireFinancialSetup
-                                    ? "translate-x-6"
-                                    : "translate-x-0.5"
-                                }`}
-                              />
-                            </button>
-                          </div>
-
-                          {/* Bio Rating Slider */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-slate-800 font-qurova">
-                                Minimum Bio Rating
-                              </p>
-                              <span className="text-sm font-medium text-emerald-600">
-                                {messagePermissions.minBioRating}%
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={messagePermissions.minBioRating}
-                              onChange={(e) =>
-                                setMessagePermissions((prev) => ({
-                                  ...prev,
-                                  minBioRating: Number.parseInt(e.target.value),
-                                }))
-                              }
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
-                            />
-                            <p className="text-sm text-slate-600 font-queensides mt-1">
-                              Profile completion required
-                            </p>
-                          </div>
-
-                          {/* Response Rate Slider */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-medium text-slate-800 font-qurova">
-                                Minimum Response Rate
-                              </p>
-                              <span className="text-sm font-medium text-emerald-600">
-                                {messagePermissions.minResponseRate}%
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min="0"
-                              max="100"
-                              value={messagePermissions.minResponseRate}
-                              onChange={(e) =>
-                                setMessagePermissions((prev) => ({
-                                  ...prev,
-                                  minResponseRate: Number.parseInt(e.target.value),
-                                }))
-                              }
-                              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
-                            />
-                            <p className="text-sm text-slate-600 font-queensides mt-1">
-                              How often they respond to messages
-                            </p>
-                          </div>
-
-                          {/* Video Messages Toggle */}
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-slate-800 font-qurova">
-                                Allow Video Messages
-                              </p>
-                              <p className="text-sm text-slate-600 font-queensides">
-                                Users can send video messages
-                              </p>
-                            </div>
-                            <button
-                              onClick={() =>
-                                setMessagePermissions((prev) => ({
-                                  ...prev,
-                                  allowVideoMessages: !prev.allowVideoMessages,
-                                }))
-                              }
-                              className={`w-12 h-6 rounded-full relative transition-colors ${
-                                messagePermissions.allowVideoMessages
-                                  ? "bg-emerald-500"
-                                  : "bg-slate-200"
-                              }`}
-                            >
-                              <div
-                                className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                                  messagePermissions.allowVideoMessages
-                                    ? "translate-x-6"
-                                    : "translate-x-0.5"
-                                }`}
-                              />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="mt-8 flex gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={() => setShowMessagePermissions(false)}
-                            className="flex-1 font-queensides"
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            onClick={async () => {
-                              if (!userId) return
-                              try {
-                                await UserSettingsService.upsertUserSettings(userId, {
-                                  require_financial_setup: messagePermissions.requireFinancialSetup,
-                                  bio_rating_minimum: messagePermissions.minBioRating,
-                                  response_rate_minimum: messagePermissions.minResponseRate,
-                                  allow_video_messages: messagePermissions.allowVideoMessages,
-                                })
-                                console.log("Message permissions saved to Supabase")
-                              } catch (error) {
-                                console.error("Error saving message permissions:", error)
-                              }
-                              setShowMessagePermissions(false)
-                            }}
-                            className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-queensides"
-                          >
-                            Save Settings
-                          </Button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Someone else's profile - profile not found
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md"
-              >
-                <Card className="max-w-md mx-auto border-2 border-indigo-200/50 overflow-hidden backdrop-blur-sm bg-white/95">
-                  <CardContent className="p-8 text-center relative">
-                    {/* Arabic-inspired corner decorations */}
-                    <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
-                    <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
-                    <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
-                    <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
-
-                    {/* Geometric pattern overlay */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-300/30 rounded-full opacity-20"></div>
-                    <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
-                    <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
-
-                    {/* Islamic Divider */}
-                    <div className="flex items-center justify-center mb-8 relative z-10">
-                      <div className="flex items-center space-x-3">
-                        <Star className="w-4 h-4 text-indigo-400" />
-                        <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent" />
-                        <Moon className="w-4 h-4 text-purple-400" />
-                        <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
-                        <Sparkles className="w-4 h-4 text-blue-400" />
-                      </div>
-                    </div>
-
-                    {/* Icon */}
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
-                      className="w-24 h-24 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-indigo-200/50 relative z-10"
-                    >
-                      <UserCircle className="w-12 h-12 text-indigo-600" />
-                    </motion.div>
-
-                    <motion.h2
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4, duration: 0.6 }}
-                      className="text-3xl font-bold text-slate-800 font-qurova mb-4 relative z-10"
-                    >
-                      Join Samaa Today
-                    </motion.h2>
-
-                    <motion.p
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6, duration: 0.6 }}
-                      className="text-slate-600 font-queensides mb-8 leading-relaxed text-lg relative z-10"
-                    >
-                      Connect your wallet and create your profile to start finding meaningful
-                      connections in our Muslim community
-                    </motion.p>
-
-                    {/* Decorative divider */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.8, duration: 0.6 }}
-                      className="flex items-center justify-center mb-8 relative z-10"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                        <div className="w-4 h-4 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                        </div>
-                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                        <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.0, duration: 0.6 }}
-                      className="space-y-4 relative z-10"
-                    >
-                      <Button
-                        onClick={() => router.push("/crypto-guide")}
-                        className="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides py-4 text-lg shadow-xl"
-                      >
-                        <Zap className="w-5 h-5 mr-2" />
-                        Connect Wallet & Get Started
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        onClick={() => router.back()}
-                        className="w-full font-queensides border-indigo-200 hover:bg-indigo-50"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Go Back
-                      </Button>
-                    </motion.div>
-
-                    {/* Benefits Section */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.2, duration: 0.6 }}
-                      className="mt-8 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200/50 relative z-10"
-                    >
-                      <h3 className="font-bold text-green-700 font-queensides mb-2">
-                        Why Join Samaa?
-                      </h3>
-                      <div className="text-sm text-green-600 font-queensides space-y-1">
-                        <p>✓ Find meaningful Islamic connections</p>
-                        <p>✓ Web3-powered dowry & purse wallets</p>
-                        <p>✓ No monthly fees - token-based access</p>
-                        <p>✓ AI-powered compatibility matching</p>
-                      </div>
-                    </motion.div>
-
-                    {/* Wallet Address Display */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.4, duration: 0.6 }}
-                      className="mt-6 p-3 bg-slate-50 rounded-lg relative z-10"
-                    >
-                      <p className="text-xs text-slate-500 font-queensides mb-1">
-                        User ID
-                      </p>
-                      <code className="text-xs font-mono text-slate-600">
-                        {profileUserId.slice(0, 8)}...{profileUserId.slice(-8)}
-                      </code>
-                    </motion.div>
-
-                    {/* Islamic Divider */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1.6, duration: 0.6 }}
-                      className="flex items-center justify-center mt-8 relative z-10"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Star className="w-3 h-3 text-indigo-300" />
-                        <div className="w-6 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
-                        <Moon className="w-3 h-3 text-purple-300" />
-                        <div className="w-6 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
-                        <Sparkles className="w-3 h-3 text-blue-300" />
-                      </div>
-                    </motion.div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )}
-          </div>
+                  Create Profile
+                </button>
+              )}
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Mobile Bottom Navigation */}
-        <MobileBottomNav currentTab={currentTab} setCurrentTab={setCurrentTab} />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 relative pb-24">
       <CelestialBackground intensity="light" />
 
       <div className="relative z-10">
         {/* Header */}
-        {/* Header - Same style as explore page */}
-        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-indigo-100/50">
+        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-pink-100/50">
           <div className="flex items-center justify-between p-4">
             <button
               onClick={() => router.back()}
-              className="p-2 hover:bg-indigo-50 rounded-xl transition-colors"
+              className="p-2 hover:bg-pink-50 rounded-xl transition-colors"
             >
-              <ArrowLeft className="w-6 h-6 text-indigo-600" />
+              <ArrowLeft className="w-6 h-6 text-pink-600" />
             </button>
             <div className="text-center">
               <h1 className="text-xl font-bold text-slate-800 font-qurova">
@@ -1122,1474 +454,359 @@ export function ProfileView({ userId: profileUserId }: ProfileViewProps) {
                 {isOwnProfile ? "Your Samaa profile" : "Member profile"}
               </p>
             </div>
-            <div className="w-10" /> {/* Spacer */}
+            <div className="w-10" />
           </div>
         </div>
 
-        {/* Full-Screen Hero Photo with Overlay Info */}
-        <div className="relative h-screen w-full">
-          {profile.media?.photos?.[0] && (
-            <div className="absolute top-2 left-2 z-30 bg-black/40 text-white text-xs px-2 py-1 rounded">
-              <span>{profile.media.photos[0]}</span>
-            </div>
-          )}
-          {/* Main Profile Photo */}
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${profile.media?.photos?.[0] || profile.profilePhoto || "/images/futuristic-muslim-couple-hero.jpg"})`,
-            }}
-            onClick={() => profile.media?.photos?.length && setSelectedPhotoIndex(0)}
-          >
-            {/* Dark overlay for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-          </div>
-
-          {/* Profile Info Overlay */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-            {/* Name and Age */}
-            <div className="mb-4">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold font-qurova">
-                  {profile.firstName || "User"}
-                  {profile.age && <span className="text-3xl font-qurova ml-3">{profile.age}</span>}
-                </h1>
-              </div>
-
-              {/* Location, Bio Rating, Response Rate */}
-              <div className="space-y-2 mb-3">
-                {profile.currentLocation && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span className="font-queensides">{profile.currentLocation}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4">
-                  {profile.bioRating && (
-                    <div className="flex items-center gap-2">
-                      <Star className="w-4 h-4 text-yellow-400" />
-                      <span className="font-queensides">{profile.bioRating}% Bio Rating</span>
-                    </div>
-                  )}
-                  {profile.responseRate && (
-                    <div className="flex items-center gap-2">
-                      <MessageCircle className="w-4 h-4 text-green-400" />
-                      <span className="font-queensides">{profile.responseRate}% Response Rate</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Info Tags */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {profile.profession && (
-                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
-                  <span className="text-sm font-queensides">{profile.profession}</span>
-                </div>
-              )}
-              {profile.education && (
-                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
-                  <span className="text-sm font-queensides">{profile.education}</span>
-                </div>
-              )}
-              {profile.sect && (
-                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
-                  <span className="text-sm font-queensides">{profile.sect}</span>
-                </div>
-              )}
-              {profile.marriageTimeline && (
-                <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
-                  <span className="text-sm font-queensides">
-                    Marriage: {profile.marriageTimeline}
-                  </span>
-                </div>
-              )}
-              {(photosCount > 0 || hasVideo || hasAudio) && (
-                <div className="flex items-center gap-2">
-                  {photosCount > 0 && (
-                    <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                      <Camera className="w-4 h-4" />
-                      <span className="text-sm font-queensides">{photosCount} photos</span>
-                    </div>
-                  )}
-                  {hasVideo && (
-                    <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                      <VideoIcon className="w-4 h-4" />
-                      <span className="text-sm font-queensides">Video</span>
-                    </div>
-                  )}
-                  {hasAudio && (
-                    <div className="bg-black/40 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
-                      <Mic className="w-4 h-4" />
-                      <span className="text-sm font-queensides">Audio</span>
-                    </div>
-                  )}
+        {/* Hero Section - Full Width Image */}
+        <div className="relative w-full">
+          {profile.profile_photos && profile.profile_photos.length > 0 ? (
+            <div className="relative w-full overflow-hidden">
+              <img
+                src={profile.profile_photos[0]}
+                alt={`${profile.firstName}'s profile photo`}
+                className="w-full h-auto object-cover"
+                style={{ maxHeight: '600px' }}
+              />
+              <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black/60 to-transparent" />
+              
+              {profile.profile_photos.length > 1 && (
+                <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-queensides flex items-center gap-2">
+                  <Camera className="w-4 h-4" />
+                  {profile.profile_photos.length} Photos
                 </div>
               )}
             </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              {isOwnProfile ? (
-                <Button
-                  onClick={() => router.push("/profile-setup")}
-                  className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides py-3"
-                >
-                  <Edit3 className="w-4 h-4 mr-2" />
-                  Edit Profile
-                </Button>
-              ) : (
-                <>
-                  <Button className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white font-queensides py-3">
-                    Send Message
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30 px-4"
-                  >
-                    <Heart className="w-5 h-5" />
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Arabic Divider */}
-        <div className="flex items-center justify-center py-8 px-4">
-          <div className="flex items-center space-x-3">
-            <Star className="w-3 h-3 text-indigo-300" />
-            <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
-            <Moon className="w-4 h-4 text-purple-300" />
-            <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
-            <Sparkles className="w-3 h-3 text-blue-300" />
-            <div className="w-8 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
-            <Star className="w-3 h-3 text-indigo-300" />
-          </div>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="space-y-0">
-          {/* Bio Tagline Section */}
-          {profile.bioTagline && (
-            <div className="relative rounded-2xl p-6 mx-4 mb-6 border-2 border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white shadow-lg">
-              {/* Arabic-inspired corner decorations */}
-              <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
-              <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
-              <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
-              <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
-
-              {/* Arabic-inspired divider below tagline */}
-              <div className="flex items-center justify-center mb-3">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                </div>
-              </div>
-
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
-
-              <div className="relative text-center mt-3">
-                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-3 mt-4">
-                  Words I Live By
-                </h3>
-
-                <p className="text-slate-700 font-queensides italic text-lg leading-relaxed mb-4">
-                  "{profile.bioTagline}"
-                </p>
-              </div>
+          ) : (
+            <div className="relative w-full h-96 bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
+              <UserCircle className="w-32 h-32 text-pink-300" />
             </div>
           )}
 
-          {/* Wallet Section */}
-          {(profile.gender === "male" && profile.dowryWallet) ||
-          (profile.gender === "female" && profile.purseWallet) ? (
-            <div className="bg-white/80 backdrop-blur-sm p-6 mx-4 mb-6 rounded-xl border border-indigo-100 mb-10">
-              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4 flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-indigo-500" />
-                {profile.gender === "male" ? "Dowry Wallet" : "Purse Wallet"}
-              </h3>
-
-              {profile.gender === "male" && profile.dowryWallet ? (
-                <div className="space-y-3">
-                  {profile.dowryWallet.isSetup ? (
-                    <>
-                      <div className="flex items-center gap-2 text-green-600">
-                        <UserCheck className="w-4 h-4" />
-                        <span className="font-queensides font-medium">Wallet Setup Complete</span>
-                      </div>
-                      {profile.dowryWallet.address && (
-                        <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-sm text-slate-500 font-queensides mb-1">
-                            Wallet Address
-                          </p>
-                          <p className="font-mono text-sm text-slate-700 break-all">
-                            {profile.dowryWallet.address}
-                          </p>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-4">
-                        {profile.dowryWallet.solanaBalance !== undefined && (
-                          <div className="bg-slate-50 p-3 rounded-lg text-center">
-                            <p className="text-sm text-slate-500 font-queensides">SOL Balance</p>
-                            <p className="font-bold text-slate-800 font-qurova">
-                              {profile.dowryWallet.solanaBalance.toFixed(4)}
-                            </p>
-                          </div>
-                        )}
-                        {profile.dowryWallet.samaaBalance !== undefined && (
-                          <div className="bg-slate-50 p-3 rounded-lg text-center">
-                            <p className="text-sm text-slate-500 font-queensides">SAMAA Balance</p>
-                            <p className="font-bold text-slate-800 font-qurova">
-                              {profile.dowryWallet.samaaBalance.toLocaleString()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-4">
-                      <p className="text-slate-500 font-queensides">
-                        Dowry wallet not yet configured
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : profile.gender === "female" && profile.purseWallet ? (
-                <div className="space-y-3">
-                  {profile.purseWallet.isSetup ? (
-                    <>
-                      <div className="flex items-center gap-2 text-green-600">
-                        <UserCheck className="w-4 h-4" />
-                        <span className="font-queensides font-medium">Wallet Setup Complete</span>
-                      </div>
-                      {profile.purseWallet.address && (
-                        <div className="bg-slate-50 p-3 rounded-lg">
-                          <p className="text-sm text-slate-500 font-queensides mb-1">
-                            Wallet Address
-                          </p>
-                          <p className="font-mono text-sm text-slate-700 break-all">
-                            {profile.purseWallet.address}
-                          </p>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-2 gap-4">
-                        {profile.purseWallet.solanaBalance !== undefined && (
-                          <div className="bg-slate-50 p-3 rounded-lg text-center">
-                            <p className="text-sm text-slate-500 font-queensides">SOL Balance</p>
-                            <p className="font-bold text-slate-800 font-qurova">
-                              {profile.purseWallet.solanaBalance.toFixed(4)}
-                            </p>
-                          </div>
-                        )}
-                        {profile.purseWallet.samaaBalance !== undefined && (
-                          <div className="bg-slate-50 p-3 rounded-lg text-center">
-                            <p className="text-sm text-slate-500 font-queensides">SAMAA Balance</p>
-                            <p className="font-bold text-slate-800 font-qurova">
-                              {profile.purseWallet.samaaBalance.toLocaleString()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-4">
-                      <p className="text-slate-500 font-queensides">
-                        Purse wallet not yet configured
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : null}
+          {/* Profile Info - Elegant Overlay */}
+          <div className="relative -mt-24 px-6 z-10">
+            <div className="text-center mb-6">
+              <h1 className="text-5xl font-bold gradient-text font-qurova mb-3 drop-shadow-lg">
+                {profile.firstName || "User"}
+                {profile.age && <span className="text-4xl ml-2">{profile.age}</span>}
+              </h1>
+              {profile.gender && (
+                <Badge className="bg-white/90 backdrop-blur-sm text-pink-600 px-5 py-2 rounded-full text-sm font-semibold shadow-lg border border-pink-200">
+                  {profile.gender === 'male' ? '♂ Male' : '♀ Female'}
+                </Badge>
+              )}
             </div>
-          ) : null}
-  <br/>
-          {/* About Me - Compact */}
-          <div className="bg-white p-6">
-            <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                </div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+
+            {/* Location */}
+            {(profile.city || profile.state || profile.country || profile.location) && (
+              <div className="flex items-center justify-center gap-2 text-white font-queensides text-lg mb-4 drop-shadow-md">
+                <MapPin className="w-5 h-5" />
+                <span>
+                  {[profile.city, profile.state, profile.country].filter(Boolean).join(', ') || profile.location}
+                </span>
               </div>
-            </div>
-            <br />
-            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
-              About {profile.firstName}
-            </h3>
-
-            {/* Bio */}
-            {profile.bio && (
-              <p className="text-slate-700 font-queensides text-lg leading-relaxed mb-6 whitespace-pre-wrap break-words">
-                {profile.bio}
-              </p>
             )}
 
-            <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                </div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+            {/* Quick Stats */}
+            {(profile.bioRating || profile.responseRate || profile.isVerified) && (
+              <div className="flex items-center justify-center gap-6 pb-6">
+                {profile.bioRating && profile.bioRating > 0 && (
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
+                    <Star className="w-5 h-5 text-yellow-500" />
+                    <span className="text-sm font-queensides font-medium">{profile.bioRating}%</span>
+                  </div>
+                )}
+                {profile.responseRate && profile.responseRate > 0 && (
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
+                    <MessageCircle className="w-5 h-5 text-blue-500" />
+                    <span className="text-sm font-queensides font-medium">{profile.responseRate}%</span>
+                  </div>
+                )}
+                {profile.isVerified && (
+                  <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg">
+                    <Shield className="w-5 h-5 text-emerald-500" />
+                    <span className="text-sm font-queensides font-medium">Verified</span>
+                  </div>
+                )}
               </div>
-            </div>
-            <br />
-            {/* Quick Facts Grid */}
-            <div className="grid grid-cols-2 gap-4 mt-4">
-              {profile.height && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Height</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.height}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Bio Section - Clean, No Card */}
+        {profile.bio && (
+          <div className="px-6 py-12 max-w-4xl mx-auto">
+            <SectionDivider icon={Heart} title="About Me" color="pink" />
+            <p className="text-slate-700 font-queensides leading-relaxed text-xl mt-8 text-center">
+              {profile.bio}
+            </p>
+          </div>
+        )}
+
+        {/* Photo 2 - Full Width */}
+        {profile.profile_photos && profile.profile_photos.length > 1 && (
+          <div className="relative w-full overflow-hidden my-8">
+            <img
+              src={profile.profile_photos[1]}
+              alt={`${profile.firstName}'s photo`}
+              className="w-full h-auto object-cover"
+              style={{ maxHeight: '500px' }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        )}
+
+        {/* Education & Career - Clean Layout */}
+        {(profile.education || profile.profession) && (
+          <div className="px-6 py-12 max-w-4xl mx-auto">
+            <SectionDivider icon={Briefcase} title="Education & Career" color="blue" />
+            
+            <div className="space-y-6 mt-8">
+              {profile.education && (
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-700 font-queensides mb-1">Education</p>
+                    <p className="text-slate-800 font-queensides text-lg">{profile.education}</p>
+                  </div>
                 </div>
               )}
-              {profile.maritalStatus && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.maritalStatus}
-                  </p>
+              
+              {profile.profession && (
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Briefcase className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-700 font-queensides mb-1">Profession</p>
+                    <p className="text-slate-800 font-queensides text-lg">{profile.profession}</p>
+                  </div>
                 </div>
               )}
-              {(profile.children || profile.hasChildren) && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Has Children</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.children || profile.hasChildren}
-                  </p>
-                </div>
-              )}
-              {profile.wantChildren && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Wants Children</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.wantChildren}
-                  </p>
-                </div>
-              )}
-              {profile.marriageTimeline && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Marriage Plans</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.marriageTimeline}
-                  </p>
-                </div>
-              )}
-              {profile.livingArrangements && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Living Situation</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.livingArrangements}
-                  </p>
-                </div>
-              )}
-            </div>
-            <br />
-            <div className="flex items-center justify-center mb-4 mt-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                </div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-              </div>
             </div>
           </div>
+        )}
 
-          {/* Photo Break 1 */}
-          {profile.media?.photos?.[1] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer mb-0"
-              style={{
-                backgroundImage: `url(${profile.media.photos[1]})`, marginBottom:'0px'
-              }}
-              onClick={() => setSelectedPhotoIndex(1)}
-            >
-              <div className="h-full w-full bg-black/20 mb-0"></div>
+        {/* Video Introduction - Full Width */}
+        {profile.videoIntro && (
+          <div className="my-8">
+            <div className="max-w-4xl mx-auto px-6">
+              <SectionDivider icon={Video} title="Video Introduction" color="blue" />
             </div>
-          )}
+            <div className="mt-8">
+              <video controls className="w-full" style={{ maxHeight: '500px' }}>
+                <source src={profile.videoIntro} type="video/mp4" />
+                Your browser does not support the video element.
+              </video>
+            </div>
+          </div>
+        )}
 
-          {/* Islamic Values - Compact */}
-          {(profile.prayerFrequency ||
-            profile.sect ||
-            profile.hijabChoice ||
-            profile.islamicValues ||
-            profile.isRevert ||
-            profile.alcohol ||
-            profile.smoking ||
-            profile.psychedelics ||
-            profile.halalFood) && (
-            <div className="bg-white p-6" style={{ marginTop: '-23px' }}>
-              <div className="flex items-center justify-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+        {/* Photo 3 - Full Width */}
+        {profile.profile_photos && profile.profile_photos.length > 2 && (
+          <div className="relative w-full overflow-hidden my-8">
+            <img
+              src={profile.profile_photos[2]}
+              alt={`${profile.firstName}'s photo`}
+              className="w-full h-auto object-cover"
+              style={{ maxHeight: '500px' }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        )}
+
+        {/* Islamic Values - Clean Grid */}
+        {(profile.religiosity || profile.prayerFrequency || profile.sect) && (
+          <div className="px-6 py-12 max-w-4xl mx-auto">
+            <SectionDivider icon={Moon} title="Islamic Values" color="emerald" />
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-8">
+              {profile.religiosity && (
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-emerald-600 font-queensides mb-2 uppercase tracking-wide">Religiosity</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize text-lg">{profile.religiosity}</p>
                 </div>
-              </div>
-              <br />
-              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Islamic Values</h3>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {profile.prayerFrequency && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.prayerFrequency}
-                    </p>
-                  </div>
-                )}
-                {profile.sect && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Sect</p>
-                    <p className="font-semibold text-slate-800 font-queensides">{profile.sect}</p>
-                  </div>
-                )}
-                {profile.isRevert && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Revert</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.isRevert}
-                    </p>
-                  </div>
-                )}
-                {profile.hijabChoice && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Hijab</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.hijabChoice}
-                    </p>
-                  </div>
-                )}
-                {profile.alcohol && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.alcohol}
-                    </p>
-                  </div>
-                )}
-                {profile.smoking && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Smoking</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.smoking}
-                    </p>
-                  </div>
-                )}
-                {profile.psychedelics && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.psychedelics}
-                    </p>
-                  </div>
-                )}
-                {profile.halalFood && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.halalFood}
-                    </p>
-                  </div>
-                )}
-                {profile.islamicValues && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-slate-500 font-queensides">Islamic Values</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.islamicValues}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <br />
-              <div className="flex items-center justify-center mb-4 mt-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+              )}
+              
+              {profile.prayerFrequency && (
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-emerald-600 font-queensides mb-2 uppercase tracking-wide">Prayer</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize text-lg">{profile.prayerFrequency}</p>
                 </div>
-              </div>
+              )}
+              
+              {profile.sect && (
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-emerald-600 font-queensides mb-2 uppercase tracking-wide">Sect</p>
+                  <p className="text-slate-800 font-queensides font-medium text-lg">{profile.sect}</p>
+                </div>
+              )}
+              
+              {profile.islamicValues && (
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-emerald-600 font-queensides mb-2 uppercase tracking-wide">Islamic Values</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize text-lg">{profile.islamicValues}</p>
+                </div>
+              )}
+              
+              {profile.isRevert && (
+                <div className="text-center">
+                  <p className="text-xs font-semibold text-emerald-600 font-queensides mb-2 uppercase tracking-wide">Revert</p>
+                  <p className="text-slate-800 font-queensides font-medium text-lg">{profile.isRevert === 'yes' ? 'Yes' : 'No'}</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Photo Break 2 */}
-          {profile.media?.photos?.[2] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer"
-              style={{
-                backgroundImage: `url(${profile.media.photos[2]})`,
-              }}
-              onClick={() => setSelectedPhotoIndex(2)}
-            >
-              <div className="h-full w-full bg-black/20"></div>
-            </div>
-          )}
-
-          {/* Video Introduction - Full Width */}
-          {profile.media?.videoIntro && (
-            <div className="bg-white p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-slate-800 font-qurova">Video Introduction</h3>
-                {isOwnProfile && (
-                  <Button variant="outline" size="sm" className="font-queensides">
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                )}
-              </div>
-
-              {/* Full Width Video Player */}
-              <div className="w-full aspect-video bg-black rounded-lg overflow-hidden">
-                <video
-                  controls
-                  className="w-full h-full object-cover"
-                  poster="/placeholder-video-thumbnail.jpg"
-                >
-                  <source src={profile.media.videoIntro} type="video/mp4" />
-                  <source src={profile.media.videoIntro} type="video/webm" />
-                  Your browser does not support the video tag.
-                </video>
-              </div>
-            </div>
-          )}
-
-          {/* Voice Introduction - Compact */}
-          {profile.media?.voiceNote && (
-            <div className="bg-white p-6" style={{ marginTop: '-23px' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-slate-800 font-qurova">Voice Introduction</h3>
-                {isOwnProfile && (
-                  <Button variant="outline" size="sm" className="font-queensides">
-                    <Edit3 className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                )}
-              </div>
+        {/* Audio Introduction */}
+        {profile.voiceIntro && (
+          <div className="px-6 py-12 max-w-4xl mx-auto">
+            <SectionDivider icon={Mic} title="Voice Introduction" color="purple" />
+            
+            <div className="mt-8">
               <audio controls className="w-full">
-                <source src={profile.media.voiceNote} type="audio/wav" />
+                <source src={profile.voiceIntro} type="audio/mpeg" />
                 Your browser does not support the audio element.
               </audio>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Photo Break 3-4 Slider */}
-          {(profile.media?.photos?.[3] || profile.media?.photos?.[4]) && (
-            <div className="relative h-96 overflow-hidden">
-              <div
-                className="flex h-full transition-transform duration-500 ease-in-out"
-                style={{ transform: `translateX(-${(sliderIndex - 1) * 100}%)` }}
-              >
-                {profile.media.photos.slice(3, 5).map((src, idx) => (
-                  <div
-                    key={idx}
-                    className="h-full w-full flex-shrink-0 bg-cover bg-center cursor-pointer"
-                    style={{ backgroundImage: `url(${src})` }}
-                    onClick={() => setSelectedPhotoIndex(3 + idx)}
-                  >
-                    <div className="h-full w-full bg-black/20"></div>
-                  </div>
-                ))}
-              </div>
-              {/* Dots indicator */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {profile.media.photos.slice(3, 5).map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSliderIndex(idx + 1)}
-                    className={`w-2 h-2 rounded-full ${
-                      sliderIndex === idx + 1 ? 'bg-white' : 'bg-white/40'
-                    }`}
-                  />
-                ))}
-              </div>
+        {/* Photo 4 - Full Width */}
+        {profile.profile_photos && profile.profile_photos.length > 3 && (
+          <div className="relative w-full overflow-hidden my-8">
+            <img
+              src={profile.profile_photos[3]}
+              alt={`${profile.firstName}'s photo`}
+              className="w-full h-auto object-cover"
+              style={{ maxHeight: '500px' }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        )}
+
+        {/* Lifestyle Preferences - Clean */}
+        {(profile.financeStyle || profile.diningFrequency || profile.travelFrequency) && (
+          <div className="px-6 py-12 max-w-4xl mx-auto">
+            <SectionDivider icon={Sparkles} title="Lifestyle" color="amber" />
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-8">
+              {profile.financeStyle && (
+                <div className="text-center">
+                  <DollarSign className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-amber-700 font-queensides mb-1 uppercase tracking-wide">Finance Style</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize">{profile.financeStyle.replace('_', ' ')}</p>
+                </div>
+              )}
+              
+              {profile.diningFrequency && (
+                <div className="text-center">
+                  <Utensils className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-amber-700 font-queensides mb-1 uppercase tracking-wide">Dining</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize">{profile.diningFrequency.replace('_', ' ')}</p>
+                </div>
+              )}
+              
+              {profile.travelFrequency && (
+                <div className="text-center">
+                  <Plane className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-amber-700 font-queensides mb-1 uppercase tracking-wide">Travel</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize">{profile.travelFrequency.replace('_', ' ')}</p>
+                </div>
+              )}
+              
+              {profile.hairStyle && (
+                <div className="text-center">
+                  <Palette className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-amber-700 font-queensides mb-1 uppercase tracking-wide">Hair Style</p>
+                  <p className="text-slate-800 font-queensides font-medium capitalize">{profile.hairStyle.replace('_', ' ')}</p>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Education & Career - Compact */}
-          <div className="bg-white p-6 mt-4">
-            <div className="flex items-center justify-center mb-4">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                  <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                </div>
-                <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
+            
+            {profile.polygamyReason && (
+              <div className="mt-8 p-6 bg-gradient-to-r from-amber-50/50 to-orange-50/50 rounded-2xl border border-amber-200">
+                <p className="text-sm font-semibold text-amber-700 font-queensides mb-2">Polygamy Perspective</p>
+                <p className="text-slate-700 font-queensides leading-relaxed">{profile.polygamyReason}</p>
               </div>
-            </div>
-            <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
-              Education & Career
-            </h3>
+            )}
+          </div>
+        )}
 
-            <div className="grid grid-cols-2 gap-4">
-              {profile.education && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Education</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.education}
-                  </p>
-                </div>
-              )}
-              {profile.profession && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Profession</p>
-                  <p className="font-semibold text-slate-800 font-queensides">
-                    {profile.profession}
-                  </p>
-                </div>
-              )}
-              {profile.employer && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Employer</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.employer}</p>
-                </div>
-              )}
-              {profile.jobTitle && (
-                <div>
-                  <p className="text-sm text-slate-500 font-queensides">Job Title</p>
-                  <p className="font-semibold text-slate-800 font-queensides">{profile.jobTitle}</p>
-                </div>
-              )}
+        {/* Photo 5 - Full Width */}
+        {profile.profile_photos && profile.profile_photos.length > 4 && (
+          <div className="relative w-full overflow-hidden my-8">
+            <img
+              src={profile.profile_photos[4]}
+              alt={`${profile.firstName}'s photo`}
+              className="w-full h-auto object-cover"
+              style={{ maxHeight: '500px' }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/40 to-transparent" />
+          </div>
+        )}
+
+        {/* Interests & Hobbies - Tag Cloud */}
+        {profile.interests && profile.interests.length > 0 && (
+          <div className="px-6 py-12 max-w-4xl mx-auto">
+            <SectionDivider icon={Star} title="Interests & Hobbies" color="purple" />
+            
+            <div className="flex flex-wrap gap-3 mt-8 justify-center">
+              {profile.interests.map((interest, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="px-5 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 rounded-full border border-purple-200 text-purple-700 font-queensides text-sm font-medium hover:from-purple-100 hover:to-pink-100 transition-all cursor-default"
+                >
+                  {interest}
+                </motion.span>
+              ))}
             </div>
           </div>
+        )}
 
-          {/* Photo Break 5 */}
-          {profile.media?.photos?.[5] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer"
-              style={{
-                backgroundImage: `url(${profile.media.photos[5]})`,
-              }}
-              onClick={() => setSelectedPhotoIndex(5)}
-            >
-              <div className="h-full w-full bg-black/20"></div>
-            </div>
-          )}
-
-          {/* Languages & Ethnicity - Compact */}
-          {(profile.ethnicity || profile.nationality || profile.languages?.length) && (
-            <div className="bg-white p-6">
-              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Background</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                {profile.ethnicity && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Ethnicity</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.ethnicity}
-                    </p>
-                  </div>
-                )}
-                {profile.nationality && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.nationality}
-                    </p>
-                  </div>
-                )}
+        {/* Remaining Photos */}
+        {profile.profile_photos && profile.profile_photos.length > 5 && (
+          <div className="grid grid-cols-2 gap-4 px-6 py-8 max-w-4xl mx-auto">
+            {profile.profile_photos.slice(5).map((photo, index) => (
+              <div key={index} className="relative overflow-hidden rounded-2xl">
+                <img
+                  src={photo}
+                  alt={`${profile.firstName}'s photo ${index + 6}`}
+                  className="w-full h-64 object-cover hover:scale-105 transition-transform duration-500"
+                />
               </div>
+            ))}
+          </div>
+        )}
 
-              {profile.languages?.length > 0 && (
-                <div className="mt-4">
-                  <p className="text-sm text-slate-500 font-queensides mb-2">Languages</p>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.languages.map((language, index) => (
-                      <Badge key={index} variant="outline" className="font-queensides">
-                        {language}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Photo Break 6 */}
-          {profile.media?.photos?.[6] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer"
-              style={{
-                backgroundImage: `url(${profile.media.photos[6]})`,
-              }}
-              onClick={() => setSelectedPhotoIndex(6)}
-            >
-              <div className="h-full w-full bg-black/20"></div>
-            </div>
-          )}
-
-          {/* Marriage Intentions - Compact */}
-          {(profile.chattingTimeline ||
-            profile.familyInvolvement ||
-            profile.marriageTimeline ||
-            profile.familyPlans) && (
-            <div className="bg-white p-6">
-              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">Marriage Plans</h3>
-
-              <div className="grid grid-cols-2 gap-4">
-                {profile.marriageTimeline && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Timeline</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.marriageTimeline}
-                    </p>
-                  </div>
-                )}
-                {profile.familyInvolvement && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides">Family Role</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.familyInvolvement}
-                    </p>
-                  </div>
-                )}
-                {profile.familyPlans && (
-                  <div className="col-span-2">
-                    <p className="text-sm text-slate-500 font-queensides">Family Plans</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {profile.familyPlans}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Interests & Personality - Compact */}
-          {(profile.interests?.length > 0 || profile.personality?.length > 0) && (
-            <div className="bg-white p-6 mt-4">
-              <div className="flex items-center justify-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                  <div className="w-3 h-3 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                    <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                  </div>
-                  <div className="w-8 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                  <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                </div>
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 font-qurova mb-4">
-                Interests & Personality
-              </h3>
-
-              <div className="space-y-4">
-                {profile.interests?.length > 0 && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides mb-2">Interests</p>
-                    <div className="flex flex-wrap gap-2">
-                      {profile.interests.map((interest, index) => (
-                        <Badge key={index} variant="outline" className="font-queensides">
-                          {interest}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {profile.personality?.length > 0 && (
-                  <div>
-                    <p className="text-sm text-slate-500 font-queensides mb-2">Personality</p>
-                    <div className="flex flex-wrap gap-2">
-                      {profile.personality.map((trait, index) => (
-                        <Badge key={index} variant="secondary" className="font-queensides">
-                          {trait}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Final Photo Break */}
-          {profile.media?.photos?.[7] && (
-            <div
-              className="h-96 bg-cover bg-center cursor-pointer"
-              style={{
-                backgroundImage: `url(${profile.media.photos[7]})`,
-              }}
-              onClick={() => setSelectedPhotoIndex(7)}
-            >
-              <div className="h-full w-full bg-black/20"></div>
-            </div>
-          )}
-
-          {/* Arabic Divider */}
-          {isOwnProfile && (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center space-x-3">
-                <Star className="w-4 h-4 text-indigo-300" />
-                <div className="w-12 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
-                <Moon className="w-4 h-4 text-purple-300" />
-                <div className="w-12 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
-                <Sparkles className="w-4 h-4 text-blue-300" />
-                <div className="w-12 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
-                <Star className="w-4 h-4 text-indigo-300" />
-              </div>
-            </div>
-          )}
-
-          {/* What I Want Section */}
-          {isOwnProfile && (
-            <div className="relative rounded-2xl p-8 mx-4 mb-6 border-2 border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white shadow-lg">
-              {/* Arabic-inspired corner decorations */}
-              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
-              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
-              <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
-              <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
-
-              {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/20 via-transparent to-purple-50/20 pointer-events-none"></div>
-
-              <div className="relative">
-                <h3 className="text-xl font-bold text-slate-800 font-qurova mb-6 text-center">
-                  What I Want
-                </h3>
-
-                {/* Arabic-inspired title divider */}
-                <div className="flex items-center justify-center mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full transform rotate-45"></div>
-                    <div className="w-12 h-px bg-gradient-to-r from-transparent via-indigo-300/50 to-transparent"></div>
-                    <div className="w-4 h-4 border border-indigo-400/60 rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
-                    </div>
-                    <div className="w-12 h-px bg-gradient-to-r from-transparent via-purple-300/50 to-transparent"></div>
-                    <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-full transform rotate-45"></div>
-                  </div>
-                </div>
-
-                {/* Basic Preferences */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    Basic Preferences
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Age Range</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.ageRange[0]}-{userSettings.ageRange[1]} years
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Location</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        Within {userSettings.maxDistance} miles
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-                  <div className="mx-3 w-1.5 h-1.5 bg-indigo-300 rounded-full"></div>
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-                </div>
-
-                {/* About Them */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    About Them
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.nationality || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Height</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.height || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.maritalStatus || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Children</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.children || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Education</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.education || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Languages</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.languages || "No preference"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-                  <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-                </div>
-
-                {/* Faith & Practice */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    Faith & Practice
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Prayer Frequency</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.prayerFrequency || "No preference"}
-                      </p>
-                    </div>
-
-                    {userSettings.userGender === "male" && (
-                      <div>
-                        <p className="text-sm text-slate-500 font-queensides">Hijab Preference</p>
-                        <p className="font-semibold text-slate-800 font-queensides">
-                          {userSettings.faithAndPractice?.hijabPreference || "No preference"}
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Marriage Intention</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.marriageIntention || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Diet</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.diet || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Halal Food</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.halalFood || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Alcohol</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.alcohol || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Smoking</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.smoking || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Psychedelics</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.psychedelics || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Born Muslim</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.faithAndPractice?.bornMuslim || "No preference"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent"></div>
-                  <div className="mx-3 w-1.5 h-1.5 bg-blue-300 rounded-full"></div>
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-                </div>
-
-                {/* About Them */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    About Them
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Nationality</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.nationality || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Height</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.height || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Marital Status</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.maritalStatus || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Children</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.children || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Grew Up In</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.grewUpIn || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Languages</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.languages || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Willing to Relocate</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.willingToRelocate || "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Education</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.aboutThem?.education || "No preference"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-orange-200 to-transparent"></div>
-                  <div className="mx-3 w-1.5 h-1.5 bg-orange-300 rounded-full"></div>
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-200 to-transparent"></div>
-                </div>
-
-                {/* Financial & Quality Requirements */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    Requirements
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Financial Setup</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.requireFinancialSetup
-                          ? userSettings.userGender === "male"
-                            ? "Purse setup required"
-                            : "Dowry wallet required"
-                          : "Not required"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Bio Rating</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.bioRatingMinimum || 0}%+ required
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Response Rate</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.responseRateMinimum || 0}%+ required
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-green-200 to-transparent"></div>
-                  <div className="mx-3 w-1.5 h-1.5 bg-green-300 rounded-full"></div>
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-                </div>
-
-                {/* Distance & Location */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    Distance & Location
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Age Range</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.ageRange
-                          ? `${userSettings.ageRange[0]} - ${userSettings.ageRange[1]} years`
-                          : "No preference"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-slate-500 font-queensides">Distance</p>
-                      <p className="font-semibold text-slate-800 font-queensides">
-                        {userSettings.anywhereInWorld
-                          ? "🌍 Anywhere in the world"
-                          : `Within ${userSettings.maxDistance || 50} miles`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section Divider */}
-                <div className="flex items-center justify-center my-6">
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-200 to-transparent"></div>
-                  <div className="mx-3 w-1.5 h-1.5 bg-purple-300 rounded-full"></div>
-                  <div className="w-16 h-px bg-gradient-to-r from-transparent via-indigo-200 to-transparent"></div>
-                </div>
-
-                {/* Interests */}
-                <div className="mb-6">
-                  <h4 className="text-lg font-semibold text-slate-700 font-qurova mb-3">
-                    Interests
-                  </h4>
-                  <div className="col-span-2">
-                    <p className="text-sm text-slate-500 font-queensides">Preferred Interests</p>
-                    <p className="font-semibold text-slate-800 font-queensides">
-                      {userSettings.interests && userSettings.interests.length > 0
-                        ? userSettings.interests.join(", ")
-                        : "No specific preferences"}
-                    </p>
-                  </div>
-                </div>
-
-                {isOwnProfile && (
-                  <div className="pt-6 border-t border-slate-200">
-                    <Button
-                      variant="outline"
-                      className="w-full font-queensides"
-                      onClick={() => router.push("/settings")}
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      Update Preferences
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Islamic Blessing */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            className="text-center py-8"
-          >
-            {/* Islamic Divider */}
+        {/* Islamic Quote */}
+        <div className="px-6 py-16 max-w-4xl mx-auto">
+          <div className="text-center">
             <div className="flex items-center justify-center mb-6">
-              <div className="flex items-center space-x-4">
-                <Star className="w-4 h-4 text-indigo-400" />
-                <div className="w-12 h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent" />
-                <Moon className="w-4 h-4 text-purple-400" />
+              <div className="flex items-center space-x-3">
+                <Star className="w-3 h-3 text-pink-300" />
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+                <Moon className="w-3 h-3 text-purple-300" />
                 <div className="w-12 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
-                <Sparkles className="w-4 h-4 text-blue-400" />
+                <Sparkles className="w-3 h-3 text-blue-300" />
               </div>
             </div>
-
-            <p className="text-base text-slate-500 font-queensides italic">
+            <p className="text-xl text-slate-600 font-queensides italic mb-3">
               "And among His signs is that He created for you mates from among yourselves"
             </p>
-            <p className="text-sm text-slate-400 font-queensides mt-1">- Quran 30:21</p>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Photo Modal */}
-      {selectedPhotoIndex !== null && profile?.media?.photos && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center">
-          <div className="relative w-full h-full flex items-center justify-center">
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedPhotoIndex(null)}
-              className="absolute top-4 right-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-            >
-              ✕
-            </button>
-
-            {/* Previous Button */}
-            {profile.media.photos.length > 1 && selectedPhotoIndex > 0 && (
-              <button
-                onClick={() => setSelectedPhotoIndex(selectedPhotoIndex - 1)}
-                className="absolute left-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-              >
-                ←
-              </button>
-            )}
-
-            {/* Next Button */}
-            {profile.media.photos.length > 1 &&
-              selectedPhotoIndex < profile.media.photos.length - 1 && (
-                <button
-                  onClick={() => setSelectedPhotoIndex(selectedPhotoIndex + 1)}
-                  className="absolute right-4 z-10 w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors"
-                >
-                  →
-                </button>
-              )}
-
-            {/* Photo */}
-            <img
-              src={profile.media.photos[selectedPhotoIndex]}
-              alt={`Profile photo ${selectedPhotoIndex + 1}`}
-              className="max-w-full max-h-full object-contain"
-            />
-
-            {/* Photo Counter */}
-            {profile.media.photos.length > 1 && (
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white font-queensides">
-                {selectedPhotoIndex + 1} of {profile.media.photos.length}
-              </div>
-            )}
+            <p className="text-sm text-slate-500 font-queensides">- Quran 30:21</p>
           </div>
         </div>
-      )}
-
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav currentTab={currentTab} setCurrentTab={setCurrentTab} />
-      {/* Message Permissions Modal */}
-      {showMessagePermissions && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-          >
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-slate-800 font-qurova">
-                  Message Permissions
-                </h3>
-                <button
-                  onClick={() => setShowMessagePermissions(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {/* Financial Setup Toggle */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-800 font-qurova">
-                      Require Financial Setup
-                    </p>
-                    <p className="text-sm text-slate-600 font-queensides">
-                      Only users with dowry wallet/purse
-                    </p>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setMessagePermissions((prev) => ({
-                        ...prev,
-                        requireFinancialSetup: !prev.requireFinancialSetup,
-                      }))
-                    }
-                    className={`w-12 h-6 rounded-full relative transition-colors ${
-                      messagePermissions.requireFinancialSetup ? "bg-emerald-500" : "bg-slate-200"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                        messagePermissions.requireFinancialSetup
-                          ? "translate-x-6"
-                          : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                {/* Bio Rating Slider */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-slate-800 font-qurova">Minimum Bio Rating</p>
-                    <span className="text-sm font-medium text-emerald-600">
-                      {messagePermissions.minBioRating}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={messagePermissions.minBioRating}
-                    onChange={(e) =>
-                      setMessagePermissions((prev) => ({
-                        ...prev,
-                        minBioRating: Number.parseInt(e.target.value),
-                      }))
-                    }
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                  <p className="text-sm text-slate-600 font-queensides mt-1">
-                    Profile completion required
-                  </p>
-                </div>
-
-                {/* Response Rate Slider */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-slate-800 font-qurova">Minimum Response Rate</p>
-                    <span className="text-sm font-medium text-emerald-600">
-                      {messagePermissions.minResponseRate}%
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={messagePermissions.minResponseRate}
-                    onChange={(e) =>
-                      setMessagePermissions((prev) => ({
-                        ...prev,
-                        minResponseRate: Number.parseInt(e.target.value),
-                      }))
-                    }
-                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer slider"
-                  />
-                  <p className="text-sm text-slate-600 font-queensides mt-1">
-                    How often they respond to messages
-                  </p>
-                </div>
-
-                {/* Video Messages Toggle */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-slate-800 font-qurova">Allow Video Messages</p>
-                    <p className="text-sm text-slate-600 font-queensides">
-                      Users can send video messages
-                    </p>
-                  </div>
-                  <button
-                    onClick={() =>
-                      setMessagePermissions((prev) => ({
-                        ...prev,
-                        allowVideoMessages: !prev.allowVideoMessages,
-                      }))
-                    }
-                    className={`w-12 h-6 rounded-full relative transition-colors ${
-                      messagePermissions.allowVideoMessages ? "bg-emerald-500" : "bg-slate-200"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-                        messagePermissions.allowVideoMessages ? "translate-x-6" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-8 flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowMessagePermissions(false)}
-                  className="flex-1 font-queensides"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={async () => {
-                    if (!userId) return
-                    try {
-                      await UserSettingsService.upsertUserSettings(userId, {
-                        require_financial_setup: messagePermissions.requireFinancialSetup,
-                        bio_rating_minimum: messagePermissions.minBioRating,
-                        response_rate_minimum: messagePermissions.minResponseRate,
-                        allow_video_messages: messagePermissions.allowVideoMessages,
-                      })
-                      console.log("Message permissions saved to Supabase")
-                    } catch (error) {
-                      console.error("Error saving message permissions:", error)
-                    }
-                    setShowMessagePermissions(false)
-                  }}
-                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-queensides"
-                >
-                  Save Settings
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          cursor: pointer;
-        }
-        .slider::-moz-range-thumb {
-          height: 20px;
-          width: 20px;
-          border-radius: 50%;
-          background: #10b981;
-          cursor: pointer;
-          border: none;
-        }
-      `}</style>
+      </div>
     </div>
   )
 }
+
+// Default export for compatibility
+export default ProfileViewNew

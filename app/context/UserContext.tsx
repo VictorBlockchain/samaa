@@ -53,14 +53,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(existing)
         return
       }
-      // Create minimal profile if not found
-      const created = await ProfileService.createProfile({
-        id: userId,
-        is_active: true,
-        last_active: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as any)
+      // Create minimal row with id = auth uid (createProfile RPC expects a wallet principal)
+      const created = await ProfileService.ensureUserRowForAuthId(userId)
       setProfile(created || undefined)
     } catch (e) {
       console.warn('Failed to load/create profile:', e)

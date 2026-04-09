@@ -6,11 +6,13 @@ export const STORAGE_CONFIG = {
   ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
   ALLOWED_VIDEO_TYPES: ['video/mp4', 'video/webm', 'video/mov', 'video/avi'],
   ALLOWED_AUDIO_TYPES: ['audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/m4a', 'audio/ogg'],
+  // Must match buckets created by POST /api/setup-storage (and schema.sql)
   BUCKETS: {
-    PROFILES: 'profiles',
-    PRODUCTS: 'products',
-    VOICE_NOTES: 'voice-notes',
-    VIDEOS: 'videos'
+    PROFILES: 'profile-photos',
+    SHOP_IMAGES: 'shop-images',
+    SHOP_VIDEOS: 'shop-videos',
+    VOICE_NOTES: 'profile-audio',
+    VIDEOS: 'profile-videos',
   }
 }
 
@@ -57,10 +59,58 @@ export function generateFileName(originalName: string, userId: string): string {
   return `${userId}/${timestamp}.${extension}`
 }
 
-// Get public URL for a file
+/** Extract object path within `bucket` from a storage path or full Supabase URL. */
+export function storagePathFromUrlOrPath(bucket: string, urlOrPath: string): string {
+  const t = urlOrPath.trim()
+  if (!t.startsWith("http")) {
+    return t.replace(/^\/+/, "")
+  }
+  const escaped = bucket.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const re = new RegExp(`/${escaped}/(.+?)(?:\\?|$)`)
+  const m = t.match(re)
+  if (m?.[1]) {
+    try {
+      return decodeURIComponent(m[1])
+    } catch {
+      return m[1]
+    }
+  }
+  return t
+}
+
+/**
+ * Time-limited URL for private buckets (use in the app with an authenticated session).
+ * Persist `path` in the database, not this URL.
+ */
+export async function getSignedUrlForPath(
+  bucket: string,
+  pathOrUrl: string,
+  expiresIn = 3600,
+): Promise<string | null> {
+  const path = storagePathFromUrlOrPath(bucket, pathOrUrl)
+  if (!path) return null
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, expiresIn)
+  if (error || !data?.signedUrl) {
+    return null
+  }
+  return data.signedUrl
+}
+
+/** @deprecated Use getSignedUrlForPath for private buckets or public shop static URLs only */
 export function getPublicUrl(bucket: string, path: string): string {
   const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
+}
+
+export type UploadResult = {
+  success: boolean
+  /** Storage object path to store in Postgres, e.g. `<userId>/<timestamp>.jpg` */
+  path?: string
+  /** Short-lived URL for immediate UI; do not persist */
+  signedUrl?: string
+  /** Alias of signedUrl for backward compatibility */
+  url?: string
+  error?: string
 }
 
 // Upload file to Supabase Storage
@@ -68,24 +118,40 @@ export async function uploadFile(
   bucket: string,
   path: string,
   file: File,
-  onProgress?: (progress: number) => void
-): Promise<{ success: boolean; url?: string; error?: string }> {
+  onProgress?: (progress: number) => void,
+): Promise<UploadResult> {
   try {
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {
-        cacheControl: '3600',
-        upsert: false
+        cacheControl: "3600",
+        upsert: false,
       })
 
     if (error) {
       return { success: false, error: error.message }
     }
 
-    const url = getPublicUrl(bucket, data.path)
-    return { success: true, url }
+    const { data: signed, error: signError } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(data.path, 3600)
+
+    if (signError || !signed?.signedUrl) {
+      return {
+        success: true,
+        path: data.path,
+        error: signError?.message || "Upload succeeded but could not create signed URL",
+      }
+    }
+
+    return {
+      success: true,
+      path: data.path,
+      signedUrl: signed.signedUrl,
+      url: signed.signedUrl,
+    }
   } catch (e: any) {
-    return { success: false, error: e?.message || 'Upload failed' }
+    return { success: false, error: e?.message || "Upload failed" }
   }
 }
 
@@ -110,7 +176,7 @@ export class ProfileMediaService {
     file: File,
     userId: string,
     onProgress?: (progress: number) => void
-  ): Promise<{ success: boolean; url?: string; error?: string }> {
+  ): Promise<UploadResult> {
     const validation = validateFile(file, 'image')
     if (!validation.valid) {
       return { success: false, error: validation.error }
@@ -124,7 +190,7 @@ export class ProfileMediaService {
     file: File,
     userId: string,
     onProgress?: (progress: number) => void
-  ): Promise<{ success: boolean; url?: string; error?: string }> {
+  ): Promise<UploadResult> {
     const validation = validateFile(file, 'video')
     if (!validation.valid) {
       return { success: false, error: validation.error }
@@ -138,7 +204,7 @@ export class ProfileMediaService {
     file: File,
     userId: string,
     onProgress?: (progress: number) => void
-  ): Promise<{ success: boolean; url?: string; error?: string }> {
+  ): Promise<UploadResult> {
     const validation = validateFile(file, 'audio')
     if (!validation.valid) {
       return { success: false, error: validation.error }
@@ -161,13 +227,13 @@ export class ShopMediaService {
     file: File,
     shopId: string,
     onProgress?: (progress: number) => void
-  ): Promise<{ success: boolean; url?: string; error?: string }> {
+  ): Promise<UploadResult> {
     const validation = validateFile(file, 'image')
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
     const path = generateFileName(file.name, shopId)
-    return await uploadFile(STORAGE_CONFIG.BUCKETS.PRODUCTS, path, file, onProgress)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, path, file, onProgress)
   }
 
   // Upload shop video
@@ -175,13 +241,13 @@ export class ShopMediaService {
     file: File,
     shopId: string,
     onProgress?: (progress: number) => void
-  ): Promise<{ success: boolean; url?: string; error?: string }> {
+  ): Promise<UploadResult> {
     const validation = validateFile(file, 'video')
     if (!validation.valid) {
       return { success: false, error: validation.error }
     }
     const path = generateFileName(file.name, shopId)
-    return await uploadFile(STORAGE_CONFIG.BUCKETS.PRODUCTS, path, file, onProgress)
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.SHOP_VIDEOS, path, file, onProgress)
   }
 }
 

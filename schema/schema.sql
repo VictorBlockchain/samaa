@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS users (
   -- Verification & ratings
   is_verified BOOLEAN DEFAULT FALSE,
   bio_rating INTEGER DEFAULT 0 CHECK (bio_rating >= 0 AND bio_rating <= 100),
+  chat_rating INTEGER DEFAULT 0 CHECK (chat_rating >= 0 AND chat_rating <= 100),
   pictures_rating INTEGER DEFAULT 0 CHECK (pictures_rating >= 0 AND pictures_rating <= 100),
   response_rate INTEGER DEFAULT 0 CHECK (response_rate >= 0 AND response_rate <= 100),
   communication_rating INTEGER DEFAULT 0 CHECK (communication_rating >= 0 AND communication_rating <= 100),

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
 
+// Bucket names must stay in sync with STORAGE_CONFIG.BUCKETS in lib/storage.ts
+// Profile media is private (RLS + signed URLs). Shop buckets stay public unless you add RLS later.
 const buckets = [
-  { name: "profile-photos", public: true, mime: ["image/jpeg","image/jpg","image/png","image/webp"] },
-  { name: "profile-videos", public: true, mime: ["video/mp4","video/webm","video/mov","video/avi"] },
-  { name: "profile-audio", public: true, mime: ["audio/mp3","audio/wav","audio/m4a","audio/ogg"] },
+  { name: "profile-photos", public: false, mime: ["image/jpeg","image/jpg","image/png","image/webp"] },
+  { name: "profile-videos", public: false, mime: ["video/mp4","video/webm","video/mov","video/avi"] },
+  { name: "profile-audio", public: false, mime: ["audio/mp3","audio/mpeg","audio/wav","audio/m4a","audio/ogg"] },
   { name: "shop-images", public: true, mime: ["image/jpeg","image/jpg","image/png","image/webp"] },
   { name: "shop-videos", public: true, mime: ["video/mp4","video/webm","video/mov","video/avi"] },
 ]
@@ -22,6 +24,8 @@ export async function POST() {
   const existingNames = new Set((existing || []).map((b: any) => b.name))
   const results: any[] = []
 
+  const privateProfileBuckets = new Set(["profile-photos", "profile-videos", "profile-audio"])
+
   for (const b of buckets) {
     if (!existingNames.has(b.name)) {
       const { error: createErr } = await supabaseAdmin.storage.createBucket(b.name, {
@@ -35,7 +39,18 @@ export async function POST() {
       }
       results.push({ name: b.name, created: true })
     } else {
-      results.push({ name: b.name, exists: true })
+      if (privateProfileBuckets.has(b.name)) {
+        const { error: updErr } = await supabaseAdmin.storage.updateBucket(b.name, {
+          public: false,
+        })
+        if (updErr) {
+          results.push({ name: b.name, exists: true, updated: false, error: updErr.message })
+        } else {
+          results.push({ name: b.name, exists: true, updated: true, public: false })
+        }
+      } else {
+        results.push({ name: b.name, exists: true })
+      }
     }
   }
 

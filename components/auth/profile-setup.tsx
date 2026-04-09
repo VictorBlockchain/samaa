@@ -49,10 +49,17 @@ import { MobileBottomNav } from "@/components/mobile/mobile-bottom-nav"
 import { useIsMobile } from "@/app/hooks/use-mobile"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
 import { FileUpload } from "@/components/ui/file-upload"
-import { ProfileMediaService, STORAGE_CONFIG } from "@/lib/storage"
+import { ProfileMediaService, storagePathFromUrlOrPath, STORAGE_CONFIG } from "@/lib/storage"
 import { ProfileService } from "@/lib/database"
 import { saveProfile } from "@/utils/profile-storage"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Toaster } from "@/components/ui/toaster"
 import { ToastAction } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
@@ -224,9 +231,9 @@ export function ProfileSetup() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState("")
   const [modalMessage, setModalMessage] = useState("")
-  const [modalVariant, setModalVariant] = useState<'success' | 'error'>("error")
+  const [modalVariant, setModalVariant] = useState<"success" | "error">("error")
 
-  const openModal = (title: string, message: string, variant: 'success' | 'error' = 'error') => {
+  const openModal = (title: string, message: string, variant: "success" | "error" = "error") => {
     setModalTitle(title)
     setModalMessage(message)
     setModalVariant(variant)
@@ -234,13 +241,13 @@ export function ProfileSetup() {
     toast({
       title,
       description: message,
-      variant: variant === 'success' ? 'default' : 'destructive',
+      variant: variant === "success" ? "default" : "destructive",
       action:
-        variant === 'error' ? (
+        variant === "error" ? (
           <ToastAction
             altText="Copy error"
             onClick={() => {
-              const text = typeof message === 'string' ? message : String(message)
+              const text = typeof message === "string" ? message : String(message)
               navigator.clipboard.writeText(text)
             }}
           >
@@ -257,10 +264,10 @@ export function ProfileSetup() {
     if (isAuthenticated && userId) {
       ;(async () => {
         try {
-          console.log('[Profile Setup] Loading existing profile for user:', userId)
+          console.log("[Profile Setup] Loading existing profile for user:", userId)
           const user = await ProfileService.getProfileByUserId(userId)
           if (user) {
-            console.log('[Profile Setup] Found existing profile:', {
+            console.log("[Profile Setup] Found existing profile:", {
               firstName: user.first_name,
               lastName: user.last_name,
               age: user.age,
@@ -269,7 +276,7 @@ export function ProfileSetup() {
               state: (user as any).state,
               country: (user as any).country,
             })
-            
+
             const mapped = {
               firstName: user.first_name || "",
               lastName: user.last_name || "",
@@ -302,7 +309,9 @@ export function ProfileSetup() {
               interests: Array.isArray(user.interests) ? user.interests : [],
               livingArrangements: (user as any).living_arrangements || "",
               familyInvolvement: (user as any).family_involvement || "",
-              personality: Array.isArray((user as any).personality) ? (user as any).personality : [],
+              personality: Array.isArray((user as any).personality)
+                ? (user as any).personality
+                : [],
               profilePhoto: null,
               additionalPhotos: [],
               videoIntro: null,
@@ -310,7 +319,7 @@ export function ProfileSetup() {
             }
             setProfileData((prev) => ({ ...prev, ...mapped }))
             setOriginalProfileData(mapped)
-            console.log('[Profile Setup] Profile data loaded and merged successfully')
+            console.log("[Profile Setup] Profile data loaded and merged successfully")
 
             if (user.latitude && user.longitude) {
               setLocationData({
@@ -327,7 +336,7 @@ export function ProfileSetup() {
               voiceIntro: user.voice_intro || undefined,
             })
           } else {
-            console.log('[Profile Setup] No existing profile found, starting with empty form')
+            console.log("[Profile Setup] No existing profile found, starting with empty form")
           }
         } catch (error) {
           console.error("[Profile Setup] Error loading existing profile:", error)
@@ -338,13 +347,13 @@ export function ProfileSetup() {
 
   const updateProfileData = (field: keyof ProfileData, value: any) => {
     setProfileData((prev) => ({ ...prev, [field]: value }))
-    
+
     // Track if field has been edited (different from original)
     const originalValue = originalProfileData[field]
     if (value !== originalValue) {
-      setEditedFields(prev => new Set(prev).add(field))
+      setEditedFields((prev) => new Set(prev).add(field))
     } else {
-      setEditedFields(prev => {
+      setEditedFields((prev) => {
         const newSet = new Set(prev)
         newSet.delete(field)
         return newSet
@@ -361,18 +370,17 @@ export function ProfileSetup() {
 
     try {
       const result = await ProfileMediaService.uploadProfilePhoto(file, userId)
-      if (result.success && (result as any).path) {
-        setUploadedUrls((prev) => ({ ...prev, profilePhoto: (result as any).path }))
+      const path =
+        result.path ||
+        (result.url ? storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, result.url) : null)
+      if (result.success && path) {
+        setUploadedUrls((prev) => ({ ...prev, profilePhoto: path }))
       } else {
-        openModal(
-          "Upload Failed",
-          result.error || "Failed to upload profile photo",
-          'error'
-        )
+        openModal("Upload Failed", result.error || "Failed to upload profile photo", "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      openModal("Upload Error", "Failed to upload profile photo.", 'error')
+      openModal("Upload Error", "Failed to upload profile photo.", "error")
     }
   }
 
@@ -382,12 +390,18 @@ export function ProfileSetup() {
     updateProfileData("additionalPhotos", files)
 
     try {
-      const uploadPromises = files.map((file) => ProfileMediaService.uploadProfilePhoto(file, userId))
+      const uploadPromises = files.map((file) =>
+        ProfileMediaService.uploadProfilePhoto(file, userId)
+      )
 
       const results = await Promise.all(uploadPromises)
       const successfulUrls = results
         .filter((r: any) => r.success && (r.path || r.url))
-        .map((r: any) => (r.path || r.url)!)
+        .map(
+          (r: any) =>
+            r.path ||
+            storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)!
+        )
 
       setUploadedUrls((prev) => ({
         ...prev,
@@ -396,7 +410,7 @@ export function ProfileSetup() {
 
       const failedCount = results.length - successfulUrls.length
       if (failedCount > 0) {
-        openModal("Partial Upload", `${failedCount} photos failed to upload.`, 'error')
+        openModal("Partial Upload", `${failedCount} photos failed to upload.`, "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
@@ -415,15 +429,11 @@ export function ProfileSetup() {
       if (result.success && (result as any).path) {
         setUploadedUrls((prev) => ({ ...prev, videoIntro: (result as any).path }))
       } else {
-        openModal(
-          "Upload Failed",
-          result.error || "Failed to upload video",
-          'error'
-        )
+        openModal("Upload Failed", result.error || "Failed to upload video", "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      openModal("Upload Error", "Failed to upload video.", 'error')
+      openModal("Upload Error", "Failed to upload video.", "error")
     }
   }
 
@@ -438,15 +448,11 @@ export function ProfileSetup() {
       if (result.success && (result as any).path) {
         setUploadedUrls((prev) => ({ ...prev, voiceIntro: (result as any).path }))
       } else {
-        openModal(
-          "Upload Failed",
-          result.error || "Failed to upload audio",
-          'error'
-        )
+        openModal("Upload Failed", result.error || "Failed to upload audio", "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
-      openModal("Upload Error", "Failed to upload audio.", 'error')
+      openModal("Upload Error", "Failed to upload audio.", "error")
     }
   }
 
@@ -564,7 +570,7 @@ export function ProfileSetup() {
     setIsUploading(true)
     toast({ title: "Saving Profile", description: "Uploading media and saving data..." })
     if (!isAuthenticated || !userId) {
-      openModal("Not Signed In", "Please sign in to save your profile.", 'error')
+      openModal("Not Signed In", "Please sign in to save your profile.", "error")
       setIsUploading(false)
       return
     }
@@ -573,21 +579,22 @@ export function ProfileSetup() {
     try {
       // Required field validation
       if (!profileData.bio || profileData.bio.trim().length === 0) {
-        openModal("Missing Bio", "Bio is required. Please write a short bio.", 'error')
+        openModal("Missing Bio", "Bio is required. Please write a short bio.", "error")
         setIsUploading(false)
         return
       }
-          console.log("here 2 a")
+      console.log("here 2 a")
 
       // Compose location from manual fields
       const manualParts = [profileData.city, profileData.state, profileData.country]
         .map((s) => (s || "").trim())
         .filter(Boolean)
-      const composedLocation = manualParts.length > 0
-        ? manualParts.join(", ")
-        : (profileData.location || locationData.address || "").trim()
+      const composedLocation =
+        manualParts.length > 0
+          ? manualParts.join(", ")
+          : (profileData.location || locationData.address || "").trim()
       if (!composedLocation) {
-        openModal("Missing Location", "Please detect or enter your location.", 'error')
+        openModal("Missing Location", "Please detect or enter your location.", "error")
         setIsUploading(false)
         return
       }
@@ -596,7 +603,9 @@ export function ProfileSetup() {
       const withTimeout = async <T,>(p: Promise<T>, ms: number) => {
         return Promise.race<T>([
           p,
-          new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Upload timed out')), ms)) as Promise<T>,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error("Upload timed out")), ms)
+          ) as Promise<T>,
         ])
       }
 
@@ -607,12 +616,17 @@ export function ProfileSetup() {
       try {
         if (!mainPhotoUrl && profileData.profilePhoto) {
           toast({ title: "Uploading Photo", description: "Uploading your main profile photo..." })
-          const r = await withTimeout(ProfileMediaService.uploadProfilePhoto(profileData.profilePhoto, userId), 15000)
-          if (r.success && r.url) {
-            mainPhotoUrl = r.url
-            setUploadedUrls((prev) => ({ ...prev, profilePhoto: r.url }))
+          const r = await withTimeout(
+            ProfileMediaService.uploadProfilePhoto(profileData.profilePhoto, userId),
+            15000
+          )
+          if (r.success && (r.path || r.url)) {
+            mainPhotoUrl =
+              r.path ||
+              storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)!
+            setUploadedUrls((prev) => ({ ...prev, profilePhoto: mainPhotoUrl }))
           } else {
-            openModal("Upload Failed", r.error || "Failed to upload main profile photo.", 'error')
+            openModal("Upload Failed", r.error || "Failed to upload main profile photo.", "error")
             setIsUploading(false)
             return
           }
@@ -620,12 +634,22 @@ export function ProfileSetup() {
         if (additionalUrls.length === 0 && (profileData.additionalPhotos?.length || 0) > 0) {
           toast({ title: "Uploading Photos", description: "Uploading your additional photos..." })
           const results = await withTimeout(
-            Promise.all(profileData.additionalPhotos.map((f) => ProfileMediaService.uploadProfilePhoto(f, userId))),
+            Promise.all(
+              profileData.additionalPhotos.map((f) =>
+                ProfileMediaService.uploadProfilePhoto(f, userId)
+              )
+            ),
             25000
           )
-          const successful = results.filter((res) => res.success && res.url).map((res) => res.url!)
+          const successful = results
+            .filter((res) => res.success && (res.path || res.url))
+            .map(
+              (res) =>
+                res.path ||
+                storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, res.url!)!
+            )
           if (successful.length === 0) {
-            openModal("Upload Failed", "Failed to upload additional photos.", 'error')
+            openModal("Upload Failed", "Failed to upload additional photos.", "error")
             setIsUploading(false)
             return
           }
@@ -634,40 +658,51 @@ export function ProfileSetup() {
         }
         if (!videoUrl && profileData.videoIntro) {
           toast({ title: "Uploading Video", description: "Uploading your video intro..." })
-          const rv = await withTimeout(ProfileMediaService.uploadProfileVideo(profileData.videoIntro, userId), 30000)
-          if (rv.success && rv.url) {
-            videoUrl = rv.url
-            setUploadedUrls((prev) => ({ ...prev, videoIntro: rv.url }))
+          const rv = await withTimeout(
+            ProfileMediaService.uploadProfileVideo(profileData.videoIntro, userId),
+            30000
+          )
+          if (rv.success && (rv.path || rv.url)) {
+            videoUrl =
+              rv.path ||
+              storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.VIDEOS, rv.url!)!
+            setUploadedUrls((prev) => ({ ...prev, videoIntro: videoUrl }))
           } else {
-            openModal("Upload Failed", rv.error || "Failed to upload video intro.", 'error')
+            openModal("Upload Failed", rv.error || "Failed to upload video intro.", "error")
             setIsUploading(false)
             return
           }
         }
         if (!audioUrl && profileData.voiceIntro) {
           toast({ title: "Uploading Audio", description: "Uploading your voice intro..." })
-          const ra = await withTimeout(ProfileMediaService.uploadProfileAudio(profileData.voiceIntro, userId), 20000)
-          if (ra.success && ra.url) {
-            audioUrl = ra.url
-            setUploadedUrls((prev) => ({ ...prev, voiceIntro: ra.url }))
+          const ra = await withTimeout(
+            ProfileMediaService.uploadProfileAudio(profileData.voiceIntro, userId),
+            20000
+          )
+          if (ra.success && (ra.path || ra.url)) {
+            audioUrl =
+              ra.path ||
+              storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.VOICE_NOTES, ra.url!)!
+            setUploadedUrls((prev) => ({ ...prev, voiceIntro: audioUrl }))
           } else {
-            openModal("Upload Failed", ra.error || "Failed to upload voice intro.", 'error')
+            openModal("Upload Failed", ra.error || "Failed to upload voice intro.", "error")
             setIsUploading(false)
             return
           }
         }
       } catch (e) {
-        openModal("Upload Error", e instanceof Error ? e.message : "An error occurred while uploading your photos.", 'error')
+        openModal(
+          "Upload Error",
+          e instanceof Error ? e.message : "An error occurred while uploading your photos.",
+          "error"
+        )
         setIsUploading(false)
         return
       }
 
       // Build media URLs from uploaded results
       const mediaUrls: any = {
-        photos: [
-          ...(mainPhotoUrl ? [mainPhotoUrl] : []),
-          ...additionalUrls,
-        ],
+        photos: [...(mainPhotoUrl ? [mainPhotoUrl] : []), ...additionalUrls],
         videoIntro: videoUrl,
         voiceNote: audioUrl,
         audioMessages: [],
@@ -684,34 +719,44 @@ export function ProfileSetup() {
       const profileWithWallet = {
         ...profileData,
         // Only override fields that have been edited
-        ...(editedFields.has('firstName') && { firstName: profileData.firstName }),
-        ...(editedFields.has('lastName') && { lastName: profileData.lastName }),
-        ...(editedFields.has('age') && { age: profileData.age }),
-        ...(editedFields.has('gender') && { gender: profileData.gender }),
-        ...(editedFields.has('maritalStatus') && { maritalStatus: profileData.maritalStatus }),
-        ...(editedFields.has('hasChildren') && { hasChildren: profileData.hasChildren }),
-        ...(editedFields.has('wantChildren') && { wantChildren: profileData.wantChildren }),
-        ...(editedFields.has('bioTagline') && { bioTagline: profileData.bioTagline }),
-        ...(editedFields.has('location') && { location: composedLocation }),
-        ...(editedFields.has('city') && { city: profileData.city }),
-        ...(editedFields.has('state') && { state: profileData.state }),
-        ...(editedFields.has('country') && { country: profileData.country }),
-        ...(editedFields.has('education') && { education: profileData.education }),
-        ...(editedFields.has('profession') && { profession: profileData.profession }),
-        ...(editedFields.has('religiosity') && { religiosity: profileData.religiosity }),
-        ...(editedFields.has('prayerFrequency') && { prayerFrequency: profileData.prayerFrequency }),
-        ...(editedFields.has('hijabPreference') && { hijabPreference: profileData.hijabPreference }),
-        ...(editedFields.has('marriageIntention') && { marriageIntention: profileData.marriageIntention }),
-        ...(editedFields.has('isRevert') && { isRevert: profileData.isRevert }),
-        ...(editedFields.has('alcohol') && { alcohol: profileData.alcohol }),
-        ...(editedFields.has('smoking') && { smoking: profileData.smoking }),
-        ...(editedFields.has('psychedelics') && { psychedelics: profileData.psychedelics }),
-        ...(editedFields.has('halalFood') && { halalFood: profileData.halalFood }),
-        ...(editedFields.has('bio') && { bio: profileData.bio }),
-        ...(editedFields.has('interests') && { interests: profileData.interests }),
-        location: editedFields.has('location') || editedFields.has('city') || editedFields.has('state') || editedFields.has('country') 
-          ? composedLocation 
-          : profileData.location,
+        ...(editedFields.has("firstName") && { firstName: profileData.firstName }),
+        ...(editedFields.has("lastName") && { lastName: profileData.lastName }),
+        ...(editedFields.has("age") && { age: profileData.age }),
+        ...(editedFields.has("gender") && { gender: profileData.gender }),
+        ...(editedFields.has("maritalStatus") && { maritalStatus: profileData.maritalStatus }),
+        ...(editedFields.has("hasChildren") && { hasChildren: profileData.hasChildren }),
+        ...(editedFields.has("wantChildren") && { wantChildren: profileData.wantChildren }),
+        ...(editedFields.has("bioTagline") && { bioTagline: profileData.bioTagline }),
+        ...(editedFields.has("location") && { location: composedLocation }),
+        ...(editedFields.has("city") && { city: profileData.city }),
+        ...(editedFields.has("state") && { state: profileData.state }),
+        ...(editedFields.has("country") && { country: profileData.country }),
+        ...(editedFields.has("education") && { education: profileData.education }),
+        ...(editedFields.has("profession") && { profession: profileData.profession }),
+        ...(editedFields.has("religiosity") && { religiosity: profileData.religiosity }),
+        ...(editedFields.has("prayerFrequency") && {
+          prayerFrequency: profileData.prayerFrequency,
+        }),
+        ...(editedFields.has("hijabPreference") && {
+          hijabPreference: profileData.hijabPreference,
+        }),
+        ...(editedFields.has("marriageIntention") && {
+          marriageIntention: profileData.marriageIntention,
+        }),
+        ...(editedFields.has("isRevert") && { isRevert: profileData.isRevert }),
+        ...(editedFields.has("alcohol") && { alcohol: profileData.alcohol }),
+        ...(editedFields.has("smoking") && { smoking: profileData.smoking }),
+        ...(editedFields.has("psychedelics") && { psychedelics: profileData.psychedelics }),
+        ...(editedFields.has("halalFood") && { halalFood: profileData.halalFood }),
+        ...(editedFields.has("bio") && { bio: profileData.bio }),
+        ...(editedFields.has("interests") && { interests: profileData.interests }),
+        location:
+          editedFields.has("location") ||
+          editedFields.has("city") ||
+          editedFields.has("state") ||
+          editedFields.has("country")
+            ? composedLocation
+            : profileData.location,
         userId: userId,
         createdAt: new Date().toISOString(),
         media: mediaUrls,
@@ -731,17 +776,17 @@ export function ProfileSetup() {
 
       if (success) {
         // Redirect to profile page
-        openModal("Profile Saved", "Your profile was saved successfully.", 'success')
+        openModal("Profile Saved", "Your profile was saved successfully.", "success")
         toast({ title: "Profile Saved", description: "Redirecting to your profile..." })
         setTimeout(() => {
           window.location.href = `/profile?userId=${userId}`
         }, 800)
       } else {
-        openModal("Save Failed", "Failed to save profile. Please try again.", 'error')
+        openModal("Save Failed", "Failed to save profile. Please try again.", "error")
         toast({
           title: "Save Failed",
           description: "Please try again.",
-          variant: 'destructive',
+          variant: "destructive",
           action: (
             <ToastAction
               altText="Copy error"
@@ -754,11 +799,11 @@ export function ProfileSetup() {
       }
     } catch (error) {
       console.error("Error saving profile:", error)
-      openModal("Save Error", "Failed to save profile. Please try again.", 'error')
+      openModal("Save Error", "Failed to save profile. Please try again.", "error")
       toast({
         title: "Save Error",
         description: "Failed to save profile.",
-        variant: 'destructive',
+        variant: "destructive",
         action: (
           <ToastAction
             altText="Copy error"
@@ -774,9 +819,9 @@ export function ProfileSetup() {
   }
 
   if (!isAuthenticated || !userId) {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 relative overflow-hidden">
-      <CelestialBackground intensity="medium" />
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 relative overflow-hidden">
+        <CelestialBackground intensity="medium" />
 
         {/* Header */}
         <div className="relative z-10 sticky top-0 bg-white/80 backdrop-blur-xl border-b border-indigo-200/50">
@@ -964,22 +1009,36 @@ export function ProfileSetup() {
               </CardContent>
             </Card>
           </div>
+        </div>
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent
+            className={cn(
+              "sm:max-w-md",
+              modalVariant === "success" ? "border-green-200" : "border-red-200"
+            )}
+          >
+            <DialogHeader>
+              <DialogTitle
+                className={cn(
+                  "flex items-center gap-2",
+                  modalVariant === "success" ? "text-green-700" : "text-red-700"
+                )}
+              >
+                {modalTitle}
+              </DialogTitle>
+              <DialogDescription className="text-slate-700">{modalMessage}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setModalOpen(false)} className="btn-primary">
+                OK
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Toaster />
       </div>
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className={cn("sm:max-w-md", modalVariant === 'success' ? "border-green-200" : "border-red-200")}>        
-          <DialogHeader>
-            <DialogTitle className={cn("flex items-center gap-2", modalVariant === 'success' ? "text-green-700" : "text-red-700")}>{modalTitle}</DialogTitle>
-            <DialogDescription className="text-slate-700">{modalMessage}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setModalOpen(false)} className="btn-primary">OK</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Toaster />
-    </div>
-  )
-}
+    )
+  }
 
   return (
     <div className="min-h-screen relative">
@@ -1053,7 +1112,7 @@ export function ProfileSetup() {
                 <div className="text-center">
                   <p className="text-xs text-slate-500 font-queensides mb-1">Your Account</p>
                   <p className="text-lg font-bold text-slate-800 font-mono tracking-wider">
-                    {userId ? `${userId.slice(0, 8)}...${userId.slice(-4)}` : 'Account'}
+                    {userId ? `${userId.slice(0, 8)}...${userId.slice(-4)}` : "Account"}
                   </p>
                   <div className="flex items-center justify-center space-x-2 mt-2">
                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
@@ -1116,7 +1175,7 @@ export function ProfileSetup() {
                           </Label>
                           <Input
                             id="firstName"
-                            value={editedFields.has('firstName') ? profileData.firstName : ''}
+                            value={editedFields.has("firstName") ? profileData.firstName : ""}
                             onChange={(e) => updateProfileData("firstName", e.target.value)}
                             className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
                             placeholder={originalProfileData.firstName || "Enter your first name"}
@@ -1133,7 +1192,7 @@ export function ProfileSetup() {
                           </Label>
                           <Input
                             id="lastName"
-                            value={editedFields.has('lastName') ? profileData.lastName : ''}
+                            value={editedFields.has("lastName") ? profileData.lastName : ""}
                             onChange={(e) => updateProfileData("lastName", e.target.value)}
                             className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
                             placeholder={originalProfileData.lastName || "Enter your last name"}
@@ -1153,7 +1212,7 @@ export function ProfileSetup() {
                             min={18}
                             max={60}
                             step={1}
-                            value={editedFields.has('age') ? profileData.age : ''}
+                            value={editedFields.has("age") ? profileData.age : ""}
                             onChange={(e) => {
                               const v = e.target.value
                               updateProfileData("age", v)
@@ -1335,85 +1394,86 @@ export function ProfileSetup() {
                           </div>
 
                           {/* Location Display or Detection */}
-                          {!showManualLocation && (profileData.location ? (
-                            <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 shadow-sm">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-lg font-semibold text-slate-800 font-queensides text-black">
-                                    {profileData.location}
-                                  </p>
-                                  {locationData.latitude && locationData.longitude && (
-                                    <p className="text-xs text-green-600 mt-1 font-queensides text-black">
-                                      ✓ GPS coordinates: {locationData.latitude.toFixed(4)},{" "}
-                                      {locationData.longitude.toFixed(4)}
+                          {!showManualLocation &&
+                            (profileData.location ? (
+                              <div className="bg-white/60 backdrop-blur-sm border border-indigo-200/50 rounded-xl p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="text-lg font-semibold text-slate-800 font-queensides text-black">
+                                      {profileData.location}
                                     </p>
-                                  )}
+                                    {locationData.latitude && locationData.longitude && (
+                                      <p className="text-xs text-green-600 mt-1 font-queensides text-black">
+                                        ✓ GPS coordinates: {locationData.latitude.toFixed(4)},{" "}
+                                        {locationData.longitude.toFixed(4)}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                    <span className="text-xs text-green-600 font-queensides font-medium text-black">
+                                      Located
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                  <span className="text-xs text-green-600 font-queensides font-medium text-black">
-                                    Located
-                                  </span>
-                                </div>
-                              </div>
-                              <Button
-                                type="button"
-                                onClick={getUserLocation}
-                                disabled={isGettingLocation}
-                                variant="outline"
-                                size="sm"
-                                className="mt-3 font-queensides"
-                              >
-                                {isGettingLocation ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-2"></div>
-                                    Updating...
-                                  </>
-                                ) : (
-                                  <>
-                                    <MapPin className="w-3 h-3 mr-2" />
-                                    Update Location
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-6">
-                              <div className="text-center">
-                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                                  <MapPin className="w-8 h-8 text-white" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">
-                                  Detect Your Location
-                                </h3>
-                                <p className="text-slate-600 font-queensides mb-4 leading-relaxed">
-                                  We'll use your location to find matches nearby and show your city
-                                  to potential partners
-                                </p>
                                 <Button
                                   type="button"
                                   onClick={getUserLocation}
                                   disabled={isGettingLocation}
-                                  className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides px-6 py-3"
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-3 font-queensides"
                                 >
                                   {isGettingLocation ? (
                                     <>
-                                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                      Detecting Location...
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-indigo-600 mr-2"></div>
+                                      Updating...
                                     </>
                                   ) : (
                                     <>
-                                      <MapPin className="w-4 h-4 mr-2" />
-                                      Detect My Location
+                                      <MapPin className="w-3 h-3 mr-2" />
+                                      Update Location
                                     </>
                                   )}
                                 </Button>
-                                <p className="text-xs text-slate-500 font-queensides mt-3">
-                                  Your exact coordinates are kept private
-                                </p>
                               </div>
-                            </div>
-                          ))}
+                            ) : (
+                              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-6">
+                                <div className="text-center">
+                                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <MapPin className="w-8 h-8 text-white" />
+                                  </div>
+                                  <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">
+                                    Detect Your Location
+                                  </h3>
+                                  <p className="text-slate-600 font-queensides mb-4 leading-relaxed">
+                                    We'll use your location to find matches nearby and show your
+                                    city to potential partners
+                                  </p>
+                                  <Button
+                                    type="button"
+                                    onClick={getUserLocation}
+                                    disabled={isGettingLocation}
+                                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides px-6 py-3"
+                                  >
+                                    {isGettingLocation ? (
+                                      <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Detecting Location...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <MapPin className="w-4 h-4 mr-2" />
+                                        Detect My Location
+                                      </>
+                                    )}
+                                  </Button>
+                                  <p className="text-xs text-slate-500 font-queensides mt-3">
+                                    Your exact coordinates are kept private
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                         </div>
 
                         {/* Manual City / State / Country inputs */}
@@ -1421,30 +1481,36 @@ export function ProfileSetup() {
                           <form onSubmit={handleManualLocationSubmit} className="space-y-4">
                             <div className="grid grid-cols-3 gap-3">
                               <div>
-                                <Label htmlFor="city" className="font-queensides text-black">City</Label>
+                                <Label htmlFor="city" className="font-queensides text-black">
+                                  City
+                                </Label>
                                 <Input
                                   id="city"
-                                  value={editedFields.has('city') ? profileData.city : ''}
+                                  value={editedFields.has("city") ? profileData.city : ""}
                                   onChange={(e) => updateProfileData("city", e.target.value)}
                                   className="mt-1"
                                   placeholder={originalProfileData.city || "e.g., Cairo"}
                                 />
                               </div>
                               <div>
-                                <Label htmlFor="state" className="font-queensides text-black">State / Region</Label>
+                                <Label htmlFor="state" className="font-queensides text-black">
+                                  State / Region
+                                </Label>
                                 <Input
                                   id="state"
-                                  value={editedFields.has('state') ? profileData.state : ''}
+                                  value={editedFields.has("state") ? profileData.state : ""}
                                   onChange={(e) => updateProfileData("state", e.target.value)}
                                   className="mt-1"
                                   placeholder={originalProfileData.state || "e.g., Giza"}
                                 />
                               </div>
                               <div>
-                                <Label htmlFor="country" className="font-queensides text-black">Country</Label>
+                                <Label htmlFor="country" className="font-queensides text-black">
+                                  Country
+                                </Label>
                                 <Input
                                   id="country"
-                                  value={editedFields.has('country') ? profileData.country : ''}
+                                  value={editedFields.has("country") ? profileData.country : ""}
                                   onChange={(e) => updateProfileData("country", e.target.value)}
                                   className="mt-1"
                                   placeholder={originalProfileData.country || "e.g., Egypt"}
@@ -1452,7 +1518,10 @@ export function ProfileSetup() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button type="submit" className="bg-indigo-600 text-white font-queensides">
+                              <Button
+                                type="submit"
+                                className="bg-indigo-600 text-white font-queensides"
+                              >
                                 Save Location
                               </Button>
                               <Button
@@ -1494,10 +1563,12 @@ export function ProfileSetup() {
                           </Label>
                           <Input
                             id="profession"
-                            value={editedFields.has('profession') ? profileData.profession : ''}
+                            value={editedFields.has("profession") ? profileData.profession : ""}
                             onChange={(e) => updateProfileData("profession", e.target.value)}
                             className="mt-1"
-                            placeholder={originalProfileData.profession || "Your profession or field of work"}
+                            placeholder={
+                              originalProfileData.profession || "Your profession or field of work"
+                            }
                           />
                         </div>
 
@@ -1506,20 +1577,31 @@ export function ProfileSetup() {
                           <Label className="font-queensides text-black">Living Situation</Label>
                           <RadioGroup
                             value={profileData.livingArrangements || ""}
-                            onValueChange={(value) => updateProfileData("livingArrangements", value)}
+                            onValueChange={(value) =>
+                              updateProfileData("livingArrangements", value)
+                            }
                             className="mt-2 space-y-2"
                           >
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="alone" id="living-alone" />
-                              <Label htmlFor="living-alone" className="font-queensides text-black">Alone</Label>
+                              <Label htmlFor="living-alone" className="font-queensides text-black">
+                                Alone
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="with_family" id="living-family" />
-                              <Label htmlFor="living-family" className="font-queensides text-black">With family</Label>
+                              <Label htmlFor="living-family" className="font-queensides text-black">
+                                With family
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="with_roommates" id="living-roommates" />
-                              <Label htmlFor="living-roommates" className="font-queensides text-black">With roommates</Label>
+                              <Label
+                                htmlFor="living-roommates"
+                                className="font-queensides text-black"
+                              >
+                                With roommates
+                              </Label>
                             </div>
                           </RadioGroup>
                         </div>
@@ -1621,7 +1703,7 @@ export function ProfileSetup() {
                             onValueChange={(value) => updateProfileData("marriageIntention", value)}
                             className="mt-2 space-y-2"
                           >
-                          <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-2">
                               <RadioGroupItem value="1-4_months" id="marriage-1-4" />
                               <Label htmlFor="marriage-1-4" className="font-queensides text-black">
                                 1-4 months
@@ -1641,7 +1723,10 @@ export function ProfileSetup() {
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="agree_together" id="marriage-agree" />
-                              <Label htmlFor="marriage-agree" className="font-queensides text-black">
+                              <Label
+                                htmlFor="marriage-agree"
+                                className="font-queensides text-black"
+                              >
                                 Agree together
                               </Label>
                             </div>
@@ -1682,15 +1767,21 @@ export function ProfileSetup() {
                           >
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="Sunni" id="sect-sunni" />
-                              <Label htmlFor="sect-sunni" className="font-queensides text-black">Sunni</Label>
+                              <Label htmlFor="sect-sunni" className="font-queensides text-black">
+                                Sunni
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="Shia" id="sect-shia" />
-                              <Label htmlFor="sect-shia" className="font-queensides text-black">Shia</Label>
+                              <Label htmlFor="sect-shia" className="font-queensides text-black">
+                                Shia
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="Other" id="sect-other" />
-                              <Label htmlFor="sect-other" className="font-queensides text-black">Other</Label>
+                              <Label htmlFor="sect-other" className="font-queensides text-black">
+                                Other
+                              </Label>
                             </div>
                           </RadioGroup>
                         </div>
@@ -1705,15 +1796,27 @@ export function ProfileSetup() {
                           >
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="traditional" id="values-traditional" />
-                              <Label htmlFor="values-traditional" className="font-queensides text-black">Traditional</Label>
+                              <Label
+                                htmlFor="values-traditional"
+                                className="font-queensides text-black"
+                              >
+                                Traditional
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="balanced" id="values-balanced" />
-                              <Label htmlFor="values-balanced" className="font-queensides text-black">Balanced</Label>
+                              <Label
+                                htmlFor="values-balanced"
+                                className="font-queensides text-black"
+                              >
+                                Balanced
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="modern" id="values-modern" />
-                              <Label htmlFor="values-modern" className="font-queensides text-black">Modern</Label>
+                              <Label htmlFor="values-modern" className="font-queensides text-black">
+                                Modern
+                              </Label>
                             </div>
                           </RadioGroup>
                         </div>
@@ -1728,15 +1831,30 @@ export function ProfileSetup() {
                           >
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="involved" id="family-involved" />
-                              <Label htmlFor="family-involved" className="font-queensides text-black">Involved</Label>
+                              <Label
+                                htmlFor="family-involved"
+                                className="font-queensides text-black"
+                              >
+                                Involved
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="somewhat" id="family-somewhat" />
-                              <Label htmlFor="family-somewhat" className="font-queensides text-black">Somewhat involved</Label>
+                              <Label
+                                htmlFor="family-somewhat"
+                                className="font-queensides text-black"
+                              >
+                                Somewhat involved
+                              </Label>
                             </div>
                             <div className="flex items-center space-x-2">
                               <RadioGroupItem value="minimal" id="family-minimal" />
-                              <Label htmlFor="family-minimal" className="font-queensides text-black">Minimal</Label>
+                              <Label
+                                htmlFor="family-minimal"
+                                className="font-queensides text-black"
+                              >
+                                Minimal
+                              </Label>
                             </div>
                           </RadioGroup>
                         </div>
@@ -1814,10 +1932,11 @@ export function ProfileSetup() {
                           <RadioGroup
                             value={profileData.psychedelics}
                             onValueChange={(value) => {
-                              setProfileData(prev => ({
+                              setProfileData((prev) => ({
                                 ...prev,
                                 psychedelics: value,
-                                psychedelicsTypes: value === "never" ? [] : prev.psychedelicsTypes || []
+                                psychedelicsTypes:
+                                  value === "never" ? [] : prev.psychedelicsTypes || [],
                               }))
                             }}
                             className="mt-2 space-y-2"
@@ -1852,27 +1971,43 @@ export function ProfileSetup() {
                           </RadioGroup>
                           {profileData.psychedelics && profileData.psychedelics !== "never" && (
                             <div className="mt-3 space-y-2">
-                              <Label className="font-queensides text-black">Psychedelic Types</Label>
+                              <Label className="font-queensides text-black">
+                                Psychedelic Types
+                              </Label>
                               <div className="grid grid-cols-2 gap-3">
                                 {[
                                   { key: "mushroom", label: "Mushroom" },
                                   { key: "cannabis", label: "Cannabis" },
                                   { key: "other", label: "Other" },
                                 ].map((opt) => (
-                                  <div key={opt.key} className="flex items-center space-x-3 p-3 rounded-lg border border-slate-200">
+                                  <div
+                                    key={opt.key}
+                                    className="flex items-center space-x-3 p-3 rounded-lg border border-slate-200"
+                                  >
                                     <Checkbox
                                       id={`psy-${opt.key}`}
-                                      checked={(profileData.psychedelicsTypes || []).includes(opt.key)}
+                                      checked={(profileData.psychedelicsTypes || []).includes(
+                                        opt.key
+                                      )}
                                       onCheckedChange={(checked) => {
                                         const current = profileData.psychedelicsTypes || []
                                         if (checked) {
-                                          updateProfileData("psychedelicsTypes", [...current, opt.key])
+                                          updateProfileData("psychedelicsTypes", [
+                                            ...current,
+                                            opt.key,
+                                          ])
                                         } else {
-                                          updateProfileData("psychedelicsTypes", current.filter((k) => k !== opt.key))
+                                          updateProfileData(
+                                            "psychedelicsTypes",
+                                            current.filter((k) => k !== opt.key)
+                                          )
                                         }
                                       }}
                                     />
-                                    <Label htmlFor={`psy-${opt.key}`} className="font-queensides text-black cursor-pointer flex-1">
+                                    <Label
+                                      htmlFor={`psy-${opt.key}`}
+                                      className="font-queensides text-black cursor-pointer flex-1"
+                                    >
                                       {opt.label}
                                     </Label>
                                   </div>
@@ -1944,7 +2079,7 @@ export function ProfileSetup() {
 
                           <Textarea
                             id="bio"
-                            value={editedFields.has('bio') ? profileData.bio : ''}
+                            value={editedFields.has("bio") ? profileData.bio : ""}
                             onChange={(e) => {
                               updateProfileData("bio", e.target.value)
                               setBioHasBeenEdited(true)
@@ -1955,7 +2090,10 @@ export function ProfileSetup() {
                               }
                             }}
                             className="mt-1 min-h-[150px] text-base leading-relaxed"
-                            placeholder={originalProfileData.bio || "Share your story... What makes you unique? What are your values? What do you love doing? What are you looking for in a partner? Be authentic and specific!"}
+                            placeholder={
+                              originalProfileData.bio ||
+                              "Share your story... What makes you unique? What are your values? What do you love doing? What are you looking for in a partner? Be authentic and specific!"
+                            }
                           />
 
                           {/* AI Rating Button - directly under textarea */}
@@ -1965,16 +2103,22 @@ export function ProfileSetup() {
                                 onClick={async () => {
                                   setShowAiRating(true)
                                   try {
-                                    const { data, error } = await (await import('@/lib/supabase')).supabase.rpc('bio_uniqueness_percent', {
+                                    const { data, error } = await (
+                                      await import("@/lib/supabase")
+                                    ).supabase.rpc("bio_uniqueness_percent", {
                                       p_bio: profileData.bio,
                                     })
                                     if (error) throw error
-                                    const score = typeof data === 'number' ? data : 0
+                                    const score = typeof data === "number" ? data : 0
                                     setBioRating(score)
-                                    setBioFeedback(`Your bio uniqueness score is ${score}/100. You can now proceed to the next step.`)
+                                    setBioFeedback(
+                                      `Your bio uniqueness score is ${score}/100. You can now proceed to the next step.`
+                                    )
                                     setAiRatingComplete(true)
                                   } catch (e) {
-                                    setBioFeedback('Failed to compute uniqueness score. Please try again.')
+                                    setBioFeedback(
+                                      "Failed to compute uniqueness score. Please try again."
+                                    )
                                   } finally {
                                     setShowAiRating(false)
                                   }
@@ -2141,7 +2285,9 @@ export function ProfileSetup() {
 
                           {/* Personality Traits */}
                           <div className="space-y-3">
-                            <Label className="font-queensides text-black text-lg mb-2 block">Personality</Label>
+                            <Label className="font-queensides text-black text-lg mb-2 block">
+                              Personality
+                            </Label>
                             <div className="grid grid-cols-2 gap-3 mb-2">
                               {personalityTraits.map((trait) => (
                                 <div

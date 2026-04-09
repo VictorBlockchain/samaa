@@ -101,16 +101,54 @@ export class ProfileService {
     }
   }
 
-  // Update profile by user ID (Supabase Auth user ID)
-  static async updateProfileByUserId(userId: string, updates: Partial<UserUpdate>): Promise<User | null> {
+  /**
+   * Ensure a public.users row exists for this Supabase Auth user (id = auth.users.id).
+   * Inserts only when missing so we do not rewrite created_at on every app load.
+   */
+  static async ensureUserRowForAuthId(userId: string): Promise<User | null> {
     try {
+      const existing = await this.getProfileByUserId(userId)
+      if (existing) {
+        return existing
+      }
+      const now = new Date().toISOString()
       const { data, error } = await supabase
         .from('users')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
+        .insert({
+          id: userId,
+          is_active: true,
+          last_active: now,
+          created_at: now,
+          updated_at: now,
+        } as any)
+        .select()
+        .single()
+
+      if (error) {
+        if ((error as any).code === '23505') {
+          return await this.getProfileByUserId(userId)
+        }
+        throw error
+      }
+      return data
+    } catch (error) {
+      console.error('Error ensuring user row:', error)
+      return null
+    }
+  }
+
+  // Update profile by user ID (Supabase Auth user ID). Inserts the row if missing (upsert).
+  static async updateProfileByUserId(userId: string, updates: Partial<UserUpdate>): Promise<User | null> {
+    try {
+      const updatedAt = new Date().toISOString()
+      const merged = { ...updates, updated_at: updatedAt }
+      const cleaned = Object.fromEntries(
+        Object.entries(merged).filter(([, v]) => v !== undefined),
+      ) as Record<string, unknown>
+
+      const { data, error } = await supabase
+        .from('users')
+        .upsert({ id: userId, ...cleaned } as any, { onConflict: 'id' })
         .select()
         .single()
 
@@ -229,17 +267,46 @@ export class UserSettingsService {
   // Get user settings
   static async getUserSettings(userId: string): Promise<UserSettings | null> {
     try {
+      // First check if user is authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError)
+        return null
+      }
+      
+      if (!session) {
+        console.warn('No active session when fetching user settings')
+        return null
+      }
+
+      // Verify the userId matches the authenticated user
+      if (userId !== session.user.id) {
+        console.error('User ID mismatch: attempting to fetch settings for different user', {
+          providedUserId: userId,
+          sessionUserId: session.user.id
+        })
+        return null
+      }
+
       const { data, error } = await supabase
         .from('user_settings')
         .select('*')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          return null
-        }
-        throw error
+        // Log detailed error for debugging
+        console.error('Error fetching user settings:', {
+          error,
+          userId,
+          sessionUserId: session.user.id,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorDetails: error.details,
+          errorHint: error.hint
+        })
+        return null
       }
 
       return data
@@ -252,6 +319,28 @@ export class UserSettingsService {
   // Create or update user settings
   static async upsertUserSettings(userId: string, settings: Partial<UserSettingsInsert>): Promise<UserSettings | null> {
     try {
+      // First check if user is authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Error getting session:', sessionError)
+        return null
+      }
+      
+      if (!session) {
+        console.error('No active session when upserting user settings')
+        return null
+      }
+
+      // Verify the userId matches the authenticated user
+      if (userId !== session.user.id) {
+        console.error('User ID mismatch: attempting to update settings for different user', {
+          providedUserId: userId,
+          sessionUserId: session.user.id
+        })
+        return null
+      }
+
       const { data, error } = await supabase
         .from('user_settings')
         .upsert({
@@ -260,10 +349,18 @@ export class UserSettingsService {
           updated_at: new Date().toISOString()
         })
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
-        throw error
+        console.error('Error upserting user settings:', {
+          error,
+          userId,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorDetails: error.details,
+          errorHint: error.hint
+        })
+        return null
       }
 
       return data
