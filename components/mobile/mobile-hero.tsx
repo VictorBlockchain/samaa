@@ -621,8 +621,7 @@ export function MobileHero() {
                     {/* Center decorative element */}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-400/30 rounded-full opacity-50"></div>
                   </motion.div>
-
-                  </motion.div>
+                </motion.div>
                 )}
               </div>
             </div>
