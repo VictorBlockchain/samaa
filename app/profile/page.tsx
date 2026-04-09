@@ -2,7 +2,7 @@
 
 import React, { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import ProfileView from "@/components/profile/profile-view-elegant"
+import ProfileView from "@/components/profile/profile-view"
 
 function ProfileInner() {
   const searchParams = useSearchParams()

@@ -82,7 +82,13 @@ CREATE TABLE IF NOT EXISTS users (
   alcohol TEXT,
   smoking TEXT,
   psychedelics TEXT,
+  psychedelics_types TEXT[],
   halal_food TEXT,
+  self_care_frequency TEXT,
+  self_care_budget TEXT,
+  shopping_frequency TEXT,
+  hair_style TEXT,
+  make_up_style TEXT,
   -- Timestamps
   last_active TIMESTAMP WITH TIME ZONE,
   is_active BOOLEAN DEFAULT TRUE,

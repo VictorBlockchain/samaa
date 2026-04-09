@@ -371,9 +371,14 @@ interface ProfileData {
   diningFrequency?: string
   travelFrequency?: string
   hairStyle?: string // Female only
+  makeUpStyle?: string // Female only
   polygamyReason?: string // Male only
+  selfCareFrequency?: string
+  selfCareBudget?: string
+  shoppingFrequency?: string
   bio: string
   interests: string[]
+  customInterests?: string[]
   personality?: string[]
   profilePhoto: File | null
   additionalPhotos: File[]
@@ -438,9 +443,14 @@ export default function ProfileSetupPage() {
     diningFrequency: "",
     travelFrequency: "",
     hairStyle: "",
+    makeUpStyle: "",
     polygamyReason: "",
+    selfCareFrequency: "",
+    selfCareBudget: "",
+    shoppingFrequency: "",
     bio: "",
     interests: [],
+    customInterests: [],
     personality: [],
     profilePhoto: null,
     additionalPhotos: [],
@@ -541,6 +551,13 @@ export default function ProfileSetupPage() {
   const handleAdditionalPhotosUpload = async (files: File[]) => {
     if (files.length === 0 || !userId) return
 
+    // Check if adding these files would exceed the 6 photo limit
+    const currentCount = uploadedUrls.additionalPhotos.length
+    if (currentCount + files.length > 6) {
+      openModal("Photo Limit", `You can only have up to 6 photos. You currently have ${currentCount} photo(s).`, "error")
+      return
+    }
+
     updateProfileData("additionalPhotos", files)
 
     try {
@@ -555,10 +572,16 @@ export default function ProfileSetupPage() {
           (r: any) => r.path || storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)!
         )
 
+      const newPhotos = [...uploadedUrls.additionalPhotos, ...successfulUrls]
       setUploadedUrls((prev) => ({
         ...prev,
-        additionalPhotos: [...prev.additionalPhotos, ...successfulUrls],
+        additionalPhotos: newPhotos,
       }))
+
+      // Save to database immediately
+      await ProfileService.updateProfileByUserId(userId, {
+        additional_photos: newPhotos.length > 0 ? newPhotos : null,
+      } as any)
 
       const failedCount = results.length - successfulUrls.length
       if (failedCount > 0) {
@@ -579,13 +602,30 @@ export default function ProfileSetupPage() {
     try {
       const result = await ProfileMediaService.uploadProfileVideo(file, userId)
       if (result.success && (result as any).path) {
-        setUploadedUrls((prev) => ({ ...prev, videoIntro: (result as any).path }))
+        const videoPath = (result as any).path
+        setUploadedUrls((prev) => ({ ...prev, videoIntro: videoPath }))
+        
+        // Save to database immediately
+        await ProfileService.updateProfileByUserId(userId, { video_intro: videoPath } as any)
       } else {
         openModal("Upload Failed", result.error || "Failed to upload video", "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
       openModal("Upload Error", "Failed to upload video.", "error")
+    }
+  }
+
+  const handleDeleteVideo = async () => {
+    if (!userId) return
+    try {
+      await ProfileService.updateProfileByUserId(userId, { video_intro: null } as any)
+      setUploadedUrls((prev) => ({ ...prev, videoIntro: undefined }))
+      updateProfileData("videoIntro", null)
+      await refreshProfile()
+    } catch (error) {
+      console.error("Error deleting video:", error)
+      openModal("Delete Failed", "Failed to delete video. Please try again.", "error")
     }
   }
 
@@ -598,13 +638,30 @@ export default function ProfileSetupPage() {
     try {
       const result = await ProfileMediaService.uploadProfileAudio(file, userId)
       if (result.success && (result as any).path) {
-        setUploadedUrls((prev) => ({ ...prev, voiceIntro: (result as any).path }))
+        const audioPath = (result as any).path
+        setUploadedUrls((prev) => ({ ...prev, voiceIntro: audioPath }))
+        
+        // Save to database immediately
+        await ProfileService.updateProfileByUserId(userId, { voice_intro: audioPath } as any)
       } else {
         openModal("Upload Failed", result.error || "Failed to upload audio", "error")
       }
     } catch (error) {
       console.error("Upload error:", error)
       openModal("Upload Error", "Failed to upload audio.", "error")
+    }
+  }
+
+  const handleDeleteAudio = async () => {
+    if (!userId) return
+    try {
+      await ProfileService.updateProfileByUserId(userId, { voice_intro: null } as any)
+      setUploadedUrls((prev) => ({ ...prev, voiceIntro: undefined }))
+      updateProfileData("voiceIntro", null)
+      await refreshProfile()
+    } catch (error) {
+      console.error("Error deleting audio:", error)
+      openModal("Delete Failed", "Failed to delete audio. Please try again.", "error")
     }
   }
 
@@ -726,6 +783,11 @@ export default function ProfileSetupPage() {
       work_preference: (profile as any).work_preference,
       style_preference: (profile as any).style_preference,
       living_arrangements: (profile as any).living_arrangements,
+      profile_photo: profile.profile_photo,
+      profile_photos: profile.profile_photos,
+      additional_photos: (profile as any).additional_photos,
+      video_intro: (profile as any).video_intro,
+      voice_intro: (profile as any).voice_intro,
     })
 
     const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim()
@@ -764,6 +826,7 @@ export default function ProfileSetupPage() {
       alcohol: profile.alcohol || prev.alcohol,
       smoking: profile.smoking || prev.smoking,
       psychedelics: profile.psychedelics || prev.psychedelics,
+      psychedelicsTypes: Array.isArray((profile as any).psychedelics_types) ? (profile as any).psychedelics_types : prev.psychedelicsTypes,
       halalFood: profile.halal_food || prev.halalFood,
       livingArrangements: (profile as any).living_arrangements || prev.livingArrangements,
       willingToRelocate: (profile as any).willing_to_relocate === true ? "yes" : (profile as any).willing_to_relocate === false ? "no" : prev.willingToRelocate,
@@ -774,6 +837,7 @@ export default function ProfileSetupPage() {
       familyInvolvement: (profile as any).family_involvement || prev.familyInvolvement,
       bio: profile.bio || prev.bio,
       interests: Array.isArray(profile.interests) ? profile.interests : prev.interests,
+      customInterests: Array.isArray((profile as any).custom_interests) ? (profile as any).custom_interests : prev.customInterests,
       personality: Array.isArray((profile as any).personality)
         ? (profile as any).personality
         : prev.personality,
@@ -782,6 +846,10 @@ export default function ProfileSetupPage() {
             storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p)
           )
         : prev.photos,
+      videoIntro: profile.video_intro || null,
+      voiceIntro: profile.voice_intro || null,
+      profilePhoto: profile.profile_photo || null,
+      additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
       preferences: {
         // Ensure preferences are still handled
         ...prev.preferences,
@@ -815,9 +883,11 @@ export default function ProfileSetupPage() {
       alcohol: profile.alcohol || "",
       smoking: profile.smoking || "",
       psychedelics: profile.psychedelics || "",
+      psychedelicsTypes: Array.isArray((profile as any).psychedelics_types) ? (profile as any).psychedelics_types : [],
       halalFood: profile.halal_food || "",
       bio: profile.bio || "",
       interests: Array.isArray(profile.interests) ? profile.interests : [],
+      customInterests: Array.isArray((profile as any).custom_interests) ? (profile as any).custom_interests : [],
       livingArrangements: (profile as any).living_arrangements || "",
       willingToRelocate: (profile as any).willing_to_relocate === true ? "yes" : (profile as any).willing_to_relocate === false ? "no" : "",
       mahrMaxAmount: (profile as any).mahr_max_amount ? String((profile as any).mahr_max_amount) : "",
@@ -831,10 +901,10 @@ export default function ProfileSetupPage() {
       hairStyle: (profile as any).hair_style || "",
       polygamyReason: (profile as any).polygamy_reason || "",
       personality: Array.isArray((profile as any).personality) ? (profile as any).personality : [],
-      profilePhoto: null,
-      additionalPhotos: [],
-      videoIntro: null,
-      voiceIntro: null,
+      profilePhoto: profile.profile_photo || null,
+      additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
+      videoIntro: profile.video_intro || null,
+      voiceIntro: profile.voice_intro || null,
       photos: Array.isArray(profile.profile_photos)
         ? profile.profile_photos.map((p: string) =>
             storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p)
@@ -860,9 +930,24 @@ export default function ProfileSetupPage() {
 
     setUploadedUrls({
       profilePhoto: profile.profile_photo || undefined,
-      additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
-      videoIntro: profile.video_intro || undefined,
-      voiceIntro: profile.voice_intro || undefined,
+      additionalPhotos: Array.isArray((profile as any).additional_photos) 
+        ? (profile as any).additional_photos 
+        : Array.isArray(profile.profile_photos) 
+          ? profile.profile_photos 
+          : [],
+      videoIntro: (profile as any).video_intro || undefined,
+      voiceIntro: (profile as any).voice_intro || undefined,
+    })
+
+    console.log('Set uploadedUrls:', {
+      profilePhoto: profile.profile_photo,
+      additionalPhotos: Array.isArray((profile as any).additional_photos) 
+        ? (profile as any).additional_photos 
+        : Array.isArray(profile.profile_photos) 
+          ? profile.profile_photos 
+          : [],
+      videoIntro: (profile as any).video_intro,
+      voiceIntro: (profile as any).voice_intro,
     })
 
     setHasHydratedFromDb(true)
@@ -978,14 +1063,23 @@ export default function ProfileSetupPage() {
   }
 
   const removePhotoAt = async (index: number) => {
-    const next = profileData.photos.filter((_, i) => i !== index)
-    setProfileData((prev) => ({
+    const photoToDelete = uploadedUrls.additionalPhotos[index]
+    
+    const next = uploadedUrls.additionalPhotos.filter((_, i) => i !== index)
+    setUploadedUrls((prev) => ({
       ...prev,
-      photos: next,
+      additionalPhotos: next,
     }))
+    
+    // Update main photo index if needed
+    if (mainPhotoIndex === index) {
+      setMainPhotoIndex(0)
+    } else if (mainPhotoIndex > index) {
+      setMainPhotoIndex(mainPhotoIndex - 1)
+    }
+    
     if (!userId) return
     const saved = await ProfileService.updateProfileByUserId(userId, {
-      profile_photo: next[0] || null,
       profile_photos: next.length > 0 ? next : null,
     } as any)
     if (saved) {
@@ -1087,8 +1181,9 @@ export default function ProfileSetupPage() {
   const persistPhotosSection = async (): Promise<boolean> => {
     if (!userId) return false
     const row = await ProfileService.updateProfileByUserId(userId, {
-      profile_photo: profileData.photos[0] || null,
-      profile_photos: profileData.photos.length > 0 ? profileData.photos : null,
+      profile_photos: uploadedUrls.additionalPhotos.length > 0 ? uploadedUrls.additionalPhotos : null,
+      video_intro: uploadedUrls.videoIntro || null,
+      voice_intro: uploadedUrls.voiceIntro || null,
     } as any)
     return !!row
   }
@@ -1097,6 +1192,7 @@ export default function ProfileSetupPage() {
     if (!userId) return false
     const row = await ProfileService.updateProfileByUserId(userId, {
       interests: profileData.interests.length > 0 ? profileData.interests : null,
+      custom_interests: profileData.customInterests && profileData.customInterests.length > 0 ? profileData.customInterests : null,
       personality:
         profileData.personality && profileData.personality.length > 0
           ? profileData.personality
@@ -1151,8 +1247,12 @@ export default function ProfileSetupPage() {
       longitude: locationCoords ? locationCoords[1] : null,
       bio: profileData.bio || null,
       interests: profileData.interests.length > 0 ? profileData.interests : null,
-      profile_photo: profileData.photos[0] || null,
-      profile_photos: profileData.photos.length > 0 ? profileData.photos : null,
+      custom_interests: profileData.customInterests && profileData.customInterests.length > 0 ? profileData.customInterests : null,
+      profile_photo: uploadedUrls.profilePhoto || null,
+      profile_photos: uploadedUrls.additionalPhotos.length > 0 ? uploadedUrls.additionalPhotos : null,
+      additional_photos: uploadedUrls.additionalPhotos.length > 0 ? uploadedUrls.additionalPhotos : null,
+      video_intro: uploadedUrls.videoIntro || null,
+      voice_intro: uploadedUrls.voiceIntro || null,
       education: profileData.preferences.education[0] || null,
       profession: profileData.preferences.occupation[0] || null,
       profile_complete: true,
@@ -1227,6 +1327,10 @@ export default function ProfileSetupPage() {
         // Required field validation
         if (!profileData.bio || profileData.bio.trim().length === 0) {
           openModal("Missing Bio", "Bio is required. Please write a short bio.", "error")
+          return
+        }
+        if (profileData.bio.trim().length < 300) {
+          openModal("Bio Too Short", `Your bio must be at least 300 characters. Currently: ${profileData.bio.length} characters.`, "error")
           return
         }
 
@@ -1383,6 +1487,11 @@ export default function ProfileSetupPage() {
           ...(editedFields.has("smoking") && { smoking: profileData.smoking }),
           ...(editedFields.has("psychedelics") && { psychedelics: profileData.psychedelics }),
           ...(editedFields.has("halalFood") && { halalFood: profileData.halalFood }),
+          ...(editedFields.has("selfCareFrequency") && { selfCareFrequency: profileData.selfCareFrequency }),
+          ...(editedFields.has("selfCareBudget") && { selfCareBudget: profileData.selfCareBudget }),
+          ...(editedFields.has("shoppingFrequency") && { shoppingFrequency: profileData.shoppingFrequency }),
+          ...(editedFields.has("hairStyle") && { hairStyle: profileData.hairStyle }),
+          ...(editedFields.has("makeUpStyle") && { makeUpStyle: profileData.makeUpStyle }),
           ...(editedFields.has("bio") && { bio: profileData.bio }),
           ...(editedFields.has("interests") && { interests: profileData.interests }),
           location:
@@ -1716,6 +1825,12 @@ export default function ProfileSetupPage() {
                             Divorced
                           </Label>
                         </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="married" id="status-married" />
+                          <Label htmlFor="status-married" className="font-queensides text-black">
+                            Married Before
+                          </Label>
+                        </div>
                         {profileData.gender === "male" && (
                           <>
                             <div className="flex items-center space-x-2">
@@ -2006,8 +2121,101 @@ export default function ProfileSetupPage() {
                         ))}
                       </div>
                     </div>
+                    {/* Shopping Frequency */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
+                        <svg className="w-4 h-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2.293 2.293c-.63.63-.184 1.707.707 1.707H18a2 2 0 002-2v-6a2 2 0 00-2-2h-5.293c-.495 0-.964.14-1.38.415l-2.293 2.293a1 1 0 101.414 1.414l2.293-2.293a1 1 0 00-1.414-1.414z" />
+                        </svg>
+                        Shopping Frequency
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { value: 'weekly', label: 'Weekly', emoji: '🛍️' },
+                          { value: 'monthly', label: 'Monthly', emoji: '🛍️' },
+                          { value: 'frequently', label: 'Frequently', emoji: '🛍️' },
+                          { value: 'rarely', label: 'Rarely', emoji: '🛍️' },
+                        ].map((option) => (
+                          <motion.button
+                            key={option.value}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => updateProfileData('shoppingFrequency', option.value)}
+                            className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
+                              profileData.shoppingFrequency === option.value
+                                ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-400 shadow-md'
+                                : 'bg-white border-slate-200 hover:border-emerald-300'
+                            }`}
+                          >
+                            <span className="text-2xl">{option.emoji}</span>
+                            <span className="font-queensides text-sm font-medium text-slate-700">{option.label}</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                    {/*Self Care Frequency */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
+                        <svg className="w-4 h-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.313 0a8.24 8.24 0 01+8 8V16.382A8.255 8.255 0 0121 15.313M4 4a8.25 8.25 0 008 8v.582M4 4a8.25 8.25 0 01+8-8V4M4 4a8.25 8.25 0 01+8 8h.582M4 4a8.25 8.25 0 008-8H4z" />
+                        </svg>
+                        Self Care Frequency
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { value: 'daily', label: 'Daily', emoji: '🌸' },
+                          { value: 'weekly', label: 'Weekly', emoji: '🌸' },
+                          { value: 'monthly', label: 'Monthly', emoji: '🌸' },
+                          { value: 'rarely', label: 'Rarely', emoji: '🌸' },
+                        ].map((option) => (
+                          <motion.button
+                            key={option.value}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => updateProfileData('selfCareFrequency', option.value)}
+                            className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
+                              profileData.selfCareFrequency === option.value
+                                ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-pink-400 shadow-md'
+                                : 'bg-white border-slate-200 hover:border-pink-300'
+                            }`}
+                          >
+                            <span className="text-2xl">{option.emoji}</span>
+                            <span className="font-queensides text-sm font-medium text-slate-700">{option.label}</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                    {/*self care budget */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
+                        Self Care Budget
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { value: '$100 or less', label: 'Low', emoji: '💰' },
+                          { value: '$101 to $500', label: 'Medium', emoji: '💰' },
+                          { value: '$501 to $1000', label: 'High', emoji: '💰' },
+                          { value: 'over $1000', label: 'Very High', emoji: '💰' },
+                        ].map((option) => (
+                          <motion.button
+                            key={option.value}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => updateProfileData('selfCareBudget', option.value)}
+                            className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
+                              profileData.selfCareBudget === option.value
+                                ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-pink-400 shadow-md'
+                                : 'bg-white border-slate-200 hover:border-pink-300'
+                            }`}
+                          >
+                            <span className="text-2xl">{option.emoji}</span>
+                            <span className="font-queensides text-sm font-medium text-slate-700">{option.label}</span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
 
-                    {/* Female Only - Hair Style */}
+                    {/* Female Only - Beauty Style */}
                     {profileData.gender === 'female' && (
                       <>
                         {/* UI Kit Styled Section Divider */}
@@ -2023,7 +2231,7 @@ export default function ProfileSetupPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                   </svg>
                                 </div>
-                                <span className="font-queensides font-semibold text-pink-800">Personal Style</span>
+                                <span className="font-queensides font-semibold text-pink-800">Beauty</span>
                               </div>
                             </div>
                           </div>
@@ -2031,7 +2239,7 @@ export default function ProfileSetupPage() {
 
                         <div>
                           <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
-                            Hair Style Preference
+                            Hair Style
                           </label>
                           <div className="grid grid-cols-2 gap-3">
                             {[
@@ -2045,6 +2253,34 @@ export default function ProfileSetupPage() {
                                 onClick={() => updateProfileData('hairStyle', option.value)}
                                 className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
                                   profileData.hairStyle === option.value
+                                    ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-pink-400 shadow-md'
+                                    : 'bg-white border-slate-200 hover:border-pink-300'
+                                }`}
+                              >
+                                <span className="text-2xl">{option.emoji}</span>
+                                <span className="font-queensides text-sm font-medium text-slate-700">{option.label}</span>
+                              </motion.button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
+                            Make Up Style
+                          </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            {[
+                              { value: 'natural', label: 'Natural', emoji: '🌿' },
+                              { value: 'traditional', label: 'Traditional', emoji: '👑' },
+                              { value: 'modern', label: 'Modern', emoji: '💎' },
+                              { value: 'girly', label: 'Girly', emoji: 'Vintage' },
+                            ].map((option) => (
+                              <motion.button
+                                key={option.value}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => updateProfileData('makeUpStyle', option.value)}
+                                className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
+                                  profileData.makeUpStyle === option.value
                                     ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-pink-400 shadow-md'
                                     : 'bg-white border-slate-200 hover:border-pink-300'
                                 }`}
@@ -2072,16 +2308,24 @@ export default function ProfileSetupPage() {
                                 <div className="w-8 h-8 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center">
                                   <Heart className="w-4 h-4 text-white" />
                                 </div>
-                                <span className="font-queensides font-semibold text-indigo-800">Marriage Preferences</span>
+                                <span className="font-queensides font-semibold text-indigo-800">Polygamy Approach</span>
                               </div>
                             </div>
                           </div>
                         </div>
 
                         <div>
+                          {profile.gender === "male" && (
                           <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
                             If you want more than 1 wife, why?
                           </label>
+                          )}
+                          {profile.gender === "female" && (
+                          <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
+                            Why or why not polygamy?
+                          </label>
+                          )}
+
                           <textarea
                             value={profileData.polygamyReason || ''}
                             onChange={(e) => updateProfileData('polygamyReason', e.target.value)}
@@ -2113,17 +2357,27 @@ export default function ProfileSetupPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-2">
-                        <Briefcase className="w-4 h-4 inline mr-2" />
-                        Bio
-                      </label>
                       <textarea
                         value={profileData.bio}
                         onChange={(e) => handleBasicInfoChange("bio", e.target.value)}
-                        rows={4}
+                        rows={6}
                         className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides resize-none"
-                        placeholder="Tell us about yourself, your interests, and what you're looking for..."
+                        placeholder="Tell us about yourself, your interests, and what you're looking for... (minimum 300 characters)"
                       />
+                      <div className="flex items-center justify-between mt-2">
+                        <p className={`text-sm font-queensides ${profileData.bio.length >= 300 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {profileData.bio.length}/300 characters {profileData.bio.length >= 300 ? '✓' : '(minimum required)'}
+                        </p>
+                        {profileData.bio.length >= 300 && (
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/profile/bio?userId=${userId}`)}
+                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-queensides text-sm rounded-xl hover:shadow-lg transition-all"
+                          >
+                            Rate My Bio ✨
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -2663,6 +2917,42 @@ export default function ProfileSetupPage() {
                         ))}
                       </div>
 
+                      {/* Custom Interests Display */}
+                      {profileData.customInterests && profileData.customInterests.length > 0 && (
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/50 rounded-xl p-4">
+                          <div className="flex items-center space-x-3 mb-3">
+                            <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-400 rounded-full flex items-center justify-center">
+                              <span className="text-white text-sm">✓</span>
+                            </div>
+                            <h4 className="font-semibold text-slate-800 font-qurova">
+                              Your Custom Interests
+                            </h4>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {profileData.customInterests.map((interest, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-emerald-200 shadow-sm"
+                              >
+                                <span className="text-sm font-queensides text-slate-700">{interest}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = (profileData.customInterests || []).filter((_, i) => i !== index)
+                                    updateProfileData("customInterests", updated)
+                                  }}
+                                  className="text-red-500 hover:text-red-700 transition-colors"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Add Custom Interests */}
                       <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/50 rounded-xl p-4">
                         <div className="flex items-center space-x-3 mb-3">
@@ -2685,12 +2975,14 @@ export default function ProfileSetupPage() {
                                   .map((interest) => interest.trim())
                                   .filter(
                                     (interest) =>
-                                      interest && !profileData.interests.includes(interest)
+                                      interest && 
+                                      !profileData.interests.includes(interest) &&
+                                      !profileData.customInterests?.includes(interest)
                                   )
 
                                 if (newInterests.length > 0) {
-                                  updateProfileData("interests", [
-                                    ...profileData.interests,
+                                  updateProfileData("customInterests", [
+                                    ...(profileData.customInterests || []),
                                     ...newInterests,
                                   ])
                                   input.value = ""
@@ -2715,12 +3007,14 @@ export default function ProfileSetupPage() {
                                   .map((interest) => interest.trim())
                                   .filter(
                                     (interest) =>
-                                      interest && !profileData.interests.includes(interest)
+                                      interest && 
+                                      !profileData.interests.includes(interest) &&
+                                      !profileData.customInterests?.includes(interest)
                                   )
 
                                 if (newInterests && newInterests.length > 0) {
-                                  updateProfileData("interests", [
-                                    ...profileData.interests,
+                                  updateProfileData("customInterests", [
+                                    ...(profileData.customInterests || []),
                                     ...newInterests,
                                   ])
                                   input.value = ""
@@ -2861,20 +3155,30 @@ export default function ProfileSetupPage() {
                         <Label className="font-queensides text-black text-lg">
                           Upload Photos (Up to 6)
                         </Label>
-                        <span className="text-sm text-slate-600 font-queensides">
+                        <span className={`text-sm font-queensides font-semibold ${uploadedUrls.additionalPhotos.length >= 6 ? 'text-red-600' : 'text-slate-600'}`}>
                           {uploadedUrls.additionalPhotos.length}/6
                         </span>
                       </div>
                       <p className="text-slate-600 font-queensides text-sm mb-4">
                         Swipe through your photos and tap "Set as Main" to choose your profile picture
                       </p>
-                      <FileUpload
-                        accept="image/jpeg,image/png,image/webp"
-                        maxSize={5 * 1024 * 1024} // 5MB
-                        multiple={true}
-                        onFileSelect={handleAdditionalPhotosUpload}
-                        className="border-2 border-dashed border-indigo-300 hover:border-indigo-400 rounded-xl"
-                      />
+                      
+                      {/* Disable upload if limit reached */}
+                      {uploadedUrls.additionalPhotos.length >= 6 ? (
+                        <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-xl text-center">
+                          <p className="text-amber-800 font-queensides font-semibold">
+                            Photo limit reached (6/6). Delete a photo to upload more.
+                          </p>
+                        </div>
+                      ) : (
+                        <FileUpload
+                          accept="image/jpeg,image/png,image/webp"
+                          maxSize={5 * 1024 * 1024} // 5MB
+                          multiple={true}
+                          onFileSelect={handleAdditionalPhotosUpload}
+                          className="border-2 border-dashed border-indigo-300 hover:border-indigo-400 rounded-xl"
+                        />
+                      )}
                       
                       {/* Photo Slider */}
                       {uploadedUrls.additionalPhotos.length > 0 && (
@@ -2894,6 +3198,17 @@ export default function ProfileSetupPage() {
                                   Main Photo
                                 </div>
                               )}
+                              
+                              {/* Delete Button */}
+                              <button
+                                onClick={() => removePhotoAt(currentPhotoIndex)}
+                                className="absolute top-3 right-3 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transition-colors"
+                                title="Delete this photo"
+                              >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
                               
                               {/* Photo Counter */}
                               <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-queensides">
@@ -2979,7 +3294,18 @@ export default function ProfileSetupPage() {
                       />
                       {uploadedUrls.voiceIntro && (
                         <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                          <p className="text-sm font-queensides text-purple-700 mb-2">Uploaded Audio:</p>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-queensides text-purple-700 font-semibold">Uploaded Audio:</p>
+                            <button
+                              onClick={handleDeleteAudio}
+                              className="text-red-500 hover:text-red-700 transition-colors p-1"
+                              title="Delete audio"
+                            >
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                           <AudioPreview 
                             bucket={STORAGE_CONFIG.BUCKETS.VOICE_NOTES} 
                             path={uploadedUrls.voiceIntro} 
@@ -3018,7 +3344,18 @@ export default function ProfileSetupPage() {
                       />
                       {uploadedUrls.videoIntro && (
                         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-sm font-queensides text-blue-700 mb-2">Uploaded Video:</p>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-sm font-queensides text-blue-700 font-semibold">Uploaded Video:</p>
+                            <button
+                              onClick={handleDeleteVideo}
+                              className="text-red-500 hover:text-red-700 transition-colors p-1"
+                              title="Delete video"
+                            >
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
                           <VideoPreview 
                             bucket={STORAGE_CONFIG.BUCKETS.VIDEOS} 
                             path={uploadedUrls.videoIntro} 
