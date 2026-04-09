@@ -59,9 +59,42 @@ GRANT USAGE ON SCHEMA public TO authenticated;
 -- Grant table permissions
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON cart_items TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_settings TO authenticated;
 
 -- Grant sequence permissions (if any)
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+
+-- ============================================================================
+-- 4. Fix user_settings table RLS
+-- ============================================================================
+
+-- Ensure RLS is enabled
+ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
+
+-- Drop and recreate policies to ensure they work
+DROP POLICY IF EXISTS "Users can view own settings" ON user_settings;
+CREATE POLICY "Users can view own settings" ON user_settings
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can create own settings" ON user_settings;
+CREATE POLICY "Users can create own settings" ON user_settings
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own settings" ON user_settings;
+CREATE POLICY "Users can update own settings" ON user_settings
+  FOR UPDATE
+  TO authenticated
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can delete own settings" ON user_settings;
+CREATE POLICY "Users can delete own settings" ON user_settings
+  FOR DELETE
+  TO authenticated
+  USING (user_id = auth.uid());
 
 -- ============================================================================
 -- 4. Verify function exists with correct signature
@@ -94,5 +127,6 @@ ALTER FUNCTION upsert_user_minimal SECURITY DEFINER;
 -- 1. ✅ Added SELECT policy for users table (authenticated users can view own profile)
 -- 2. ✅ Fixed cart_items RLS policies (SELECT, INSERT, UPDATE, DELETE)
 -- 3. ✅ Granted proper permissions to authenticated users
--- 4. ✅ Made upsert_user_minimal SECURITY DEFINER to bypass RLS
--- 5. ✅ Granted EXECUTE permission on upsert_user_minimal function
+-- 4. ✅ Fixed user_settings RLS policies (SELECT, INSERT, UPDATE, DELETE)
+-- 5. ✅ Made upsert_user_minimal SECURITY DEFINER to bypass RLS
+-- 6. ✅ Granted EXECUTE permission on upsert_user_minimal function

@@ -255,8 +255,19 @@ export function ProfileSetup() {
     if (isAuthenticated && userId) {
       ;(async () => {
         try {
+          console.log('[Profile Setup] Loading existing profile for user:', userId)
           const user = await ProfileService.getProfileByUserId(userId)
           if (user) {
+            console.log('[Profile Setup] Found existing profile:', {
+              firstName: user.first_name,
+              lastName: user.last_name,
+              age: user.age,
+              gender: user.gender,
+              city: user.city,
+              state: (user as any).state,
+              country: (user as any).country,
+            })
+            
             const mapped = {
               firstName: user.first_name || "",
               lastName: user.last_name || "",
@@ -267,6 +278,9 @@ export function ProfileSetup() {
               wantChildren: user.wants_children ? "yes" : "no",
               bioTagline: user.bio_tagline || (user.bio ? String(user.bio).substring(0, 100) : ""),
               location: user.location || "",
+              city: user.city || "",
+              state: (user as any).state || "",
+              country: (user as any).country || "",
               latitude: user.latitude ?? undefined,
               longitude: user.longitude ?? undefined,
               education: user.education || "",
@@ -293,6 +307,7 @@ export function ProfileSetup() {
               voiceIntro: null,
             }
             setProfileData((prev) => ({ ...prev, ...mapped }))
+            console.log('[Profile Setup] Profile data loaded and merged successfully')
 
             if (user.latitude && user.longitude) {
               setLocationData({
@@ -308,9 +323,11 @@ export function ProfileSetup() {
               videoIntro: user.video_intro || undefined,
               voiceIntro: user.voice_intro || undefined,
             })
+          } else {
+            console.log('[Profile Setup] No existing profile found, starting with empty form')
           }
         } catch (error) {
-          console.error("Error loading existing profile:", error)
+          console.error("[Profile Setup] Error loading existing profile:", error)
         }
       })()
     }
