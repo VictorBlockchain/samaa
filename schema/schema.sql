@@ -448,36 +448,68 @@ $$ LANGUAGE sql STABLE;
 -- ============================================================================
 
 -- Shop status enum
-CREATE TYPE shop_status AS ENUM ('pending', 'active', 'suspended', 'closed');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'shop_status') THEN
+    CREATE TYPE shop_status AS ENUM ('pending', 'active', 'suspended', 'closed');
+  END IF;
+END $$;
 
 -- Product category types for Muslim fashion and wedding items
-CREATE TYPE product_category AS ENUM (
-  'mens_clothing', 'womens_clothing', 'accessories', 'footwear', 'jewelry',
-  'wedding_dresses', 'mens_formal', 'hijabs_scarves', 'abayas_jilbabs', 
-  'thobes_kaftans', 'prayer_items', 'home_decor', 'gifts', 'books',
-  'perfumes_oils', 'children_clothing', 'modest_swimwear', 'undergarments'
-);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_category') THEN
+    CREATE TYPE product_category AS ENUM (
+      'mens_clothing', 'womens_clothing', 'accessories', 'footwear', 'jewelry',
+      'wedding_dresses', 'mens_formal', 'hijabs_scarves', 'abayas_jilbabs', 
+      'thobes_kaftans', 'prayer_items', 'home_decor', 'gifts', 'books',
+      'perfumes_oils', 'children_clothing', 'modest_swimwear', 'undergarments'
+    );
+  END IF;
+END $$;
 
 -- Product condition
-CREATE TYPE product_condition AS ENUM ('new', 'like_new', 'good', 'fair');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_condition') THEN
+    CREATE TYPE product_condition AS ENUM ('new', 'like_new', 'good', 'fair');
+  END IF;
+END $$;
 
 -- Currency type for products/pricing
-CREATE TYPE currency_type AS ENUM ('SAKK', 'SEI');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'currency_type') THEN
+    CREATE TYPE currency_type AS ENUM ('SAKK', 'SEI');
+  END IF;
+END $$;
 
 -- Order status
-CREATE TYPE order_status AS ENUM ('pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
+    CREATE TYPE order_status AS ENUM ('pending', 'confirmed', 'processing', 'shipped', 'on_delivery', 'delivered', 'cancelled', 'return_requested', 'return_in_progress', 'returned', 'refunded');
+  END IF;
+END $$;
 
 -- Payment status
-CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded', 'partially_refunded');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'payment_status') THEN
+    CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded', 'partially_refunded');
+  END IF;
+END $$;
 
 -- Shipping method
-CREATE TYPE shipping_method AS ENUM ('standard', 'express', 'overnight', 'pickup');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'shipping_method') THEN
+    CREATE TYPE shipping_method AS ENUM ('standard', 'express', 'overnight', 'pickup');
+  END IF;
+END $$;
 
 -- Size system for clothing
-CREATE TYPE size_system AS ENUM ('us', 'uk', 'eu', 'international', 'custom');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'size_system') THEN
+    CREATE TYPE size_system AS ENUM ('us', 'uk', 'eu', 'international', 'custom');
+  END IF;
+END $$;
 
 -- Shops table
-CREATE TABLE shops (
+CREATE TABLE IF NOT EXISTS shops (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -498,7 +530,7 @@ CREATE TABLE shops (
 );
 
 -- Product categories table
-CREATE TABLE product_categories (
+CREATE TABLE IF NOT EXISTS product_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL UNIQUE,
   category_type product_category NOT NULL,
@@ -512,7 +544,7 @@ CREATE TABLE product_categories (
 );
 
 -- Products table
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
   category_id UUID REFERENCES product_categories(id) ON DELETE SET NULL,
@@ -545,7 +577,7 @@ CREATE TABLE products (
 );
 
 -- Product variants (for size, color, style variations)
-CREATE TABLE product_variants (
+CREATE TABLE IF NOT EXISTS product_variants (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL, -- e.g., "Large / Black", "Size 10 / Navy Blue"
@@ -562,7 +594,7 @@ CREATE TABLE product_variants (
 );
 
 -- Product variant options (size, color, material, etc.)
-CREATE TABLE product_variant_options (
+CREATE TABLE IF NOT EXISTS product_variant_options (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   variant_id UUID NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
   option_name VARCHAR(100) NOT NULL, -- 'size', 'color', 'material', etc.
@@ -572,7 +604,7 @@ CREATE TABLE product_variant_options (
 );
 
 -- Inventory tracking
-CREATE TABLE inventory (
+CREATE TABLE IF NOT EXISTS inventory (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   variant_id UUID NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
   quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
@@ -586,7 +618,7 @@ CREATE TABLE inventory (
 );
 
 -- Shopping carts
-CREATE TABLE shopping_carts (
+CREATE TABLE IF NOT EXISTS shopping_carts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -594,18 +626,43 @@ CREATE TABLE shopping_carts (
   UNIQUE(user_id)
 );
 
--- Cart items
-CREATE TABLE cart_items (
+-- Promo codes
+CREATE TABLE IF NOT EXISTS promo_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  cart_id UUID NOT NULL REFERENCES shopping_carts(id) ON DELETE CASCADE,
-  variant_id UUID NOT NULL REFERENCES product_variants(id) ON DELETE CASCADE,
+  code VARCHAR(50) UNIQUE NOT NULL,
+  description TEXT,
+  shop_id UUID REFERENCES shops(id) ON DELETE CASCADE,
+  discount_type VARCHAR(20) NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+  discount_value NUMERIC(10,2) NOT NULL CHECK (discount_value >= 0),
+  min_order_amount NUMERIC(10,2) DEFAULT 0 CHECK (min_order_amount >= 0),
+  max_discount_amount NUMERIC(10,2) CHECK (max_discount_amount >= 0),
+  usage_limit INTEGER CHECK (usage_limit > 0),
+  used_count INTEGER DEFAULT 0 CHECK (used_count >= 0),
+  valid_from TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  valid_until TIMESTAMP WITH TIME ZONE,
+  applicable_categories TEXT[],
+  applicable_products TEXT[],
+  is_active BOOLEAN DEFAULT TRUE,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Cart items (simplified direct user->cart_items relationship)
+CREATE TABLE IF NOT EXISTS cart_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
-  added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(cart_id, variant_id)
+  selected_size VARCHAR(50),
+  selected_color VARCHAR(50),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id, product_id, selected_size, selected_color)
 );
 
 -- Orders
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number VARCHAR(50) UNIQUE NOT NULL,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -623,23 +680,70 @@ CREATE TABLE orders (
   shipping_address JSONB NOT NULL, -- {name, street, city, state, country, postal_code, phone}
   billing_address JSONB, -- same structure as shipping_address
   
-  -- Tracking
+  -- Payment tracking
+  payment_status payment_status DEFAULT 'pending',
+  stripe_session_id VARCHAR(255),
+  stripe_payment_intent_id VARCHAR(255),
+  stripe_charge_id VARCHAR(255),
+  payment_completed_at TIMESTAMP WITH TIME ZONE,
+  
+  -- Promo codes
+  promo_code_id UUID REFERENCES promo_codes(id),
+  promo_discount_amount NUMERIC(10,2) DEFAULT 0 CHECK (promo_discount_amount >= 0),
+  payment_method VARCHAR(50) DEFAULT 'stripe',
+  
+  -- Refund tracking
+  refund_status VARCHAR(50) DEFAULT 'none' CHECK (refund_status IN ('none', 'requested', 'in_progress', 'partial', 'full', 'rejected')),
+  refund_amount NUMERIC(10,2) DEFAULT 0 CHECK (refund_amount >= 0),
+  refund_reason TEXT,
+  refund_requested_at TIMESTAMP WITH TIME ZONE,
+  refund_processed_at TIMESTAMP WITH TIME ZONE,
+  
+  -- Delivery tracking
   tracking_number VARCHAR(255),
   tracking_url TEXT,
   estimated_delivery DATE,
+  delivery_date DATE,
   delivered_at TIMESTAMP WITH TIME ZONE,
+  delivery_signature_name VARCHAR(255),
+  delivery_notes TEXT,
+  delivery_attempts INTEGER DEFAULT 0,
+  delivery_status VARCHAR(50) DEFAULT 'pending' CHECK (delivery_status IN ('pending', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'returned_to_sender')),
+  
+  -- Cancellation tracking
+  cancelled_at TIMESTAMP WITH TIME ZONE,
+  cancellation_reason TEXT,
+  cancelled_by UUID REFERENCES auth.users(id),
+  
+  -- Return tracking
+  return_requested_at TIMESTAMP WITH TIME ZONE,
+  return_tracking_number VARCHAR(255),
+  return_carrier VARCHAR(100),
+  return_requested_reason TEXT,
+  return_approved_by UUID REFERENCES auth.users(id),
+  return_received_at TIMESTAMP WITH TIME ZONE,
+  return_condition_notes TEXT,
+  
+  -- Shop and fulfillment
+  fulfillment_status VARCHAR(50) DEFAULT 'unfulfilled' CHECK (fulfillment_status IN ('unfulfilled', 'partial', 'fulfilled')),
+  items_count INTEGER DEFAULT 0,
+  
+  -- Customer communication
+  customer_notified BOOLEAN DEFAULT FALSE,
+  last_notification_sent_at TIMESTAMP WITH TIME ZONE,
+  notification_preferences JSONB,
   
   -- Notes and metadata
   notes TEXT,
   admin_notes TEXT,
-  metadata JSONB, -- for additional order data
+  metadata JSONB,
   
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Order items
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   variant_id UUID NOT NULL REFERENCES product_variants(id) ON DELETE RESTRICT,
@@ -652,7 +756,7 @@ CREATE TABLE order_items (
 );
 
 -- Payments
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   payment_method VARCHAR(100) NOT NULL, -- 'credit_card', 'paypal', 'crypto', etc.
@@ -668,7 +772,7 @@ CREATE TABLE payments (
 );
 
 -- Product reviews
-CREATE TABLE product_reviews (
+CREATE TABLE IF NOT EXISTS product_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -686,7 +790,7 @@ CREATE TABLE product_reviews (
 );
 
 -- Shop reviews
-CREATE TABLE shop_reviews (
+CREATE TABLE IF NOT EXISTS shop_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -701,7 +805,7 @@ CREATE TABLE shop_reviews (
 );
 
 -- Wishlist
-CREATE TABLE wishlists (
+CREATE TABLE IF NOT EXISTS wishlists (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -714,20 +818,20 @@ CREATE TABLE wishlists (
 -- ============================================================================
 
 -- Shops indexes
-CREATE INDEX idx_shops_owner_id ON shops(owner_id);
-CREATE INDEX idx_shops_status ON shops(status);
-CREATE INDEX idx_shops_verified ON shops(verified);
-CREATE INDEX idx_shops_rating ON shops(rating DESC);
+CREATE INDEX IF NOT EXISTS idx_shops_owner_id ON shops(owner_id);
+CREATE INDEX IF NOT EXISTS idx_shops_status ON shops(status);
+CREATE INDEX IF NOT EXISTS idx_shops_verified ON shops(verified);
+CREATE INDEX IF NOT EXISTS idx_shops_rating ON shops(rating DESC);
 
 -- Products indexes
-CREATE INDEX idx_products_shop_id ON products(shop_id);
-CREATE INDEX idx_products_category_id ON product_categories(id);
-CREATE INDEX idx_products_is_active ON products(is_active);
-CREATE INDEX idx_products_is_featured ON products(is_featured);
-CREATE INDEX idx_products_price ON products(base_price);
-CREATE INDEX idx_products_rating ON products(rating DESC);
-CREATE INDEX idx_products_created_at ON products(created_at DESC);
-CREATE INDEX idx_products_tags ON products USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_products_shop_id ON products(shop_id);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON product_categories(id);
+CREATE INDEX IF NOT EXISTS idx_products_is_active ON products(is_active);
+CREATE INDEX IF NOT EXISTS idx_products_is_featured ON products(is_featured);
+CREATE INDEX IF NOT EXISTS idx_products_price ON products(base_price);
+CREATE INDEX IF NOT EXISTS idx_products_rating ON products(rating DESC);
+CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_tags ON products USING GIN(tags);
 -- Search vector column and index for products
 ALTER TABLE IF EXISTS products
   ADD COLUMN IF NOT EXISTS search_vector tsvector;
@@ -756,42 +860,344 @@ END $$;
 CREATE INDEX IF NOT EXISTS idx_products_search ON products USING GIN (search_vector);
 
 -- Product variants indexes
-CREATE INDEX idx_product_variants_product_id ON product_variants(product_id);
-CREATE INDEX idx_product_variants_is_active ON product_variants(is_active);
+CREATE INDEX IF NOT EXISTS idx_product_variants_product_id ON product_variants(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_variants_is_active ON product_variants(is_active);
 
 -- Inventory indexes
-CREATE INDEX idx_inventory_variant_id ON inventory(variant_id);
-CREATE INDEX idx_inventory_quantity ON inventory(quantity);
+CREATE INDEX IF NOT EXISTS idx_inventory_variant_id ON inventory(variant_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_quantity ON inventory(quantity);
 
 -- Orders indexes
-CREATE INDEX idx_orders_user_id ON orders(user_id);
-CREATE INDEX idx_orders_shop_id ON orders(shop_id);
-CREATE INDEX idx_orders_status ON orders(status);
-CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
-CREATE INDEX idx_orders_order_number ON orders(order_number);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_shop_id ON orders(shop_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_order_number ON orders(order_number);
 
 -- Reviews indexes
-CREATE INDEX idx_product_reviews_product_id ON product_reviews(product_id);
-CREATE INDEX idx_product_reviews_user_id ON product_reviews(user_id);
-CREATE INDEX idx_product_reviews_rating ON product_reviews(rating);
-CREATE INDEX idx_shop_reviews_shop_id ON shop_reviews(shop_id);
-CREATE INDEX idx_shop_reviews_user_id ON shop_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_user_id ON product_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_product_reviews_rating ON product_reviews(rating);
+CREATE INDEX IF NOT EXISTS idx_shop_reviews_shop_id ON shop_reviews(shop_id);
+CREATE INDEX IF NOT EXISTS idx_shop_reviews_user_id ON shop_reviews(user_id);
+
+-- Cart items indexes
+CREATE INDEX IF NOT EXISTS idx_cart_items_user ON cart_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_cart_items_product ON cart_items(product_id);
+
+-- Promo codes indexes
+CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
+CREATE INDEX IF NOT EXISTS idx_promo_codes_active ON promo_codes(is_active);
+CREATE INDEX IF NOT EXISTS idx_promo_codes_valid ON promo_codes(valid_from, valid_until);
+CREATE INDEX IF NOT EXISTS idx_promo_codes_shop ON promo_codes(shop_id);
+
+-- Orders enhanced indexes
+CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
+CREATE INDEX IF NOT EXISTS idx_orders_refund_status ON orders(refund_status);
+CREATE INDEX IF NOT EXISTS idx_orders_stripe_session ON orders(stripe_session_id);
+CREATE INDEX IF NOT EXISTS idx_orders_stripe_payment_intent ON orders(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_orders_delivery_date ON orders(delivery_date);
+CREATE INDEX IF NOT EXISTS idx_orders_delivery_status ON orders(delivery_status);
+CREATE INDEX IF NOT EXISTS idx_orders_cancelled ON orders(cancelled_at);
+CREATE INDEX IF NOT EXISTS idx_orders_fulfillment ON orders(fulfillment_status);
+CREATE INDEX IF NOT EXISTS idx_orders_return_status ON orders(return_requested_at);
+
+-- ============================================================================
+-- STRIPE PAYMENTS & SUBSCRIPTIONS
+-- ============================================================================
+
+-- Subscriptions table
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    plan_id TEXT NOT NULL CHECK (plan_id IN ('premium_monthly', 'premium_yearly')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'expired', 'past_due')),
+    stripe_subscription_id TEXT UNIQUE,
+    stripe_customer_id TEXT,
+    current_period_start TIMESTAMP WITH TIME ZONE,
+    current_period_end TIMESTAMP WITH TIME ZONE,
+    cancel_at_period_end BOOLEAN DEFAULT FALSE,
+    likes_included INTEGER DEFAULT 0,
+    compliments_included INTEGER DEFAULT 0,
+    likes_used INTEGER DEFAULT 0,
+    compliments_used INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, plan_id)
+);
+
+-- User payments table
+CREATE TABLE IF NOT EXISTS user_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    stripe_payment_intent_id TEXT,
+    stripe_checkout_session_id TEXT UNIQUE,
+    amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 0),
+    currency TEXT NOT NULL DEFAULT 'usd',
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'succeeded', 'failed', 'cancelled')),
+    type TEXT NOT NULL CHECK (type IN ('subscription', 'likes', 'compliments', 'product')),
+    metadata JSONB DEFAULT '{}',
+    community_contribution DECIMAL(10, 2) DEFAULT 0.00,
+    platform_fee DECIMAL(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Subscriptions and payments indexes
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX IF NOT EXISTS idx_user_payments_user_id ON user_payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_payments_status ON user_payments(status);
+CREATE INDEX IF NOT EXISTS idx_user_payments_type ON user_payments(type);
+CREATE INDEX IF NOT EXISTS idx_user_payments_created_at ON user_payments(created_at DESC);
+
+-- ============================================================================
+-- COMMUNITY FUND & ADMIN SETTINGS
+-- ============================================================================
+
+-- Admin settings table
+CREATE TABLE IF NOT EXISTS admin_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Subscription Pricing
+    premium_monthly_price DECIMAL(10, 2) DEFAULT 19.99,
+    premium_yearly_price DECIMAL(10, 2) DEFAULT 149.99,
+    premium_monthly_likes INTEGER DEFAULT 25,
+    premium_monthly_compliments INTEGER DEFAULT 25,
+    premium_yearly_likes INTEGER DEFAULT 300,
+    premium_yearly_compliments INTEGER DEFAULT 300,
+    
+    -- Likes Pricing
+    likes_25_price DECIMAL(10, 2) DEFAULT 14.99,
+    likes_50_price DECIMAL(10, 2) DEFAULT 26.99,
+    likes_100_price DECIMAL(10, 2) DEFAULT 48.99,
+    likes_250_price DECIMAL(10, 2) DEFAULT 109.99,
+    likes_500_price DECIMAL(10, 2) DEFAULT 196.99,
+    
+    -- Compliments Pricing
+    compliments_25_price DECIMAL(10, 2) DEFAULT 14.99,
+    compliments_50_price DECIMAL(10, 2) DEFAULT 26.99,
+    compliments_100_price DECIMAL(10, 2) DEFAULT 48.99,
+    compliments_250_price DECIMAL(10, 2) DEFAULT 109.99,
+    compliments_500_price DECIMAL(10, 2) DEFAULT 196.99,
+    
+    -- Community Split
+    community_split_percentage DECIMAL(5, 2) DEFAULT 10.00 CHECK (community_split_percentage >= 0 AND community_split_percentage <= 100),
+    
+    -- Stripe Integration
+    stripe_monthly_price_id TEXT,
+    stripe_yearly_price_id TEXT,
+    
+    -- Timestamps
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Ensure only one row
+    CONSTRAINT single_admin_settings_row CHECK (id IS NOT NULL)
+);
+
+-- Insert default admin settings
+INSERT INTO admin_settings (id)
+SELECT gen_random_uuid()
+WHERE NOT EXISTS (SELECT 1 FROM admin_settings);
+
+-- Community Fund table
+CREATE TABLE IF NOT EXISTS community_fund (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    total_balance DECIMAL(12, 2) DEFAULT 0.00 CHECK (total_balance >= 0),
+    total_donated DECIMAL(12, 2) DEFAULT 0.00 CHECK (total_donated >= 0),
+    total_subscriptions_contrib DECIMAL(12, 2) DEFAULT 0.00,
+    total_likes_contrib DECIMAL(12, 2) DEFAULT 0.00,
+    total_compliments_contrib DECIMAL(12, 2) DEFAULT 0.00,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT single_community_fund_row CHECK (id IS NOT NULL)
+);
+
+-- Insert default community fund
+INSERT INTO community_fund (id)
+SELECT gen_random_uuid()
+WHERE NOT EXISTS (SELECT 1 FROM community_fund);
+
+-- Community Fund Transactions
+CREATE TABLE IF NOT EXISTS community_fund_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    amount DECIMAL(10, 2) NOT NULL,
+    transaction_type TEXT NOT NULL CHECK (transaction_type IN ('contribution', 'donation', 'withdrawal')),
+    source_type TEXT CHECK (source_type IN ('subscription', 'likes', 'compliments', 'product')),
+    source_payment_id UUID REFERENCES user_payments(id),
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_community_fund_transactions_type ON community_fund_transactions(transaction_type);
+CREATE INDEX IF NOT EXISTS idx_community_fund_transactions_created ON community_fund_transactions(created_at DESC);
+
+-- Masjid Status Enum
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'masjid_status') THEN
+    CREATE TYPE masjid_status AS ENUM ('pending', 'approved', 'rejected', 'donated');
+  END IF;
+END $$;
+
+-- Masjids table
+CREATE TABLE IF NOT EXISTS masjids (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Basic Info
+    name TEXT NOT NULL,
+    description TEXT,
+    
+    -- Location
+    address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    state TEXT NOT NULL,
+    country TEXT NOT NULL DEFAULT 'United States',
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
+    
+    -- Contact
+    imam_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    website TEXT,
+    
+    -- Donation Request
+    requested_amount DECIMAL(10, 2) NOT NULL CHECK (requested_amount > 0),
+    donation_purpose TEXT NOT NULL,
+    
+    -- Media
+    photos JSONB DEFAULT '[]',
+    
+    -- Status & Voting
+    status masjid_status DEFAULT 'pending',
+    vote_count INTEGER DEFAULT 0,
+    
+    -- Donation Tracking
+    amount_donated DECIMAL(10, 2) DEFAULT 0.00,
+    donation_date TIMESTAMP WITH TIME ZONE,
+    donation_transaction_id UUID REFERENCES community_fund_transactions(id),
+    
+    -- Submitted by
+    submitted_by UUID REFERENCES users(id),
+    verified_by UUID REFERENCES users(id),
+    
+    -- Timestamps
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_masjids_status ON masjids(status);
+CREATE INDEX IF NOT EXISTS idx_masjids_vote_count ON masjids(vote_count DESC);
+
+-- Masjid Votes
+CREATE TABLE IF NOT EXISTS masjid_votes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    masjid_id UUID NOT NULL REFERENCES masjids(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(masjid_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_masjid_votes_masjid ON masjid_votes(masjid_id);
+CREATE INDEX IF NOT EXISTS idx_masjid_votes_user ON masjid_votes(user_id);
+
+-- ============================================================================
+-- UPDATED USERS COLUMNS
+-- ============================================================================
+
+-- Add available_likes and available_compliments to users
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS available_likes INTEGER DEFAULT 0 CHECK (available_likes >= 0),
+    ADD COLUMN IF NOT EXISTS available_compliments INTEGER DEFAULT 0 CHECK (available_compliments >= 0),
+    ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'free' CHECK (subscription_status IN ('free', 'premium_monthly', 'premium_yearly')),
+    ADD COLUMN IF NOT EXISTS subscription_ends_at TIMESTAMP WITH TIME ZONE;
 
 -- ============================================================================
 -- SHOP TRIGGERS
 -- ============================================================================
 
 -- Updated at triggers
+DROP TRIGGER IF EXISTS update_shops_updated_at ON shops;
 CREATE TRIGGER update_shops_updated_at BEFORE UPDATE ON shops FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_product_categories_updated_at ON product_categories;
 CREATE TRIGGER update_product_categories_updated_at BEFORE UPDATE ON product_categories FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_product_variants_updated_at ON product_variants;
 CREATE TRIGGER update_product_variants_updated_at BEFORE UPDATE ON product_variants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_inventory_updated_at ON inventory;
 CREATE TRIGGER update_inventory_updated_at BEFORE UPDATE ON inventory FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_shopping_carts_updated_at ON shopping_carts;
 CREATE TRIGGER update_shopping_carts_updated_at BEFORE UPDATE ON shopping_carts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_orders_updated_at ON orders;
 CREATE TRIGGER update_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_payments_updated_at ON payments;
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_product_reviews_updated_at ON product_reviews;
 CREATE TRIGGER update_product_reviews_updated_at BEFORE UPDATE ON product_reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_shop_reviews_updated_at ON shop_reviews;
 CREATE TRIGGER update_shop_reviews_updated_at BEFORE UPDATE ON shop_reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
+CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_user_payments_updated_at ON user_payments;
+CREATE TRIGGER update_user_payments_updated_at BEFORE UPDATE ON user_payments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_admin_settings_updated_at ON admin_settings;
+CREATE TRIGGER update_admin_settings_updated_at BEFORE UPDATE ON admin_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_community_fund_updated_at ON community_fund;
+CREATE TRIGGER update_community_fund_updated_at BEFORE UPDATE ON community_fund FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_masjids_updated_at ON masjids;
+CREATE TRIGGER update_masjids_updated_at BEFORE UPDATE ON masjids FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Order status timestamps trigger
+CREATE OR REPLACE FUNCTION update_order_status_timestamps()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.payment_status = 'completed' AND OLD.payment_status != 'completed' THEN
+    NEW.payment_completed_at = NOW();
+  END IF;
+
+  IF NEW.status = 'cancelled' AND OLD.status != 'cancelled' THEN
+    NEW.cancelled_at = NOW();
+  END IF;
+
+  IF NEW.status = 'delivered' AND OLD.status != 'delivered' THEN
+    NEW.delivered_at = NOW();
+    NEW.delivery_status = 'delivered';
+  END IF;
+
+  IF NEW.status = 'returned' AND OLD.status != 'returned' THEN
+    NEW.return_received_at = NOW();
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_order_status_timestamps ON orders;
+CREATE TRIGGER trigger_order_status_timestamps
+  BEFORE UPDATE ON orders
+  FOR EACH ROW
+  EXECUTE FUNCTION update_order_status_timestamps();
+
+-- Order number generation
+CREATE OR REPLACE FUNCTION generate_order_number()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.order_number := 'SAM-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(NEXTVAL('order_number_seq')::TEXT, 6, '0');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE SEQUENCE IF NOT EXISTS order_number_seq START WITH 1;
+
+DROP TRIGGER IF EXISTS trigger_generate_order_number ON orders;
+CREATE TRIGGER trigger_generate_order_number
+  BEFORE INSERT ON orders
+  FOR EACH ROW
+  WHEN (NEW.order_number IS NULL OR NEW.order_number = '')
+  EXECUTE FUNCTION generate_order_number();
 
 -- ============================================================================
 -- SHOP MANAGEMENT FUNCTIONS
@@ -1443,6 +1849,261 @@ BEGIN
   LIMIT p_limit OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+-- ============================================================================
+-- STRIPE & COMMUNITY FUND FUNCTIONS
+-- ============================================================================
+
+-- Function to add likes to a user
+CREATE OR REPLACE FUNCTION add_likes(
+    p_user_id UUID,
+    p_likes INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE users
+    SET available_likes = available_likes + p_likes,
+        updated_at = NOW()
+    WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to use a like
+CREATE OR REPLACE FUNCTION use_like(
+    p_user_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    current_likes INTEGER;
+BEGIN
+    SELECT available_likes INTO current_likes FROM users WHERE id = p_user_id;
+    
+    IF current_likes > 0 THEN
+        UPDATE users
+        SET available_likes = available_likes - 1,
+            updated_at = NOW()
+        WHERE id = p_user_id;
+        RETURN TRUE;
+    END IF;
+    
+    RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to add compliments to a user
+CREATE OR REPLACE FUNCTION add_compliments(
+    p_user_id UUID,
+    p_compliments INTEGER
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE users
+    SET available_compliments = available_compliments + p_compliments,
+        updated_at = NOW()
+    WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to use a compliment
+CREATE OR REPLACE FUNCTION use_compliment(
+    p_user_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    current_compliments INTEGER;
+BEGIN
+    SELECT available_compliments INTO current_compliments FROM users WHERE id = p_user_id;
+    
+    IF current_compliments > 0 THEN
+        UPDATE users
+        SET available_compliments = available_compliments - 1,
+            updated_at = NOW()
+        WHERE id = p_user_id;
+        RETURN TRUE;
+    END IF;
+    
+    RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to process community contribution
+CREATE OR REPLACE FUNCTION process_community_contribution(
+    p_payment_id UUID,
+    p_amount DECIMAL(10, 2),
+    p_source_type TEXT
+)
+RETURNS DECIMAL(10, 2) AS $$
+DECLARE
+    v_split_percentage DECIMAL(5, 2);
+    v_contribution DECIMAL(10, 2);
+BEGIN
+    SELECT community_split_percentage INTO v_split_percentage 
+    FROM admin_settings LIMIT 1;
+    
+    v_contribution := p_amount * (v_split_percentage / 100);
+    
+    UPDATE community_fund
+    SET total_balance = total_balance + v_contribution,
+        total_subscriptions_contrib = CASE WHEN p_source_type = 'subscription' 
+            THEN total_subscriptions_contrib + v_contribution 
+            ELSE total_subscriptions_contrib END,
+        total_likes_contrib = CASE WHEN p_source_type = 'likes' 
+            THEN total_likes_contrib + v_contribution 
+            ELSE total_likes_contrib END,
+        total_compliments_contrib = CASE WHEN p_source_type = 'compliments' 
+            THEN total_compliments_contrib + v_contribution 
+            ELSE total_compliments_contrib END,
+        updated_at = NOW();
+    
+    INSERT INTO community_fund_transactions (amount, transaction_type, source_type, source_payment_id, description)
+    VALUES (v_contribution, 'contribution', p_source_type, p_payment_id, 
+            CONCAT('Community contribution from ', p_source_type, ' purchase'));
+    
+    RETURN v_contribution;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to donate to a masjid
+CREATE OR REPLACE FUNCTION donate_to_masjid(
+    p_masjid_id UUID,
+    p_amount DECIMAL(10, 2)
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_current_balance DECIMAL(12, 2);
+    v_transaction_id UUID;
+BEGIN
+    SELECT total_balance INTO v_current_balance FROM community_fund LIMIT 1;
+    
+    IF v_current_balance < p_amount THEN
+        RETURN FALSE;
+    END IF;
+    
+    INSERT INTO community_fund_transactions (amount, transaction_type, description)
+    VALUES (p_amount, 'donation', CONCAT('Donation to masjid: ', p_masjid_id))
+    RETURNING id INTO v_transaction_id;
+    
+    UPDATE community_fund
+    SET total_balance = total_balance - p_amount,
+        total_donated = total_donated + p_amount,
+        updated_at = NOW();
+    
+    UPDATE masjids
+    SET status = 'donated',
+        amount_donated = p_amount,
+        donation_date = NOW(),
+        donation_transaction_id = v_transaction_id,
+        updated_at = NOW()
+    WHERE id = p_masjid_id;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to vote for a masjid
+CREATE OR REPLACE FUNCTION vote_for_masjid(
+    p_user_id UUID,
+    p_masjid_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_already_voted BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM masjid_votes 
+        WHERE user_id = p_user_id AND masjid_id = p_masjid_id
+    ) INTO v_already_voted;
+    
+    IF v_already_voted THEN
+        RETURN FALSE;
+    END IF;
+    
+    INSERT INTO masjid_votes (user_id, masjid_id) VALUES (p_user_id, p_masjid_id);
+    
+    UPDATE masjids
+    SET vote_count = vote_count + 1,
+        updated_at = NOW()
+    WHERE id = p_masjid_id;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to remove vote
+CREATE OR REPLACE FUNCTION remove_vote_for_masjid(
+    p_user_id UUID,
+    p_masjid_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_had_voted BOOLEAN;
+BEGIN
+    SELECT EXISTS(
+        SELECT 1 FROM masjid_votes 
+        WHERE user_id = p_user_id AND masjid_id = p_masjid_id
+    ) INTO v_had_voted;
+    
+    IF NOT v_had_voted THEN
+        RETURN FALSE;
+    END IF;
+    
+    DELETE FROM masjid_votes WHERE user_id = p_user_id AND masjid_id = p_masjid_id;
+    
+    UPDATE masjids
+    SET vote_count = GREATEST(vote_count - 1, 0),
+        updated_at = NOW()
+    WHERE id = p_masjid_id;
+    
+    RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to increment promo usage
+CREATE OR REPLACE FUNCTION increment_promo_usage(p_promo_code_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE promo_codes
+  SET used_count = used_count + 1,
+      updated_at = NOW()
+  WHERE id = p_promo_code_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- View for order summary
+CREATE OR REPLACE VIEW order_summary AS
+SELECT 
+  o.id,
+  o.order_number,
+  o.user_id,
+  o.shop_id,
+  o.status,
+  o.payment_status,
+  o.refund_status,
+  o.delivery_status,
+  o.fulfillment_status,
+  o.total_amount,
+  o.currency,
+  o.tracking_number,
+  o.delivery_date,
+  o.stripe_payment_intent_id,
+  o.created_at,
+  o.updated_at,
+  s.name as shop_name
+FROM orders o
+LEFT JOIN shops s ON o.shop_id = s.id;
+
+GRANT SELECT ON order_summary TO authenticated;
+
+-- View for user payment summary
+CREATE OR REPLACE VIEW user_payment_summary AS
+SELECT 
+    user_id,
+    COUNT(*) FILTER (WHERE type = 'likes') as likes_purchases,
+    COUNT(*) FILTER (WHERE type = 'subscription') as subscription_payments,
+    SUM(amount) FILTER (WHERE status = 'succeeded') as total_spent,
+    MAX(created_at) as last_payment_date
+FROM user_payments
+GROUP BY user_id;
 
 -- ============================================================================
 -- WISHLIST & FAVORITES FUNCTIONS
@@ -4072,7 +4733,10 @@ BEGIN
     'messages','chat_conversations','chat_members','chat_messages','chat_read_receipts','chat_bans',
     'user_bans','user_probations',
     'meeting_requests','marriage_proposals',
-    'mahr_records'
+    'mahr_records',
+    'promo_codes','subscriptions','user_payments',
+    'admin_settings','community_fund','community_fund_transactions',
+    'masjids','masjid_votes'
   ] LOOP
     EXECUTE format('ALTER TABLE IF EXISTS %I ENABLE ROW LEVEL SECURITY', tbl);
     IF to_regclass('public.' || tbl) IS NOT NULL THEN
@@ -4185,6 +4849,205 @@ BEGIN
     END IF;
   END IF;
 END $$;
+
+-- ============================================================================
+-- RLS POLICIES FOR NEW TABLES
+-- ============================================================================
+
+-- Promo codes policies
+ALTER TABLE promo_codes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view active platform promos" ON promo_codes;
+CREATE POLICY "Anyone can view active platform promos" ON promo_codes
+  FOR SELECT
+  USING (is_active = TRUE AND shop_id IS NULL);
+
+DROP POLICY IF EXISTS "Anyone can view active shop promos" ON promo_codes;
+CREATE POLICY "Anyone can view active shop promos" ON promo_codes
+  FOR SELECT
+  USING (is_active = TRUE AND shop_id IS NOT NULL);
+
+DROP POLICY IF EXISTS "Shop owners can create promos" ON promo_codes;
+CREATE POLICY "Shop owners can create promos" ON promo_codes
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    shop_id IS NULL OR
+    EXISTS (
+      SELECT 1 FROM shops 
+      WHERE shops.id = shop_id 
+      AND shops.owner_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Shop owners can update own shop promos" ON promo_codes;
+CREATE POLICY "Shop owners can update own shop promos" ON promo_codes
+  FOR UPDATE
+  TO authenticated
+  USING (
+    shop_id IS NULL OR
+    EXISTS (
+      SELECT 1 FROM shops 
+      WHERE shops.id = shop_id 
+      AND shops.owner_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Shop owners can delete own shop promos" ON promo_codes;
+CREATE POLICY "Shop owners can delete own shop promos" ON promo_codes
+  FOR DELETE
+  TO authenticated
+  USING (
+    shop_id IS NULL OR
+    EXISTS (
+      SELECT 1 FROM shops 
+      WHERE shops.id = shop_id 
+      AND shops.owner_id = auth.uid()
+    )
+  );
+
+-- Cart items policies
+ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own cart" ON cart_items;
+CREATE POLICY "Users can view own cart" ON cart_items
+  FOR SELECT
+  TO authenticated
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can add to own cart" ON cart_items;
+CREATE POLICY "Users can add to own cart" ON cart_items
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can update own cart" ON cart_items;
+CREATE POLICY "Users can update own cart" ON cart_items
+  FOR UPDATE
+  TO authenticated
+  USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can delete from own cart" ON cart_items;
+CREATE POLICY "Users can delete from own cart" ON cart_items
+  FOR DELETE
+  TO authenticated
+  USING (user_id = auth.uid());
+
+-- Subscriptions policies
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own subscriptions" ON subscriptions;
+CREATE POLICY "Users can view own subscriptions" ON subscriptions
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid()::text = user_id::text);
+
+DROP POLICY IF EXISTS "Service role full access on subscriptions" ON subscriptions;
+CREATE POLICY "Service role full access on subscriptions" ON subscriptions
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+GRANT SELECT ON subscriptions TO authenticated;
+
+-- User payments policies
+ALTER TABLE user_payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own payments" ON user_payments;
+CREATE POLICY "Users can view own payments" ON user_payments
+  FOR SELECT
+  TO authenticated
+  USING (auth.uid()::text = user_id::text);
+
+DROP POLICY IF EXISTS "Service role full access on user_payments" ON user_payments;
+CREATE POLICY "Service role full access on user_payments" ON user_payments
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+GRANT SELECT ON user_payments TO authenticated;
+
+-- Admin settings policies
+ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Admin settings readable by authenticated" ON admin_settings;
+CREATE POLICY "Admin settings readable by authenticated" ON admin_settings
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Service role admin_settings access" ON admin_settings;
+CREATE POLICY "Service role admin_settings access" ON admin_settings
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Community fund policies
+ALTER TABLE community_fund ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Community fund readable by authenticated" ON community_fund;
+CREATE POLICY "Community fund readable by authenticated" ON community_fund
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Service role community_fund access" ON community_fund;
+CREATE POLICY "Service role community_fund access" ON community_fund
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Community fund transactions policies
+ALTER TABLE community_fund_transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Community transactions readable by authenticated" ON community_fund_transactions;
+CREATE POLICY "Community transactions readable by authenticated" ON community_fund_transactions
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Service role community_transactions access" ON community_fund_transactions;
+CREATE POLICY "Service role community_transactions access" ON community_fund_transactions
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Masjids policies
+ALTER TABLE masjids ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Masjids readable by all" ON masjids;
+CREATE POLICY "Masjids readable by all" ON masjids
+  FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Masjids creatable by authenticated" ON masjids;
+CREATE POLICY "Masjids creatable by authenticated" ON masjids
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role masjids access" ON masjids;
+CREATE POLICY "Service role masjids access" ON masjids
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Masjid votes policies
+ALTER TABLE masjid_votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view all votes" ON masjid_votes;
+CREATE POLICY "Users can view all votes" ON masjid_votes
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Users can insert their own votes" ON masjid_votes;
+CREATE POLICY "Users can insert their own votes" ON masjid_votes
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Service role masjid_votes access" ON masjid_votes;
+CREATE POLICY "Service role masjid_votes access" ON masjid_votes
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Grant sequence access
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO authenticated;
 
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon;
 CREATE OR REPLACE FUNCTION bio_uniqueness_percent(p_bio TEXT, p_neighbors INTEGER DEFAULT 25)

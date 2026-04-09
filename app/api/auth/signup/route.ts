@@ -5,12 +5,30 @@ import { sendEmailVerification } from '@/lib/mailgun'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName } = body
+    const { email, password, firstName, lastName, age, gender } = body
+
+    console.log('[Signup] Received signup request for:', email)
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
         { error: 'Email, password, firstName, and lastName are required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate age if provided
+    if (age && (isNaN(age) || age < 18 || age > 120)) {
+      return NextResponse.json(
+        { error: 'Age must be between 18 and 120' },
+        { status: 400 }
+      )
+    }
+
+    // Validate gender if provided
+    if (gender && !['male', 'female', 'other'].includes(gender)) {
+      return NextResponse.json(
+        { error: 'Gender must be male, female, or other' },
         { status: 400 }
       )
     }
@@ -33,6 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user in Supabase Auth
+    console.log('[Signup] Creating user in Supabase Auth...')
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -41,6 +60,8 @@ export async function POST(request: NextRequest) {
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`,
+        age: age || null,
+        gender: gender || null,
       },
     })
 
@@ -69,6 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user record in users table
+    console.log('[Signup] Creating user record in database...')
     const { error: dbError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -76,6 +98,8 @@ export async function POST(request: NextRequest) {
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`,
+        age: age || null,
+        gender: gender || null,
         is_verified: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -101,7 +125,10 @@ export async function POST(request: NextRequest) {
     })
 
     // Send verification email via Mailgun
+    console.log('[Signup] Sending verification email...')
     const verificationLink = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/verify-email?token=${authData.user.id}&email=${encodeURIComponent(email)}`
+    
+    console.log('[Signup] Verification link:', verificationLink)
     
     const emailResult = await sendEmailVerification(
       email,
@@ -109,9 +136,13 @@ export async function POST(request: NextRequest) {
       verificationLink
     )
 
+    console.log('[Signup] Email result:', emailResult)
+
     if (!emailResult.success) {
-      console.error('Email error:', emailResult.error)
+      console.error('[Signup] Email sending failed:', emailResult.error)
       // Still return success - user was created, they can request a new verification email
+    } else {
+      console.log('[Signup] Verification email sent successfully:', emailResult.id)
     }
 
     return NextResponse.json({

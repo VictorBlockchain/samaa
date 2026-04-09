@@ -35,7 +35,7 @@ function getMailgunClient() {
   return mailgun.client({
     username: 'api',
     key: apiKey,
-    // Uncomment for EU domain:
+    // When you have an EU-domain, you must specify the endpoint:
     // url: 'https://api.eu.mailgun.net'
   })
 }
@@ -62,6 +62,16 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResponse> {
     const from = getFromEmail()
     
     const recipients = Array.isArray(options.to) ? options.to : [options.to]
+    
+    console.log('[Mailgun] Sending email:', {
+      domain,
+      from,
+      to: recipients,
+      subject: options.subject,
+      hasTemplate: !!options.template,
+      hasHtml: !!options.html,
+      hasText: !!options.text,
+    })
     
     const messageData: any = {
       from: `Samaa <${from}>`,
@@ -96,7 +106,9 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResponse> {
       }))
     }
     
+    console.log('[Mailgun] Calling mg.messages.create...')
     const data = await mg.messages.create(domain, messageData)
+    console.log('[Mailgun] Email sent successfully:', data.id)
     
     return {
       success: true,
@@ -104,7 +116,12 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResponse> {
       message: 'Email sent successfully',
     }
   } catch (error: any) {
-    console.error('Mailgun error:', error)
+    console.error('[Mailgun] Error sending email:', error)
+    console.error('[Mailgun] Error details:', {
+      message: error.message,
+      status: error.status,
+      details: error.details,
+    })
     return {
       success: false,
       error: error.message || 'Failed to send email',
@@ -302,12 +319,18 @@ export async function testMailgunConnection(): Promise<EmailResponse> {
     const mg = getMailgunClient()
     const domain = getDomain()
     
-    // Try to get domain list to verify credentials
-    const result = await mg.domains.list()
+    // Try to send a test message to verify credentials
+    const data = await mg.messages.create(domain, {
+      from: `Mailgun Test <postmaster@${domain}>`,
+      to: [getFromEmail()],
+      subject: 'Mailgun Configuration Test',
+      text: 'This is a test email to verify your Mailgun configuration is working correctly.',
+    })
     
     return {
       success: true,
-      message: `Connected to Mailgun. Domain: ${domain}`,
+      message: `Connected to Mailgun successfully. Message ID: ${data.id}`,
+      id: data.id,
     }
   } catch (error: any) {
     return {
