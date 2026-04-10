@@ -25,6 +25,7 @@ import {
   Sparkles,
   User,
   PiggyBank,
+  Settings,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { useRouter } from "next/navigation"
@@ -83,7 +84,7 @@ interface ProfileData {
   profile_photos?: string[]
   voiceIntro?: string
   videoIntro?: string
-  bioRating?: number
+  profileRating?: number
   chatRating?: number
   responseRate?: number
   isVerified?: boolean
@@ -137,7 +138,7 @@ function cmToFeetInches(cm: string | undefined): string {
   return `${feet}'${inches}"`
 }
 
-export function ProfileViewElegant({ userId: profileUserId }: { userId: string }) {
+export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }: { userId: string, onShowPreferences?: () => void }) {
   const router = useRouter()
   const { userId, isAuthenticated } = useUser()
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -238,7 +239,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           profile_photos: photos,
           voiceIntro,
           videoIntro,
-          bioRating: (supabaseProfile as any).bio_rating || 0,
+          profileRating: (supabaseProfile as any).profile_rating || 0,
           chatRating: (supabaseProfile as any).chat_rating || 0,
           responseRate: (supabaseProfile as any).response_rate || 0,
           isVerified: supabaseProfile.is_verified || false,
@@ -315,11 +316,11 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
             {/* Column 3: Toggle Switch */}
             {isOwnProfile && (
               <button 
-                onClick={() => setViewMode(viewMode === 'my-profile' ? 'my-match' : 'my-profile')}
+                onClick={onShowPreferences}
                 className="p-2 hover:bg-pink-50 rounded-xl transition-colors justify-self-end"
                 title={viewMode === 'my-profile' ? "Switch to Match Preferences" : "Switch to My Profile"}
               >
-                <RefreshCw className="w-6 h-6 text-pink-600" />
+                <Settings className="w-6 h-6 text-pink-600" />
               </button>
             )}
             {!isOwnProfile && <div className="w-10" />}
@@ -402,7 +403,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                       </div>
                       <div>
                         <p className="text-[10px] font-semibold text-pink-600 font-queensides uppercase tracking-wider">Profile Score</p>
-                        <p className="text-xl font-bold text-pink-700 font-queensides">{profile.bioRating ?? 0}%</p>
+                        <p className="text-xl font-bold text-pink-700 font-queensides">{profile.profileRating ?? 0}%</p>
                       </div>
                     </div>
                   </div>

@@ -77,7 +77,7 @@ export function SettingsView() {
     },
     userGender: "female", // This should come from user profile
     requireFinancialSetup: false,
-    bioRatingMinimum: 70,
+    profileRatingMinimum: 70,
     responseRateMinimum: 50,
   })
 
@@ -347,15 +347,15 @@ export function SettingsView() {
               <h3 className="font-semibold font-qurova text-emerald-700">Profile Quality</h3>
             </div>
             <div className="space-y-6">
-              {/* Bio Rating Requirement */}
+              {/* Profile Rating Requirement */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label className="font-queensides text-slate-700">Minimum Bio Rating</Label>
-                  <span className="text-sm font-semibold text-emerald-600">{settings.bioRatingMinimum}%+</span>
+                  <Label className="font-queensides text-slate-700">Minimum Profile Rating</Label>
+                  <span className="text-sm font-semibold text-emerald-600">{settings.profileRatingMinimum}%+</span>
                 </div>
                 <Slider
-                  value={[settings.bioRatingMinimum]}
-                  onValueChange={(value) => setSettings((prev) => ({ ...prev, bioRatingMinimum: value[0] }))}
+                  value={[settings.profileRatingMinimum]}
+                  onValueChange={(value) => setSettings((prev) => ({ ...prev, profileRatingMinimum: value[0] }))}
                   min={0}
                   max={100}
                   step={5}
@@ -876,7 +876,7 @@ export function SettingsView() {
                       show_last_seen: settings.privacy.showLastSeen,
                       // Financial & Quality Requirements
                       require_financial_setup: settings.requireFinancialSetup,
-                      bio_rating_minimum: settings.bioRatingMinimum,
+                      profile_rating_minimum: settings.profileRatingMinimum,
                       response_rate_minimum: settings.responseRateMinimum,
                       // Interests
                       preferred_interests: settings.interests,

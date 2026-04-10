@@ -497,7 +497,7 @@ export default function ProfileSetupPage() {
   const [locationSuggestions, setLocationSuggestions] = useState<any[]>([])
   const [isGettingLocation, setIsGettingLocation] = useState(false)
   const [showManualLocation, setShowManualLocation] = useState(false)
-  const [bioRating, setBioRating] = useState<number>(0)
+  const [profileRating, setProfileRating] = useState<number>(0)
   const [bioFeedback, setBioFeedback] = useState<string>("")
   const [showAiRating, setShowAiRating] = useState<boolean>(false)
   const [aiRatingComplete, setAiRatingComplete] = useState<boolean>(false)
@@ -1257,7 +1257,7 @@ export default function ProfileSetupPage() {
       ...profileData,
       createdAt: new Date().toISOString(),
       isVerified: false,
-      bioRating: 0,
+      profileRating: 0,
     }
     console.log("Saving profile data:", profileWithId)
     localStorage.setItem("userProfile", JSON.stringify(profileWithId))
@@ -1533,7 +1533,7 @@ export default function ProfileSetupPage() {
           media: mediaUrls,
           profileComplete: true,
           isVerified: false,
-          bioRating: bioRating || 0,
+          profileRating: profileRating || 0,
           lastActive: new Date().toISOString(),
           matchingEnabled: true,
           profilePhoto: uploadedUrls.profilePhoto || undefined,

@@ -321,7 +321,7 @@ function convertSupabaseToProfileData(user: any): ProfileData {
     isVerified: user.is_verified || false,
     premiumMember: false,
     idVerified: user.is_verified || false,
-    bioRating: user.bio_rating || 0,
+    profileRating: user.profile_rating || 0,
     responseRate: user.response_rate || 0,
     profileComplete: true,
     latitude: user.latitude,

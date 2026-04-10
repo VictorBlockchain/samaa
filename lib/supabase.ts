@@ -77,7 +77,7 @@ export interface Database {
           voice_intro?: string
           video_intro?: string
           is_verified?: boolean
-          bio_rating?: number
+          profile_rating?: number
           pictures_rating?: number
           response_rate?: number
           communication_rating?: number
@@ -115,7 +115,7 @@ export interface Database {
           preferred_children: string[]
           preferred_education: string[]
           require_financial_setup: boolean
-          bio_rating_minimum: number
+          profile_rating_minimum: number
           response_rate_minimum: number
           notifications_matches: boolean
           notifications_messages: boolean

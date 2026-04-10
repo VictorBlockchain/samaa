@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { motion } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Sparkles, Star, CheckCircle, AlertCircle, Loader2, RefreshCw, Edit2, Save, X } from "lucide-react"
@@ -18,7 +18,7 @@ interface BioRating {
   overallFeedback: string
 }
 
-export default function ProfileBioPage() {
+function BioPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { userId, isAuthenticated } = useUser()
@@ -552,5 +552,17 @@ export default function ProfileBioPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ProfileBioPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
+      </div>
+    }>
+      <BioPageContent />
+    </Suspense>
   )
 }

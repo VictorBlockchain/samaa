@@ -208,7 +208,7 @@ export function ProfileSetup() {
   // Toggle for manual location entry
   const [showManualLocation, setShowManualLocation] = useState(false)
 
-  const [bioRating, setBioRating] = useState<number>(0)
+  const [profileRating, setProfileRating] = useState<number>(0)
   const [bioFeedback, setBioFeedback] = useState<string>("")
   const [showAiRating, setShowAiRating] = useState<boolean>(false)
   const [aiRatingComplete, setAiRatingComplete] = useState<boolean>(false)
@@ -762,7 +762,7 @@ export function ProfileSetup() {
         media: mediaUrls,
         profileComplete: true,
         isVerified: false,
-        bioRating: bioRating || 0,
+        profileRating: profileRating || 0,
         lastActive: new Date().toISOString(),
         matchingEnabled: true,
         profilePhoto: uploadedUrls.profilePhoto || undefined,
@@ -2059,19 +2059,19 @@ export function ProfileSetup() {
                             <Label htmlFor="bio" className="font-queensides text-black text-lg">
                               About You
                             </Label>
-                            {profileData.bio && bioRating > 0 && (
+                            {profileData.bio && profileRating > 0 && (
                               <div className="flex items-center gap-2">
                                 <div
                                   className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                                    bioRating >= 8
+                                    profileRating >= 80
                                       ? "bg-green-100 text-green-700"
-                                      : bioRating >= 6
+                                      : profileRating >= 60
                                         ? "bg-yellow-100 text-yellow-700"
                                         : "bg-red-100 text-red-700"
                                   }`}
                                 >
                                   <TrendingUp className="w-3 h-3" />
-                                  {bioRating}/10
+                                  {profileRating}%
                                 </div>
                               </div>
                             )}
@@ -2084,7 +2084,7 @@ export function ProfileSetup() {
                               updateProfileData("bio", e.target.value)
                               setBioHasBeenEdited(true)
                               setAiRatingComplete(false) // Reset AI rating when bio is edited
-                              setBioRating(0) // Reset rating when editing
+                              setProfileRating(0) // Reset rating when editing
                               if (e.target.value.length > 10) {
                                 analyzeBio(e.target.value)
                               }
@@ -2110,9 +2110,9 @@ export function ProfileSetup() {
                                     })
                                     if (error) throw error
                                     const score = typeof data === "number" ? data : 0
-                                    setBioRating(score)
+                                    setProfileRating(score)
                                     setBioFeedback(
-                                      `Your bio uniqueness score is ${score}/100. You can now proceed to the next step.`
+                                      `Your profile completeness score is ${score}%. You can now proceed to the next step.`
                                     )
                                     setAiRatingComplete(true)
                                   } catch (e) {
