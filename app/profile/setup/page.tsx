@@ -25,8 +25,11 @@ import {
   Video,
   Mic,
   Loader2,
+  Ruler,
+  Globe,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { countries } from "@/data/countries"
 import dynamic from "next/dynamic"
 import { useUser } from "@/app/context/UserContext"
 import { Button } from "@/components/ui/button"
@@ -366,6 +369,13 @@ interface ProfileData {
   stylePreference?: string
   familyInvolvement?: string
   psychedelicsTypes?: string[]
+  dob?: string
+  height?: string
+  heightFeet?: string
+  heightInches?: string
+  nationality?: string
+  nationalitySearch?: string
+  nationalitySuggestions?: string[]
   // Lifestyle preferences
   financeStyle?: string
   diningFrequency?: string
@@ -439,6 +449,14 @@ export default function ProfileSetupPage() {
     workPreference: "",
     stylePreference: "",
     familyInvolvement: "",
+    psychedelicsTypes: [],
+    dob: "",
+    height: "",
+    heightFeet: "",
+    heightInches: "",
+    nationality: "",
+    nationalitySearch: "",
+    nationalitySuggestions: [],
     financeStyle: "",
     diningFrequency: "",
     travelFrequency: "",
@@ -884,6 +902,9 @@ export default function ProfileSetupPage() {
       smoking: profile.smoking || "",
       psychedelics: profile.psychedelics || "",
       psychedelicsTypes: Array.isArray((profile as any).psychedelics_types) ? (profile as any).psychedelics_types : [],
+      dob: (profile as any).date_of_birth || "",
+      height: (profile as any).height || "",
+      nationality: (profile as any).nationality || "",
       halalFood: profile.halal_food || "",
       bio: profile.bio || "",
       interests: Array.isArray(profile.interests) ? profile.interests : [],
@@ -1036,7 +1057,7 @@ export default function ProfileSetupPage() {
     setProfileData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleBasicInfoChange = (field: keyof ProfileData, value: string) => {
+  const handleBasicInfoChange = (field: keyof ProfileData, value: string | string[]) => {
     updateProfileData(field, value)
   }
 
@@ -1047,8 +1068,14 @@ export default function ProfileSetupPage() {
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
       )
       const data = await res.json()
-      const address = data?.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-      handleBasicInfoChange("location", address)
+      const address = data?.address || {}
+      // Extract only city, state, country
+      const city = address.city || address.town || address.village || address.municipality || ""
+      const state = address.state || address.region || address.province || ""
+      const country = address.country || ""
+      const locationParts = [city, state, country].filter(Boolean)
+      const locationString = locationParts.length > 0 ? locationParts.join(", ") : `${lat.toFixed(4)}, ${lng.toFixed(4)}`
+      handleBasicInfoChange("location", locationString)
       setLocationCoords([lat, lng])
     } catch {
       handleBasicInfoChange("location", `${lat.toFixed(4)}, ${lng.toFixed(4)}`)
@@ -1734,7 +1761,122 @@ export default function ProfileSetupPage() {
                         max="100"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-2">
+                        <Calendar className="w-4 h-4 inline mr-2" />
+                        Date of Birth
+                      </label>
+                      <input
+                        type="date"
+                        value={profileData.dob}
+                        onChange={(e) => handleBasicInfoChange("dob", e.target.value)}
+                        className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                        placeholder="Enter your date of birth"
+                      />
+                    </div>
 
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-2">
+                        <Ruler className="w-4 h-4 inline mr-2" />
+                        Height
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={profileData.heightFeet || ""}
+                          onChange={(e) => {
+                            const feet = e.target.value
+                            const inches = profileData.heightInches || "0"
+                            const totalInches = (parseInt(feet) || 0) * 12 + (parseInt(inches) || 0)
+                            const cm = Math.round(totalInches * 2.54)
+                            handleBasicInfoChange("heightFeet", feet)
+                            handleBasicInfoChange("heightInches", inches)
+                            handleBasicInfoChange("height", cm.toString())
+                          }}
+                          className="w-1/2 px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                          placeholder="Feet"
+                          min="3"
+                          max="8"
+                        />
+                        <input
+                          type="number"
+                          value={profileData.heightInches || ""}
+                          onChange={(e) => {
+                            const inches = e.target.value
+                            const feet = profileData.heightFeet || "0"
+                            const totalInches = (parseInt(feet) || 0) * 12 + (parseInt(inches) || 0)
+                            const cm = Math.round(totalInches * 2.54)
+                            handleBasicInfoChange("heightFeet", feet)
+                            handleBasicInfoChange("heightInches", inches)
+                            handleBasicInfoChange("height", cm.toString())
+                          }}
+                          className="w-1/2 px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                          placeholder="Inches"
+                          min="0"
+                          max="11"
+                        />
+                      </div>
+                      {profileData.height && (
+                        <p className="text-xs text-slate-500 font-queensides mt-1">
+                          {profileData.heightFeet || 0}'{profileData.heightInches || 0}" = {profileData.height} cm
+                        </p>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-2">
+                        <Globe className="w-4 h-4 inline mr-2" />
+                        Nationality
+                      </label>
+                      <input
+                        type="text"
+                        value={profileData.nationalitySearch || profileData.nationality}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          handleBasicInfoChange("nationalitySearch", value)
+                          handleBasicInfoChange("nationality", value)
+                          
+                          // Show suggestions when user types
+                          if (value.length > 0) {
+                            const filtered = countries.filter(country => 
+                              country.toLowerCase().includes(value.toLowerCase())
+                            ).slice(0, 8)
+                            handleBasicInfoChange("nationalitySuggestions" as any, filtered)
+                          } else {
+                            handleBasicInfoChange("nationalitySuggestions" as any, [] as string[])
+                          }
+                        }}
+                        onFocus={() => {
+                          // Show all countries when focused if empty
+                          if (!profileData.nationality || profileData.nationality.length === 0) {
+                            handleBasicInfoChange("nationalitySuggestions" as any, countries.slice(0, 8))
+                          }
+                        }}
+                        className="w-full px-4 py-3 bg-white/80 border border-indigo-200/50 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-400/50 transition-all duration-300 font-queensides"
+                        placeholder="Search your nationality..."
+                        autoComplete="off"
+                      />
+                      
+                      {/* Autocomplete Dropdown */}
+                      {profileData.nationalitySuggestions && profileData.nationalitySuggestions.length > 0 && (
+                        <div className="absolute z-50 w-full mt-2 bg-white border border-indigo-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                          {profileData.nationalitySuggestions.map((country, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                handleBasicInfoChange("nationality", country)
+                                handleBasicInfoChange("nationalitySearch", country)
+                                handleBasicInfoChange("nationalitySuggestions" as any, [] as string[])
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-indigo-50 transition-colors font-queensides text-sm text-slate-700 border-b border-indigo-100 last:border-b-0"
+                            >
+                              <Globe className="w-3.5 h-3.5 inline mr-2 text-indigo-500" />
+                              {country}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 font-queensides mb-2">
                         <MapPin className="w-4 h-4 inline mr-2" />
@@ -3234,7 +3376,28 @@ export default function ProfileSetupPage() {
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => setMainPhotoIndex(currentPhotoIndex)}
+                                onClick={async () => {
+                                  if (currentPhotoIndex === mainPhotoIndex) return
+                                  
+                                  // Reorder array to put selected photo first
+                                  const photos = [...uploadedUrls.additionalPhotos]
+                                  const [selectedPhoto] = photos.splice(currentPhotoIndex, 1)
+                                  const reordered = [selectedPhoto, ...photos]
+                                  
+                                  setUploadedUrls((prev) => ({
+                                    ...prev,
+                                    additionalPhotos: reordered,
+                                  }))
+                                  setMainPhotoIndex(0)
+                                  setCurrentPhotoIndex(0)
+                                  
+                                  // Save to database immediately
+                                  if (userId) {
+                                    await ProfileService.updateProfileByUserId(userId, {
+                                      additional_photos: reordered,
+                                    } as any)
+                                  }
+                                }}
                                 className={`flex-1 py-3 px-6 rounded-xl font-semibold font-queensides transition-all duration-300 flex items-center justify-center gap-2 ${
                                   currentPhotoIndex === mainPhotoIndex
                                     ? 'bg-gradient-to-r from-pink-400 to-rose-500 text-white shadow-lg'

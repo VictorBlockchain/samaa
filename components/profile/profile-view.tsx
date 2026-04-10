@@ -88,6 +88,8 @@ interface ProfileData {
   responseRate?: number
   isVerified?: boolean
   createdAt?: string
+  nationality?: string
+  height?: string
 }
 
 // UI Kit Section Divider
@@ -124,6 +126,15 @@ function SectionDivider({ icon: Icon, title, color = "pink" }: {
       </div>
     </div>
   )
+}
+
+// Helper function to convert cm to feet and inches
+function cmToFeetInches(cm: string | undefined): string {
+  if (!cm || isNaN(Number(cm))) return ""
+  const totalInches = Math.round(Number(cm) / 2.54)
+  const feet = Math.floor(totalInches / 12)
+  const inches = totalInches % 12
+  return `${feet}'${inches}"`
 }
 
 export function ProfileViewElegant({ userId: profileUserId }: { userId: string }) {
@@ -232,6 +243,8 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           responseRate: (supabaseProfile as any).response_rate || 0,
           isVerified: supabaseProfile.is_verified || false,
           createdAt: supabaseProfile.created_at || new Date().toISOString(),
+          nationality: (supabaseProfile as any).nationality || "",
+          height: (supabaseProfile as any).height || "",
         })
       }
     } catch (error) {
@@ -336,105 +349,127 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
           {/* Profile Info Card */}
           <div className="relative -mt-24 px-6 z-10">
-            <div className="bg-white rounded-2xl shadow-lg border border-pink-200/50 p-4 sm:p-6 max-w-md mx-auto">
-              {/* Name & Age - Stacked for mobile */}
-              <div className="text-center mb-4">
-                <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 font-queensides leading-tight">
-                  {profile.firstName || "User"}
-                </h1>
-                {profile.age && (
-                  <p className="text-xl sm:text-2xl text-slate-600 font-queensides mt-1">{profile.age} years old, {profile.gender}</p>
+            <div className="bg-white rounded-3xl shadow-2xl border border-pink-200/30 p-5 sm:p-7 max-w-md mx-auto relative overflow-hidden">
+              {/* Decorative top gradient bar */}
+              <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400" />
+              
+              {/* Subtle background pattern */}
+              <div className="absolute inset-0 opacity-[0.03]" style={{
+                backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+                backgroundSize: '24px 24px'
+              }} />
+
+              {/* Content */}
+              <div className="relative z-10">
+                {/* Name & Age - Stacked for mobile */}
+                <div className="text-center mb-5">
+                  <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 font-queensides leading-tight mb-1">
+                    {profile.firstName || "User"}
+                  </h1>
+                  {profile.age && (
+                    <>
+                    <p className="text-lg sm:text-xl text-slate-600 font-queensides">{profile.age} years old, {profile.gender}</p>
+                    <p className="text-lg sm:text-xl text-slate-600 font-queensides">{cmToFeetInches(profile.height)}{profile.nationality ? `, ${profile.nationality}` : ""}</p>
+                    </>
+                  )}
+                </div>
+
+                {/* Location */}
+                {(profile.city || profile.state || profile.country || profile.location) && (
+                  <div className="flex items-center justify-center gap-2 text-slate-600 font-queensides text-sm mb-5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-pink-600" />
+                    </div>
+                    <span className="font-medium">
+                      {[profile.city, profile.state, profile.country].filter(Boolean).join(', ') || profile.location}
+                    </span>
+                  </div>
                 )}
-              </div>
 
-              {/* Location */}
-              {(profile.city || profile.state || profile.country || profile.location) && (
-                <div className="flex items-center justify-center gap-1.5 text-slate-600 font-queensides text-sm mb-4">
-                  <MapPin className="w-4 h-4 text-pink-500" />
-                  <span>
-                    {[profile.city, profile.state, profile.country].filter(Boolean).join(', ') || profile.location}
-                  </span>
-                </div>
-              )}
-
-              {/* Bio Rating & Chat Rating - Two Column */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Star className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-pink-700 font-queensides uppercase tracking-wide">Bio Rating</p>
-                      <p className="text-lg font-bold text-pink-800 font-queensides">{profile.bioRating ?? 0}%</p>
-                    </div>
-                  </div>
+                {/* Divider */}
+                <div className="flex items-center justify-center mb-5">
+                  <div className="w-12 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+                  <Star className="w-3 h-3 text-pink-400 mx-2" />
+                  <div className="w-12 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
                 </div>
 
-                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <MessageCircle className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-purple-700 font-queensides uppercase tracking-wide">Chat Rating</p>
-                      <p className="text-lg font-bold text-purple-800 font-queensides">{profile.chatRating ?? 0}%</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats - Two Column Grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-rose-400 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Heart className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-rose-700 font-queensides uppercase tracking-wide">Likes</p>
-                      <p className="text-lg font-bold text-rose-800 font-queensides">24</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-3 rounded-xl bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-violet-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-purple-700 font-queensides uppercase tracking-wide">Compliments</p>
-                      <p className="text-lg font-bold text-purple-800 font-queensides">12</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/50">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <User className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-blue-700 font-queensides uppercase tracking-wide">Joined</p>
-                      <p className="text-sm font-bold text-blue-800 font-queensides">{profile.createdAt ? formatDate(profile.createdAt) : 'Recently'}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {profile.isVerified && (
-                  <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/50">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Shield className="w-4 h-4 text-white" />
+                {/* Bio Rating & Chat Rating - Two Column */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200/60 hover:shadow-md hover:shadow-pink-100 transition-all duration-300 hover:-translate-y-0.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Star className="w-4.5 h-4.5 text-white" />
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-emerald-700 font-queensides uppercase tracking-wide">Verified</p>
-                        <p className="text-sm font-bold text-emerald-800 font-queensides">Masjid</p>
+                        <p className="text-[10px] font-semibold text-pink-600 font-queensides uppercase tracking-wider">Profile Score</p>
+                        <p className="text-xl font-bold text-pink-700 font-queensides">{profile.bioRating ?? 0}%</p>
                       </div>
                     </div>
                   </div>
-                )}
+
+                  <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200/60 hover:shadow-md hover:shadow-purple-100 transition-all duration-300 hover:-translate-y-0.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <MessageCircle className="w-4.5 h-4.5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-purple-600 font-queensides uppercase tracking-wider">Chat Rating</p>
+                        <p className="text-xl font-bold text-purple-700 font-queensides">{profile.chatRating ?? 0}%</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats - Two Column Grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200/60 hover:shadow-md hover:shadow-rose-100 transition-all duration-300 hover:-translate-y-0.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Heart className="w-4.5 h-4.5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-rose-600 font-queensides uppercase tracking-wider">Likes</p>
+                        <p className="text-xl font-bold text-rose-700 font-queensides">24</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-200/60 hover:shadow-md hover:shadow-purple-100 transition-all duration-300 hover:-translate-y-0.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-gradient-to-br from-purple-400 to-violet-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Sparkles className="w-4.5 h-4.5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-purple-600 font-queensides uppercase tracking-wider">Compliments</p>
+                        <p className="text-xl font-bold text-purple-700 font-queensides">12</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/60 hover:shadow-md hover:shadow-blue-100 transition-all duration-300 hover:-translate-y-0.5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <User className="w-4.5 h-4.5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-semibold text-blue-600 font-queensides uppercase tracking-wider">Joined</p>
+                        <p className="text-xs font-bold text-blue-700 font-queensides">{profile.createdAt ? formatDate(profile.createdAt) : 'Recently'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                    <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200/60 hover:shadow-md hover:shadow-emerald-100 transition-all duration-300 hover:-translate-y-0.5">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <Shield className="w-4.5 h-4.5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-semibold text-emerald-600 font-queensides uppercase tracking-wider">Verified</p>
+                          <p className="text-xs font-bold text-emerald-700 font-queensides">{profile.isVerified ? 'Yes' : 'No'}</p>
+                        </div>
+                      </div>
+                    </div>
+                </div>
               </div>
             </div>
           </div>
