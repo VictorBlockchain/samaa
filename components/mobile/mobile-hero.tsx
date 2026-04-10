@@ -7,6 +7,7 @@ import { useAuth } from "@/app/context/AuthContext"
 import { User, Search, MessageCircle, Heart, MessageSquare, Camera } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
+import { SwipeCard } from "./swipe-card"
 import { loadProfile, isProfileComplete } from "@/utils/profile-storage"
 import { supabase } from "@/lib/supabase"
 
@@ -366,11 +367,11 @@ export function MobileHero() {
                       </div>
                     </motion.div>
 
-                    {/* Message Tabs Component */}
-                    <MessageTabs className="mb-6" />
+                    {/* Swipe Card Interface */}
+                    <SwipeCard />
 
-                    {/* Quick Actions */}
-                    <div className="grid grid-cols-2 gap-3">
+                    {/* Quick Actions - Hidden for now, integrated into SwipeCard */}
+                    <div className="hidden grid-cols-2 gap-3">
                       <button
                         onClick={() => router.push('/explore')}
                         className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white py-3 px-4 rounded-xl font-queensides font-medium transition-all duration-300 flex items-center justify-center space-x-2"
