@@ -514,6 +514,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
   const [showLeadCard, setShowLeadCard] = useState(false)
   const [leadMessage, setLeadMessage] = useState('')
   const [isSendingLead, setIsSendingLead] = useState(false)
+  const [viewerGender, setViewerGender] = useState<string | null>(null)
 
   // Helper function to format date
   const formatDate = (dateString: string) => {
@@ -524,6 +525,22 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
   useEffect(() => {
     if (isAuthenticated && userId) {
       setIsOwnProfile(userId === profileUserId)
+      // Fetch viewer's gender
+      const fetchViewerGender = async () => {
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('gender')
+            .eq('id', userId)
+            .single()
+          if (data?.gender) {
+            setViewerGender(data.gender)
+          }
+        } catch (error) {
+          console.error('Error fetching viewer gender:', error)
+        }
+      }
+      fetchViewerGender()
     }
     loadProfile()
   }, [profileUserId, userId, isAuthenticated])
@@ -895,7 +912,10 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
               </ArabicCardContent>
             </ArabicCard>
             <div className="flex items-center justify-center mt-4">
-              {!isOwnProfile && profile.gender && userId && (
+              {!isOwnProfile && profile.gender && viewerGender && (
+                // Only show if viewer is opposite gender
+                ((profile.gender === 'male' && viewerGender === 'female') ||
+                 (profile.gender === 'female' && viewerGender === 'male')) && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -906,6 +926,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                   <span>Take The Lead</span>
                   <Send className="w-4 h-4" />
                 </motion.button>
+                )
               )}
             </div>
           </div>
