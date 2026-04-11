@@ -941,7 +941,7 @@ export default function ProfileSetupPage() {
       selfCareBudgetAmount: (profile as any).self_care_budget_preference_amount ? String((profile as any).self_care_budget_preference_amount) : "",
       shoppingBudgetType: (profile as any).shopping_budget_preference_type || "",
       shoppingBudgetAmount: (profile as any).shopping_budget_preference_amount ? String((profile as any).shopping_budget_preference_amount) : "",
-      languages: Array.isArray((profile as any).languages_preference) ? (profile as any).languages_preference : [],
+      languages: [], // Will be loaded from user_preferences below
       personality: Array.isArray((profile as any).personality) ? (profile as any).personality : [],
       profilePhoto: profile.profile_photo || null,
       additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
@@ -1016,6 +1016,7 @@ export default function ProfileSetupPage() {
         if (!s) return
         setProfileData((prev) => ({
           ...prev,
+          languages: Array.isArray((s as any).languages_preference) ? (s as any).languages_preference : prev.languages,
           preferences: {
             ...prev.preferences,
             ageRange: {
@@ -1252,7 +1253,6 @@ export default function ProfileSetupPage() {
       profession: profileData.profession || null,
       marital_status: profileData.maritalStatus || null,
       willing_to_relocate: profileData.willingToRelocate === "yes" ? true : profileData.willingToRelocate === "no" ? false : null,
-      languages_preference: profileData.languages || null,
       mahr_max_amount: profileData.mahrMaxAmount ? Number(profileData.mahrMaxAmount) : null,
       mahr_requirement: profileData.mahrRequirement ? Number(profileData.mahrRequirement) : null,
       work_preference: profileData.workPreference || null,
@@ -1271,6 +1271,14 @@ export default function ProfileSetupPage() {
       polygamy_reason: profileData.polygamyReason || null,
       bio: profileData.bio || null,
     } as any)
+    
+    // Save languages to user_preferences table
+    if (profileData.languages && profileData.languages.length > 0) {
+      await UserSettingsService.upsertUserSettings(userId, {
+        languages_preference: profileData.languages,
+      } as any)
+    }
+    
     return !!row
   }
 
