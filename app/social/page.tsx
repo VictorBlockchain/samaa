@@ -31,6 +31,7 @@ import {
 import { supabase } from "@/lib/supabase"
 import { Toaster } from "@/components/ui/toaster"
 import { useToast } from "@/hooks/use-toast"
+import { ArabicCard, ArabicCardContent, ArabicCardTitle, ArabicCardDescription } from "@/components/ui/arabic-card"
 
 const VIDEOS_PER_PAGE = 6
 
@@ -327,7 +328,34 @@ export default function SocialPage() {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Tabs */}
+        {/* Not Logged In - Show Login Prompt */}
+        {!isAuthenticated ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="py-12"
+          >
+            <ArabicCard>
+              <ArabicCardContent>
+                <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Video className="w-10 h-10 text-pink-400" />
+                </div>
+                <ArabicCardTitle>Sign in to view videos</ArabicCardTitle>
+                <ArabicCardDescription className="mb-6">
+                  Media content is private and only available to registered members. Please sign in to access videos and connect with the community.
+                </ArabicCardDescription>
+                <Button
+                  onClick={() => router.push("/auth/login")}
+                  className="bg-gradient-to-r from-pink-400 to-rose-500 text-white"
+                >
+                  Sign In
+                </Button>
+              </ArabicCardContent>
+            </ArabicCard>
+          </motion.div>
+        ) : (
+          <>
+            {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
           <TabsList className="grid w-full grid-cols-3 bg-slate-100">
             <TabsTrigger value="newest" className="data-[state=active]:bg-white">
@@ -501,7 +529,6 @@ export default function SocialPage() {
             )}
           </>
         )}
-        <br/><br/><br/><br/><br/><br/>
       </div>
       <Toaster />
     </div>
