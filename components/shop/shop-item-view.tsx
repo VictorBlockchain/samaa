@@ -1,14 +1,18 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { ArrowLeft, Heart, Star, Play, ShoppingCart, Truck, Shield, RotateCcw, Eye, Edit3, Plus, Minus } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ArrowLeft, Heart, Star, Play, ShoppingCart, Truck, Shield, RotateCcw, Eye, Edit3, Plus, Minus, Share2, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/app/context/UserContext"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { CartService } from "@/lib/cart"
+import { WishlistService } from "@/lib/database"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+import { AddToCartSheet } from "@/components/shop/add-to-cart-sheet"
 
 interface Product {
   id: string
@@ -207,6 +211,10 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   const [isOwner, setIsOwner] = useState(false)
   const [selectedSize, setSelectedSize] = useState<string>("")
   const [selectedColor, setSelectedColor] = useState<string>("")
+  const [isWished, setIsWished] = useState(false)
+  const [showCartSheet, setShowCartSheet] = useState(false)
+  const [addingToCart, setAddingToCart] = useState(false)
+  const { toast } = useToast()
 
   // Mock exchange rates (in real app, fetch from API)
   const SOL_TO_USD = 23.45 // 1 SOL = $23.45
@@ -232,6 +240,13 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   useEffect(() => {
     loadProduct()
   }, [itemId, address])
+
+  // Load wishlist status
+  useEffect(() => {
+    if (address && itemId) {
+      WishlistService.isInWishlist(address, itemId).then(setIsWished)
+    }
+  }, [address, itemId])
 
   const isClothingCategory = (category: string) => {
     return category === "Women's Clothes" ||
@@ -263,69 +278,66 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
 
   const handlePurchase = () => {
     if (!isConnected) {
-      alert("Please connect your wallet to make a purchase")
+      toast({ title: "Please sign in to make a purchase", variant: "destructive", duration: 5000 })
       return
     }
+    setShowCartSheet(true)
+  }
 
-    // Validate size and color selection for clothing items
-    if (product && isClothingCategory(product.category)) {
-      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-        alert("Please select a size")
-        return
-      }
-      if (product.colors && product.colors.length > 0 && !selectedColor) {
-        alert("Please select a color")
-        return
-      }
+  const handleAddToCart = () => {
+    if (!isConnected || !address || !product) {
+      toast({ title: "Please sign in to add items to cart", variant: "destructive", duration: 5000 })
+      return
     }
+    setShowCartSheet(true)
+  }
 
-    // Add to cart and redirect to checkout
-    if (handleAddToCart()) {
-      router.push('/cart')
+  const handleCartSheetConfirm = async (qty: number, size?: string, color?: string) => {
+    if (!address || !product) return
+    setAddingToCart(true)
+    try {
+      const success = await CartService.addToCart(address, {
+        productId: product.id,
+        quantity: qty,
+        selectedSize: size,
+        selectedColor: color,
+      })
+      if (success) {
+        setShowCartSheet(false)
+        toast({ title: "Added to cart!", description: `${qty}x ${product.name}`, duration: 3000 })
+      } else {
+        toast({ title: "Failed to add item to cart", description: "Please try again.", variant: "destructive", duration: 5000 })
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+      toast({ title: "Failed to add item to cart", variant: "destructive", duration: 5000 })
+    } finally {
+      setAddingToCart(false)
     }
   }
 
-  const handleAddToCart = (): boolean => {
-    if (!isConnected || !address || !product) {
-      alert("Please connect your wallet to add items to cart")
-      return false
+  const toggleWishlist = async () => {
+    if (!address || !product) {
+      toast({ title: "Please sign in", variant: "destructive", duration: 5000 })
+      return
     }
-
-    // Validate size and color selection for clothing items
-    if (isClothingCategory(product.category)) {
-      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-        alert("Please select a size")
-        return false
-      }
-      if (product.colors && product.colors.length > 0 && !selectedColor) {
-        alert("Please select a color")
-        return false
-      }
-    }
-
-    const cartItem = {
-      productId: product.id,
-      productUuid: product.id, // Using id as uuid for now
-      productName: product.name,
-      productImage: product.images[0] || '',
-      price: product.price,
-      currency: product.currency,
-      quantity: quantity,
-      selectedSize: selectedSize || undefined,
-      selectedColor: selectedColor || undefined,
-      shopId: product.shopId || 'unknown',
-      shopName: product.seller,
-      sellerWallet: 'seller_wallet_address' // This should come from the product data
-    }
-
-    const success = CartService.addToCart(address, cartItem)
-
-    if (success) {
-      alert(`Added ${quantity} ${product.name} to cart!`)
-      return true
+    if (isWished) {
+      const ok = await WishlistService.removeFromWishlist(address, product.id)
+      if (ok) { setIsWished(false); toast({ title: "Removed from wishlist", duration: 3000 }) }
     } else {
-      alert("Failed to add item to cart. Please try again.")
-      return false
+      const ok = await WishlistService.addToWishlist(address, product.id)
+      if (ok) { setIsWished(true); toast({ title: "Added to wishlist", duration: 3000 }) }
+    }
+  }
+
+  const shareProduct = async () => {
+    if (!product) return
+    const url = `${window.location.origin}/shop/item?id=${product.id}`
+    if (navigator.share) {
+      try { await navigator.share({ title: product.name, url }) } catch { /* cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      toast({ title: "Link copied!", description: "Product link copied to clipboard", duration: 3000 })
     }
   }
 
@@ -380,8 +392,19 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
                   <Edit3 className="w-5 h-5 text-indigo-600" />
                 </button>
               )}
-              <button className="p-2 hover:bg-indigo-50 rounded-xl transition-colors">
-                <Heart className="w-5 h-5 text-indigo-600" />
+              <button
+                onClick={toggleWishlist}
+                className="p-2 hover:bg-indigo-50 rounded-xl transition-colors"
+                title={isWished ? "Remove from wishlist" : "Add to wishlist"}
+              >
+                <Heart className={`w-5 h-5 ${isWished ? "text-pink-500 fill-pink-500" : "text-indigo-600"}`} />
+              </button>
+              <button
+                onClick={shareProduct}
+                className="p-2 hover:bg-indigo-50 rounded-xl transition-colors"
+                title="Share product"
+              >
+                <Share2 className="w-5 h-5 text-indigo-600" />
               </button>
             </div>
           </div>
@@ -644,21 +667,45 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
         </div>
 
         {/* Video Modal */}
-        {showVideo && product.video && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="relative w-full max-w-md">
-              <button
-                onClick={() => setShowVideo(false)}
-                className="absolute -top-10 right-0 text-white text-xl hover:text-gray-300 transition-colors"
-              >
-                ✕
-              </button>
-              <video controls autoPlay className="w-full rounded-lg" src={product.video}>
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
+        <AnimatePresence>
+          {showVideo && product.video && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowVideo(false)}
+            >
+              <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => setShowVideo(false)}
+                  className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <video controls autoPlay className="w-full rounded-lg" src={product.video}>
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Add to Cart Sheet */}
+        {product && (
+          <AddToCartSheet
+            product={product}
+            isOpen={showCartSheet}
+            onClose={() => setShowCartSheet(false)}
+            onConfirm={handleCartSheetConfirm}
+            loading={addingToCart}
+            initialSize={selectedSize}
+            initialColor={selectedColor}
+            initialQuantity={quantity}
+          />
         )}
+
+        <Toaster />
       </div>
     </div>
   )

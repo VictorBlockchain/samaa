@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { 
   ArrowLeft, ShoppingBag, Store, Package, Truck, Plus, Edit3, Eye, Trash2, 
   Users, TrendingUp, Calendar, CreditCard, CheckCircle, Clock, X, Search, 
   Star, Heart, Share2, MapPin, Mail, Phone, Globe, AlertCircle, Sparkles, 
-  HeartHandshake, Bitcoin, Wallet, ChevronDown, MessageCircle
+  HeartHandshake, Bitcoin, Wallet, ChevronDown, MessageCircle, Play, Bookmark
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
@@ -17,9 +17,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { ShopService, Shop, CreateShopData, ProductService } from "@/lib/database"
+import { ShopService, Shop, CreateShopData, ProductService, WishlistService } from "@/lib/database"
 import { CartService, CartItem, OrderService } from "@/lib/cart"
 import { supabase } from "@/lib/supabase"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+import { AddToCartSheet } from "@/components/shop/add-to-cart-sheet"
 
 // Product interface
 interface Product {
@@ -171,6 +174,13 @@ export function ShopView() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
   const userId = user?.id || null
+  const { toast } = useToast()
+
+  // Wishlist state
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set())
+
+  // Video modal state
+  const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null)
 
   // Handle tab parameter from URL
   useEffect(() => {
@@ -191,6 +201,10 @@ export function ShopView() {
   useEffect(() => {
     if (isAuthenticated && userId) {
       loadUserShop()
+      // Load wishlist IDs
+      WishlistService.getUserWishlistProductIds(userId).then(ids => {
+        setWishlistIds(new Set(ids))
+      })
     }
   }, [isAuthenticated, userId])
 
@@ -1020,52 +1034,90 @@ export function ShopView() {
     )
   }
 
+  // Toggle wishlist for a product
+  const toggleWishlist = async (productId: string) => {
+    if (!userId) {
+      router.push("/auth/login")
+      return
+    }
+    const isWished = wishlistIds.has(productId)
+    if (isWished) {
+      const success = await WishlistService.removeFromWishlist(userId, productId)
+      if (success) {
+        setWishlistIds(prev => { const next = new Set(prev); next.delete(productId); return next })
+        toast({ title: "Removed from wishlist", duration: 3000 })
+      }
+    } else {
+      const success = await WishlistService.addToWishlist(userId, productId)
+      if (success) {
+        setWishlistIds(prev => new Set(prev).add(productId))
+        toast({ title: "Added to wishlist", description: "You can find it in your wishlist", duration: 3000 })
+      }
+    }
+  }
+
+  // Share a product link
+  const shareProduct = async (productId: string, productName: string) => {
+    const url = `${window.location.origin}/shop/item?id=${productId}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: productName, url })
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url)
+      toast({ title: "Link copied!", description: "Product link copied to clipboard", duration: 3000 })
+    }
+  }
+
   // Product Card Component with Add to Cart
   const ProductCard = ({ product, index }: { product: Product; index: number }) => {
-    const [showOptions, setShowOptions] = useState(false)
-    const [selectedSize, setSelectedSize] = useState<string>("")
-    const [selectedColor, setSelectedColor] = useState<string>("")
-    const [quantity, setQuantity] = useState(1)
     const [addingToCart, setAddingToCart] = useState(false)
+    const [showSheet, setShowSheet] = useState(false)
 
     const hasOptions = (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)
+    const isWished = wishlistIds.has(product.id)
 
     const handleAddToCart = async () => {
       if (!userId) {
         router.push("/auth/login")
         return
       }
-
-      if (hasOptions && !showOptions) {
-        setShowOptions(true)
+      if (hasOptions) {
+        setShowSheet(true)
         return
       }
-
       setAddingToCart(true)
       try {
-        const success = await CartService.addToCart(userId, {
-          productId: product.id,
-          quantity,
-          selectedSize: selectedSize || undefined,
-          selectedColor: selectedColor || undefined
-        })
-
+        const success = await CartService.addToCart(userId, { productId: product.id, quantity: 1 })
         if (success) {
-          setShowOptions(false)
-          setSelectedSize("")
-          setSelectedColor("")
-          setQuantity(1)
-          // Show success feedback
-          alert("Added to cart!")
+          toast({ title: "Added to cart!", description: product.name, duration: 3000 })
         }
       } catch (error) {
         console.error('Error adding to cart:', error)
+        toast({ title: "Failed to add to cart", variant: "destructive", duration: 5000 })
+      } finally {
+        setAddingToCart(false)
+      }
+    }
+
+    const handleSheetConfirm = async (qty: number, size?: string, color?: string) => {
+      setAddingToCart(true)
+      try {
+        const success = await CartService.addToCart(userId!, { productId: product.id, quantity: qty, selectedSize: size, selectedColor: color })
+        if (success) {
+          setShowSheet(false)
+          toast({ title: "Added to cart!", description: `${qty}x ${product.name}`, duration: 3000 })
+        }
+      } catch (error) {
+        console.error('Error adding to cart:', error)
+        toast({ title: "Failed to add to cart", variant: "destructive", duration: 5000 })
       } finally {
         setAddingToCart(false)
       }
     }
 
     return (
+      <>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1073,8 +1125,11 @@ export function ShopView() {
         className="group"
       >
         <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-pink-200/50 hover:border-pink-300/60">
-          {/* Product Image */}
-          <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100">
+          {/* Product Image - clickable */}
+          <div
+            className="relative aspect-square overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100 cursor-pointer"
+            onClick={() => handleViewProduct(product.id)}
+          >
             <img
               src={product.images[0] || `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`}
               alt={product.name}
@@ -1086,22 +1141,37 @@ export function ShopView() {
             />
 
             {/* Quick Actions */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" onClick={(e) => e.stopPropagation()}>
               <div className="flex flex-col gap-1">
                 <motion.button 
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  onClick={() => toggleWishlist(product.id)}
                   className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                  title={isWished ? "Remove from wishlist" : "Add to wishlist"}
                 >
-                  <Heart className="w-4 h-4 text-slate-600" />
+                  <Heart className={`w-4 h-4 ${isWished ? "text-pink-500 fill-pink-500" : "text-slate-600"}`} />
                 </motion.button>
                 <motion.button 
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
+                  onClick={() => shareProduct(product.id, product.name)}
                   className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                  title="Share product"
                 >
                   <Share2 className="w-4 h-4 text-slate-600" />
                 </motion.button>
+                {(product as any).video && (
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setVideoModalUrl((product as any).video)}
+                    className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    title="Watch video"
+                  >
+                    <Play className="w-4 h-4 text-slate-600" />
+                  </motion.button>
+                )}
               </div>
             </div>
 
@@ -1113,6 +1183,15 @@ export function ShopView() {
                 </span>
               </div>
             </div>
+
+            {/* Multiple images indicator */}
+            {product.images && product.images.length > 1 && (
+              <div className="absolute bottom-2 right-2">
+                <div className="bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] text-white font-medium">{product.images.length} photos</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Product Info */}
@@ -1137,86 +1216,10 @@ export function ShopView() {
               </div>
             </div>
 
-            {/* Size/Color Options */}
-            <AnimatePresence>
-              {showOptions && hasOptions && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="space-y-3 mb-3 overflow-hidden"
-                >
-                  {/* Sizes */}
-                  {product.sizes && product.sizes.length > 0 && (
-                    <div>
-                      <Label className="text-xs text-slate-600 font-queensides">Size</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {product.sizes.map((size) => (
-                          <button
-                            key={size}
-                            onClick={() => setSelectedSize(size)}
-                            className={`px-3 py-1 text-xs rounded-lg border transition-all ${
-                              selectedSize === size
-                                ? "bg-pink-500 text-white border-pink-500"
-                                : "bg-white text-slate-700 border-pink-200 hover:border-pink-300"
-                            }`}
-                          >
-                            {size}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Colors */}
-                  {product.colors && product.colors.length > 0 && (
-                    <div>
-                      <Label className="text-xs text-slate-600 font-queensides">Color</Label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {product.colors.map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => setSelectedColor(color)}
-                            className={`px-3 py-1 text-xs rounded-lg border transition-all ${
-                              selectedColor === color
-                                ? "bg-pink-500 text-white border-pink-500"
-                                : "bg-white text-slate-700 border-pink-200 hover:border-pink-300"
-                            }`}
-                          >
-                            {color}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Quantity */}
-                  <div>
-                    <Label className="text-xs text-slate-600 font-queensides">Quantity</Label>
-                    <div className="flex items-center gap-2 mt-1">
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 transition-colors"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center font-medium">{quantity}</span>
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center hover:bg-pink-200 transition-colors"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Add to Cart Button */}
             <Button
               onClick={handleAddToCart}
-              disabled={Boolean(addingToCart || (showOptions && hasOptions && ((!selectedSize && !!product.sizes?.length) || (!selectedColor && !!product.colors?.length))))}
+              disabled={addingToCart}
               className="w-full bg-gradient-to-r from-pink-400 to-rose-500 text-white font-semibold py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {addingToCart ? (
@@ -1227,13 +1230,23 @@ export function ShopView() {
               ) : (
                 <span className="flex items-center gap-2">
                   <ShoppingBag className="w-4 h-4" />
-                  {showOptions ? "Confirm Add to Cart" : hasOptions ? "Select Options" : "Add to Cart"}
+                  {hasOptions ? "Select Options" : "Add to Cart"}
                 </span>
               )}
             </Button>
           </div>
         </Card>
       </motion.div>
+
+      {/* Add to Cart Sheet */}
+      <AddToCartSheet
+        product={product}
+        isOpen={showSheet}
+        onClose={() => setShowSheet(false)}
+        onConfirm={handleSheetConfirm}
+        loading={addingToCart}
+      />
+      </>
     )
   }
 
@@ -2317,6 +2330,33 @@ export function ShopView() {
             isLoading={isLoading}
           />
         )}
+
+        {/* Video Modal */}
+        <AnimatePresence>
+          {videoModalUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+              onClick={() => setVideoModalUrl(null)}
+            >
+              <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => setVideoModalUrl(null)}
+                  className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+                <video controls autoPlay className="w-full rounded-lg" src={videoModalUrl}>
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <Toaster />
       </div>
     </div>
   )

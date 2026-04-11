@@ -957,6 +957,81 @@ export class ShopService {
   }
 }
 
+// Wishlist Operations
+export class WishlistService {
+
+  static async addToWishlist(userId: string, productId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.rpc('add_to_wishlist', {
+        p_user_id: userId,
+        p_product_id: productId,
+      })
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Error adding to wishlist:', error)
+      return false
+    }
+  }
+
+  static async removeFromWishlist(userId: string, productId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.rpc('remove_from_wishlist', {
+        p_user_id: userId,
+        p_product_id: productId,
+      })
+      if (error) throw error
+      return true
+    } catch (error) {
+      console.error('Error removing from wishlist:', error)
+      return false
+    }
+  }
+
+  static async getUserWishlist(userId: string) {
+    try {
+      const { data, error } = await supabase.rpc('get_user_wishlist', {
+        p_user_id: userId,
+      })
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching wishlist:', error)
+      return []
+    }
+  }
+
+  static async isInWishlist(userId: string, productId: string): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('wishlists')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('product_id', productId)
+        .maybeSingle()
+      if (error) throw error
+      return !!data
+    } catch (error) {
+      console.error('Error checking wishlist:', error)
+      return false
+    }
+  }
+
+  static async getUserWishlistProductIds(userId: string): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('wishlists')
+        .select('product_id')
+        .eq('user_id', userId)
+      if (error) throw error
+      return (data || []).map((row: any) => row.product_id)
+    } catch (error) {
+      console.error('Error fetching wishlist IDs:', error)
+      return []
+    }
+  }
+}
+
 // Product Operations
 export class ProductService {
 
