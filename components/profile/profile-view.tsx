@@ -737,7 +737,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
             {/* Column 3: Toggle Switch */}
             {isOwnProfile && (
               <button 
-                onClick={() => router.push('/profile/preferences')}
+                onClick={() => router.push('/profile/preference')}
                 className="p-2 hover:bg-pink-50 rounded-xl transition-colors justify-self-end"
                 title="Edit Match Preferences"
               >

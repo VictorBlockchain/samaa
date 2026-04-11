@@ -238,7 +238,7 @@ export function PreferencesView() {
         const filtered = ["Arabic", "English", "Urdu", "French", "Turkish", "Indonesian", "Malay", "Bengali", "Spanish", "German", "Italian", "Portuguese", "Russian", "Chinese", "Japanese", "Korean", "Hindi", "Persian", "Swahili", "Hausa", "Yoruba", "Amharic", "Somali", "Afghan", "Bosnian", "Albanian", "Kurdish", "Pashto", "Tamil", "Punjabi", "Other"]
           .filter(lang => 
             lang.toLowerCase().includes(value.toLowerCase()) && 
-            !settings.personal.languages.includes(lang)
+            !(Array.isArray(settings.personal.languages) && settings.personal.languages.includes(lang))
           )
           .slice(0, 8)
         setLanguageSuggestions(filtered)
@@ -252,12 +252,13 @@ export function PreferencesView() {
 
   // Add language
   const addLanguage = (language: string) => {
-    if (!settings.personal.languages.includes(language)) {
+    const currentLangs = Array.isArray(settings.personal.languages) ? settings.personal.languages : []
+    if (!currentLangs.includes(language)) {
       setSettings(prev => ({
         ...prev,
         personal: {
           ...prev.personal,
-          languages: [...prev.personal.languages, language]
+          languages: [...currentLangs, language]
         }
       }))
       setLanguageSearch("")
@@ -268,11 +269,12 @@ export function PreferencesView() {
 
   // Remove language
   const removeLanguage = (language: string) => {
+    const currentLangs = Array.isArray(settings.personal.languages) ? settings.personal.languages : []
     setSettings(prev => ({
       ...prev,
       personal: {
         ...prev.personal,
-        languages: prev.personal.languages.filter(l => l !== language)
+        languages: currentLangs.filter(l => l !== language)
       }
     }))
   }
@@ -343,7 +345,11 @@ export function PreferencesView() {
               nationality: Array.isArray((dbSettings as any).nationality_preference) ? (dbSettings as any).nationality_preference : [],
               height: (dbSettings as any).height_preference || "No preference",
               heightMin: (dbSettings as any).height_min_preference || null,
-              languages: Array.isArray((dbSettings as any).languages_preference) ? (dbSettings as any).languages_preference : [],
+              languages: Array.isArray((dbSettings as any).languages_preference) 
+                ? (dbSettings as any).languages_preference 
+                : typeof (dbSettings as any).languages_preference === 'string' && (dbSettings as any).languages_preference
+                  ? (dbSettings as any).languages_preference.split(',').map((s: string) => s.trim()).filter(Boolean)
+                  : [],
               willingToRelocate: (dbSettings as any).willing_to_relocate_preference || "No preference",
               livingArrangements: (dbSettings as any).living_arrangements_preference || "No preference",
               mahr: (dbSettings as any).mahr_preference_type && (dbSettings as any).mahr_preference_amount 
@@ -840,7 +846,7 @@ export function PreferencesView() {
                 <Label className="font-queensides text-slate-700 mb-2 block">Languages</Label>
                 
                 {/* Selected Languages Pills */}
-                {settings.personal.languages.length > 0 && (
+                {settings && settings.personal && Array.isArray(settings.personal.languages) && settings.personal.languages.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {settings.personal.languages.map((lang) => (
                       <div
@@ -891,7 +897,7 @@ export function PreferencesView() {
                   )}
                 </div>
 
-                {settings.personal.languages.length === 0 && (
+                {(!Array.isArray(settings.personal.languages) || settings.personal.languages.length === 0) && (
                   <p className="text-xs text-slate-500 mt-2 font-queensides">
                     Add languages you speak or prefer
                   </p>
