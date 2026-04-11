@@ -154,9 +154,15 @@ export function MobileNavigation() {
                     </button>
                     <button
                       className="menu-item"
-                      onClick={() => router.push('/settings')}
+                      onClick={() => router.push('/profile/setup')}
                     >
-                      Settings
+                      Profile Setup
+                    </button>                    
+                    <button
+                      className="menu-item"
+                      onClick={() => router.push('/profile/preference')}
+                    >
+                      Preferences
                     </button>
                     <button
                       className="menu-item menu-item-danger"

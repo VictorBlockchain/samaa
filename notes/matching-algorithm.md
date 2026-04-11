@@ -19,7 +19,7 @@ User opens /explore
     → app/api/matches/route.ts authenticates via Supabase session
       → MatchingService.getPotentialMatches(userId, limit, offset)
         → Load current user from `users` table
-        → Load preferences from `user_settings` table
+        → Load preferences from `user_preferences` table
         → Build hard-filtered Supabase query
         → Client-side geofencing via haversine
         → Score each candidate with calculateCompatibility()
@@ -105,33 +105,45 @@ These are applied at the SQL/query level. If a candidate fails any of these, the
 | Same country | 4 |
 | Different country | 2 |
 
-### 6. Lifestyle Alignment — 10 points
+### 6. Languages Compatibility — 6 points
+
+- Base: `min(shared_languages × 2, 6)` where `shared_languages` = number of common languages
+
+### 7. Lifestyle Alignment — 8 points
 
 | Sub-factor | Points |
 |---|---|
 | Smoking match | 2 |
 | Alcohol match | 2 |
-| Psychedelics match | 2 |
 | Self-care frequency match | 2 |
-| Self-care budget match | 1 |
-| Shopping frequency match | 1 |
+| Shopping frequency match | 2 |
 
-### 7. Finance & Travel — 8 points
+### 8. Finance & Travel — 12 points
 
 | Sub-factor | Points |
 |---|---|
 | Finance style match | 3 |
 | Travel frequency match | 3 |
 | Dining frequency match | 2 |
+| Shopping budget compatibility | 2 |
+| Self-care budget compatibility | 2 |
+| Mahr compatibility | 2 |
 
-### 8. Education & Career — 5 points
+**Budget compatibility logic:**
+- Type match (both "less_than" or both "greater_than"): 1 point
+- Amount within 20% of each other: 1 point
+
+**Mahr compatibility logic:**
+- Values within 30% of each other: 2 points
+
+### 9. Education & Career — 5 points
 
 | Sub-factor | Points |
 |---|---|
 | Education in user's `preferred_education[]` | 3 |
 | Profession in user's `occupation_preference[]` | 2 |
 
-### 9. Family Values — 8 points
+### 10. Family Values — 8 points
 
 | Sub-factor | Points |
 |---|---|
@@ -141,7 +153,7 @@ These are applied at the SQL/query level. If a candidate fails any of these, the
 | Marital status in preferred list | 1 |
 | Living arrangements similarity | 1 |
 
-### 10. Profile Quality — 5 points
+### 11. Profile Quality — 5 points
 
 | Condition | Points |
 |---|---|
@@ -151,7 +163,22 @@ These are applied at the SQL/query level. If a candidate fails any of these, the
 | Profile rating > 70% | 1 |
 | Chat rating > 70% | 1 |
 
-### 11. Mutual Fit Bonus — 5 points
+### 12. Mindset & Openness — 8 points ← NEW
+
+| Sub-factor | Points | Logic |
+|---|---|---|
+| Psychedelics frequency alignment | 3 | Perfect match: 3, Close (occasionally/regularly): 2, Both non-never: 1 |
+| Psychedelics type overlap | 2 | `min(shared_types, 2)` |
+| Mushroom bonus | 1 | Both use mushroom (natural/spiritual) |
+| Openness interests proxy | 2 | Shared interests in spirituality, nature, meditation, philosophy, yoga, mindfulness |
+
+**Why psychedelics matters:**
+- Indicates openness to experience (Big 5 personality trait)
+- Suggests mental health awareness (microdosing for wellness)
+- Shows spiritual exploration (especially mushroom/Sufi traditions)
+- Correlates with social outgoing-ness and progressive mindset
+
+### 13. Mutual Fit Bonus — 5 points
 
 | Age gap | Points |
 |---|---|
@@ -175,7 +202,9 @@ Every field collected during profile setup that feeds into the algorithm:
 
 **Family & Marriage:** maritalStatus, hasChildren, wantChildren, willingToRelocate, mahrMaxAmount/mahrRequirement, workPreference, stylePreference, familyInvolvement, livingArrangements
 
-**Finance & Lifestyle:** financeStyle, diningFrequency, travelFrequency, shoppingFrequency, selfCareFrequency, selfCareBudget, hairStyle, makeUpStyle
+**Finance & Lifestyle:** financeStyle, diningFrequency, travelFrequency, shoppingFrequency, shoppingBudgetType, shoppingBudgetAmount, selfCareFrequency, selfCareBudgetType, selfCareBudgetAmount, hairStyle, makeUpStyle
+
+**Languages:** languages[] (multi-select array)
 
 **Personality & Interests:** interests[], customInterests[], personality[]
 
@@ -188,20 +217,22 @@ Every field collected during profile setup that feeds into the algorithm:
 ### Tables queried
 
 - `users` — all user profile data (source of truth for candidate attributes)
-- `user_settings` — current user's match preferences (age range, distance, filters, etc.)
+- `user_preferences` — current user's match preferences (age range, distance, filters, budgets, languages, etc.)
 - `match_interactions` — message/view tracking for `getUsersWhoMessagedMe` / `getUsersIMessaged`
 
 ### Migrations required
 
-1. **`2026-04-11_add_lifestyle_preference_columns.sql`** — adds 17 preference columns to `user_settings`:
-   - `finance_style_preference`, `dining_frequency_preference`, `travel_frequency_preference`
-   - `shopping_frequency_preference`, `self_care_frequency_preference`, `self_care_budget_preference`
-   - `alcohol_preference`, `smoking_preference`, `psychedelics_preference`
-   - `halal_food_preference`, `sect_preference`, `is_revert_preference`
-   - `has_children_preference`, `want_children_preference`, `willing_to_relocate`
-   - `height_min`, `height_max`, `min_profile_rating`, `min_chat_rating`
+1. **`2026-04-15_create_user_preferences_table.sql`** — creates new `user_preferences` table (replaces `user_settings`):
+   - All preference columns migrated from `user_settings`
+   - New budget columns: `shopping_budget_preference_type`, `shopping_budget_preference_amount`, `self_care_budget_preference_type`, `self_care_budget_preference_amount`
+   - Languages column: `languages_preference` (TEXT[])
+   - Shopping frequency: `shopping_frequency_preference`
 
-2. **`2026-04-11_add_location_point_trigger.sql`** — trigger that auto-populates `location_point` (PostGIS geography) from `latitude`/`longitude` on INSERT/UPDATE. Also backfills existing rows.
+2. **`2026-04-15_add_budget_columns_to_user_preferences.sql`** — adds missing budget TEXT columns for backward compatibility
+
+3. **`2026-04-15_add_shopping_frequency_to_user_preferences.sql`** — adds shopping frequency column
+
+4. **`2026-04-11_add_location_point_trigger.sql`** — trigger that auto-populates `location_point` (PostGIS geography) from `latitude`/`longitude` on INSERT/UPDATE. Also backfills existing rows.
 
 ---
 
@@ -213,7 +244,7 @@ The `MatchProfile` type (`lib/matching.ts`) is the flat shape returned to all UI
 
 ## Preference Persistence
 
-Users edit their preferences in `profile-match-preferences.tsx`. The `saveSection()` function maps camelCase UI field names to snake_case `user_settings` columns:
+Users edit their preferences in `profile-match-preferences.tsx`. The `saveSection()` function maps camelCase UI field names to snake_case `user_preferences` columns:
 
 | UI Field | DB Column |
 |---|---|
@@ -243,8 +274,12 @@ Users edit their preferences in `profile-match-preferences.tsx`. The `saveSectio
 | `diningFrequency` | `dining_frequency_preference` |
 | `travelFrequency` | `travel_frequency_preference` |
 | `shoppingFrequency` | `shopping_frequency_preference` |
+| `shoppingBudgetType` | `shopping_budget_preference_type` |
+| `shoppingBudgetAmount` | `shopping_budget_preference_amount` |
 | `selfCareFrequency` | `self_care_frequency_preference` |
-| `selfCareBudget` | `self_care_budget_preference` |
+| `selfCareBudgetType` | `self_care_budget_preference_type` |
+| `selfCareBudgetAmount` | `self_care_budget_preference_amount` |
+| `languages` | `languages_preference` |
 
 Uses `upsert` with `onConflict: "user_id"` so preferences are created on first save and updated thereafter.
 

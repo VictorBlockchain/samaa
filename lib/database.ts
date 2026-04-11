@@ -333,7 +333,7 @@ export class UserSettingsService {
       }
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('user_preferences')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle()
@@ -385,11 +385,13 @@ export class UserSettingsService {
       }
 
       const { data, error } = await supabase
-        .from('user_settings')
+        .from('user_preferences')
         .upsert({
           user_id: userId,
           ...settings,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
         })
         .select()
         .maybeSingle()

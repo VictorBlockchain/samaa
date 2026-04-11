@@ -500,7 +500,7 @@ function cmToFeetInches(cm: string | undefined): string {
   return `${feet}'${inches}"`
 }
 
-export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }: { userId: string, onShowPreferences?: () => void }) {
+export function ProfileViewElegant({ userId: profileUserId }: { userId: string }) {
   const router = useRouter()
   const { userId, isAuthenticated } = useUser()
   const [profile, setProfile] = useState<ProfileData | null>(null)
@@ -681,9 +681,9 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
             {/* Column 3: Toggle Switch */}
             {isOwnProfile && (
               <button 
-                onClick={onShowPreferences}
+                onClick={() => router.push('/profile/preferences')}
                 className="p-2 hover:bg-pink-50 rounded-xl transition-colors justify-self-end"
-                title={viewMode === 'my-profile' ? "Switch to Match Preferences" : "Switch to My Profile"}
+                title="Edit Match Preferences"
               >
                 <Settings className="w-6 h-6 text-pink-600" />
               </button>

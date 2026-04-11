@@ -4,7 +4,7 @@ import type { Database } from './supabase'
 // ── Types ────────────────────────────────────────────────────────────
 
 type UserRow = Database['public']['Tables']['users']['Row']
-type SettingsRow = Database['public']['Tables']['user_settings']['Row']
+type SettingsRow = any // TODO: Update after user_preferences type is generated
 
 /** Flat profile shape returned to the UI after scoring. */
 export interface MatchProfile {
@@ -49,12 +49,17 @@ export interface MatchProfile {
   alcohol: string | null
   smoking: string | null
   psychedelics: string | null
+  psychedelics_types: string[] | null
   self_care_frequency: string | null
-  self_care_budget: string | null
+  self_care_budget_type: string | null
+  self_care_budget_amount: number | null
   shopping_frequency: string | null
+  shopping_budget_type: string | null
+  shopping_budget_amount: number | null
   finance_style: string | null
   dining_frequency: string | null
   travel_frequency: string | null
+  languages: string[] | null
 
   // Education & career
   education: string | null
@@ -167,26 +172,68 @@ export function calculateCompatibility(
     score += 2
   }
 
-  // ── 6. Lifestyle Alignment (10 pts) ─────────────────────────────
+  // ── 6. Languages Compatibility (6 pts) ─────────────────────────
+  const userLangs = (currentUser as any).languages_preference ?? []
+  const candLangs = (candidate as any).languages_preference ?? []
+  const sharedLangs = Array.isArray(userLangs) && Array.isArray(candLangs) 
+    ? userLangs.filter((l: string) => candLangs.includes(l)).length 
+    : 0
+  score += Math.min(sharedLangs * 2, 6)
+
+  // ── 7. Lifestyle Alignment (8 pts) ─────────────────────────────
   score += exactMatch(currentUser.smoking, candidate.smoking, 2)
   score += exactMatch(currentUser.alcohol, candidate.alcohol, 2)
-  score += exactMatch((currentUser as any).psychedelics, (candidate as any).psychedelics, 2)
   score += exactMatch((currentUser as any).self_care_frequency, (candidate as any).self_care_frequency, 2)
-  score += exactMatch((currentUser as any).self_care_budget, (candidate as any).self_care_budget, 1)
-  score += exactMatch((currentUser as any).shopping_frequency, (candidate as any).shopping_frequency, 1)
+  score += exactMatch((currentUser as any).shopping_frequency, (candidate as any).shopping_frequency, 2)
+  // Note: Psychedelics moved to section 12 (Mindset & Openness)
+  // Note: Budgets moved to section 8 (Finance & Travel)
 
-  // ── 7. Finance & Travel (8 pts) ─────────────────────────────────
+  // ── 8. Finance & Travel (12 pts) ────────────────────────────────
   score += exactMatch((currentUser as any).finance_style, (candidate as any).finance_style, 3)
   score += exactMatch((currentUser as any).travel_frequency, (candidate as any).travel_frequency, 3)
   score += exactMatch((currentUser as any).dining_frequency, (candidate as any).dining_frequency, 2)
+  
+  // Shopping budget type+amount match (2 pts)
+  const userShopType = (currentUser as any).shopping_budget_preference_type
+  const candShopType = (candidate as any).shopping_budget_preference_type
+  const userShopAmt = (currentUser as any).shopping_budget_preference_amount
+  const candShopAmt = (candidate as any).shopping_budget_preference_amount
+  if (userShopType && candShopType && userShopType === candShopType) {
+    score += 1 // Type match
+    if (userShopAmt && candShopAmt) {
+      const ratio = Math.min(userShopAmt, candShopAmt) / Math.max(userShopAmt, candShopAmt)
+      if (ratio >= 0.8) score += 1 // Amounts within 20%
+    }
+  }
+  
+  // Self-care budget type+amount match (2 pts)
+  const userSelfType = (currentUser as any).self_care_budget_preference_type
+  const candSelfType = (candidate as any).self_care_budget_preference_type
+  const userSelfAmt = (currentUser as any).self_care_budget_preference_amount
+  const candSelfAmt = (candidate as any).self_care_budget_preference_amount
+  if (userSelfType && candSelfType && userSelfType === candSelfType) {
+    score += 1 // Type match
+    if (userSelfAmt && candSelfAmt) {
+      const ratio = Math.min(userSelfAmt, candSelfAmt) / Math.max(userSelfAmt, candSelfAmt)
+      if (ratio >= 0.8) score += 1 // Amounts within 20%
+    }
+  }
+  
+  // Mahr compatibility (2 pts) - simplified
+  const userMahr = (currentUser as any).mahr_max_amount || (currentUser as any).mahr_requirement
+  const candMahr = (candidate as any).mahr_max_amount || (candidate as any).mahr_requirement
+  if (userMahr && candMahr) {
+    const mahrRatio = Math.min(userMahr, candMahr) / Math.max(userMahr, candMahr)
+    if (mahrRatio >= 0.7) score += 2 // Within 30% = compatible
+  }
 
-  // ── 8. Education & Career (5 pts) ───────────────────────────────
+  // ── 9. Education & Career (5 pts) ───────────────────────────────
   if (settings) {
     score += inArray(candidate.education, settings.preferred_education, 3)
     score += inArray(candidate.profession, (settings as any).occupation_preference, 2)
   }
 
-  // ── 9. Family Values (8 pts) ────────────────────────────────────
+  // ── 10. Family Values (8 pts) ────────────────────────────────────
   if (settings) {
     score += boolPrefMatch(candidate.has_children, (settings as any).has_children_preference, 2)
     score += boolPrefMatch(candidate.wants_children, (settings as any).want_children_preference, 2)
@@ -196,7 +243,7 @@ export function calculateCompatibility(
   // Living arrangements similarity
   score += exactMatch((currentUser as any).living_arrangements, (candidate as any).living_arrangements, 1)
 
-  // ── 10. Profile Quality (5 pts) ─────────────────────────────────
+  // ── 11. Profile Quality (5 pts) ────────────────────────────────
   if (candidate.profile_photo || ((candidate as any).profile_photos && (candidate as any).profile_photos.length > 0)) score += 1
   const photoCount = Array.isArray((candidate as any).profile_photos) ? (candidate as any).profile_photos.length : 0
   if (photoCount >= 3) score += 1
@@ -204,7 +251,44 @@ export function calculateCompatibility(
   if ((candidate.profile_rating ?? 0) > 70) score += 1
   if (((candidate as any).chat_rating ?? 0) > 70) score += 1
 
-  // ── 11. Mutual Fit Bonus (5 pts) ────────────────────────────────
+  // ── 12. Mindset & Openness (8 pts) ─────────────────────────────
+  // Psychedelics frequency alignment (3 pts)
+  const userPsychedelics = (currentUser as any).psychedelics
+  const candPsychedelics = (candidate as any).psychedelics
+  if (userPsychedelics === candPsychedelics && userPsychedelics) {
+    score += 3 // Perfect match
+  } else if (
+    (userPsychedelics === "occasionally" && candPsychedelics === "regularly") ||
+    (userPsychedelics === "regularly" && candPsychedelics === "occasionally")
+  ) {
+    score += 2 // Close match - both open to use
+  } else if (userPsychedelics !== "never" && candPsychedelics !== "never" && userPsychedelics && candPsychedelics) {
+    score += 1 // Both non-never = some openness
+  }
+  
+  // Psychedelics type overlap (2 pts)
+  const userPsyTypes = (currentUser as any).psychedelics_types ?? []
+  const candPsyTypes = (candidate as any).psychedelics_types ?? []
+  if (Array.isArray(userPsyTypes) && Array.isArray(candPsyTypes)) {
+    const sharedTypes = userPsyTypes.filter((t: string) => candPsyTypes.includes(t)).length
+    score += Math.min(sharedTypes, 2)
+  }
+  
+  // Mushroom bonus (1 pt) - natural, traditional, spiritual use
+  if (Array.isArray(userPsyTypes) && Array.isArray(candPsyTypes) && 
+      userPsyTypes.includes("mushroom") && candPsyTypes.includes("mushroom")) {
+    score += 1
+  }
+  
+  // Openness interests proxy (2 pts)
+  const opennessInterests = ["Spirituality", "Nature", "Meditation", "Philosophy", "Yoga", "Mindfulness"]
+  const userOpenness = userInterests.filter((i: string) => opennessInterests.some(oi => i.toLowerCase().includes(oi.toLowerCase()))).length
+  const candOpenness = candInterests.filter((i: string) => opennessInterests.some(oi => i.toLowerCase().includes(oi.toLowerCase()))).length
+  if (userOpenness > 0 && candOpenness > 0) {
+    score += Math.min(userOpenness + candOpenness, 2)
+  }
+
+  // ── 13. Mutual Fit Bonus (5 pts) ───────────────────────────────
   // Check if the candidate's own age preferences include the current user
   // We need to load candidate's settings for this -- done via a join or subquery
   // For now, we use a simplified check based on age gap reasonableness
@@ -257,7 +341,7 @@ export class MatchingService {
 
     // 2. Load current user's match preferences
     const { data: settings } = await supabase
-      .from('user_settings')
+      .from('user_preferences')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle()
@@ -390,12 +474,17 @@ export class MatchingService {
         alcohol: c.alcohol ?? null,
         smoking: c.smoking ?? null,
         psychedelics: (c as any).psychedelics ?? null,
+        psychedelics_types: Array.isArray((c as any).psychedelics_types) ? (c as any).psychedelics_types : null,
         self_care_frequency: (c as any).self_care_frequency ?? null,
-        self_care_budget: (c as any).self_care_budget ?? null,
+        self_care_budget_type: (c as any).self_care_budget_preference_type ?? null,
+        self_care_budget_amount: (c as any).self_care_budget_preference_amount ?? null,
         shopping_frequency: (c as any).shopping_frequency ?? null,
+        shopping_budget_type: (c as any).shopping_budget_preference_type ?? null,
+        shopping_budget_amount: (c as any).shopping_budget_preference_amount ?? null,
         finance_style: (c as any).finance_style ?? null,
         dining_frequency: (c as any).dining_frequency ?? null,
         travel_frequency: (c as any).travel_frequency ?? null,
+        languages: Array.isArray((c as any).languages_preference) ? (c as any).languages_preference : null,
 
         education: c.education ?? null,
         profession: c.profession ?? null,
@@ -579,12 +668,17 @@ function mapUserToMatchProfile(c: any, distMiles: number | null): MatchProfile {
     alcohol: c.alcohol ?? null,
     smoking: c.smoking ?? null,
     psychedelics: c.psychedelics ?? null,
+    psychedelics_types: Array.isArray(c.psychedelics_types) ? c.psychedelics_types : null,
     self_care_frequency: c.self_care_frequency ?? null,
-    self_care_budget: c.self_care_budget ?? null,
+    self_care_budget_type: c.self_care_budget_preference_type ?? null,
+    self_care_budget_amount: c.self_care_budget_preference_amount ?? null,
     shopping_frequency: c.shopping_frequency ?? null,
+    shopping_budget_type: c.shopping_budget_preference_type ?? null,
+    shopping_budget_amount: c.shopping_budget_preference_amount ?? null,
     finance_style: c.finance_style ?? null,
     dining_frequency: c.dining_frequency ?? null,
     travel_frequency: c.travel_frequency ?? null,
+    languages: Array.isArray(c.languages_preference) ? c.languages_preference : null,
 
     education: c.education ?? null,
     profession: c.profession ?? null,

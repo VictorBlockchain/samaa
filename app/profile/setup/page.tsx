@@ -384,8 +384,12 @@ interface ProfileData {
   makeUpStyle?: string // Female only
   polygamyReason?: string // Male only
   selfCareFrequency?: string
-  selfCareBudget?: string
+  selfCareBudgetType?: string
+  selfCareBudgetAmount?: string
   shoppingFrequency?: string
+  shoppingBudgetType?: string
+  shoppingBudgetAmount?: string
+  languages?: string[]
   bio: string
   interests: string[]
   customInterests?: string[]
@@ -465,8 +469,12 @@ export default function ProfileSetupPage() {
     makeUpStyle: "",
     polygamyReason: "",
     selfCareFrequency: "",
-    selfCareBudget: "",
+    selfCareBudgetType: "",
+    selfCareBudgetAmount: "",
     shoppingFrequency: "",
+    shoppingBudgetType: "",
+    shoppingBudgetAmount: "",
+    languages: [],
     bio: "",
     interests: [],
     customInterests: [],
@@ -519,6 +527,10 @@ export default function ProfileSetupPage() {
   const [modalTitle, setModalTitle] = useState("")
   const [modalMessage, setModalMessage] = useState("")
   const [modalVariant, setModalVariant] = useState<"success" | "error">("error")
+  const [languageSearch, setLanguageSearch] = useState("")
+  const [languageSuggestions, setLanguageSuggestions] = useState<string[]>([])
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false)
+  const languageSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const openModal = (title: string, message: string, variant: "success" | "error" = "error") => {
     setModalTitle(title)
@@ -925,6 +937,11 @@ export default function ProfileSetupPage() {
       travelFrequency: (profile as any).travel_frequency || "",
       hairStyle: (profile as any).hair_style || "",
       polygamyReason: (profile as any).polygamy_reason || "",
+      selfCareBudgetType: (profile as any).self_care_budget_preference_type || "",
+      selfCareBudgetAmount: (profile as any).self_care_budget_preference_amount ? String((profile as any).self_care_budget_preference_amount) : "",
+      shoppingBudgetType: (profile as any).shopping_budget_preference_type || "",
+      shoppingBudgetAmount: (profile as any).shopping_budget_preference_amount ? String((profile as any).shopping_budget_preference_amount) : "",
+      languages: Array.isArray((profile as any).languages_preference) ? (profile as any).languages_preference : [],
       personality: Array.isArray((profile as any).personality) ? (profile as any).personality : [],
       profilePhoto: profile.profile_photo || null,
       additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
@@ -1061,6 +1078,47 @@ export default function ProfileSetupPage() {
     setProfileData((prev) => ({ ...prev, [field]: value }))
   }
 
+  // Language search with debouncing
+  const handleLanguageSearch = (value: string) => {
+    setLanguageSearch(value)
+    
+    if (languageSearchTimeoutRef.current) {
+      clearTimeout(languageSearchTimeoutRef.current)
+    }
+
+    if (value.trim().length > 0) {
+      languageSearchTimeoutRef.current = setTimeout(() => {
+        const languagesList = ["Arabic", "English", "Urdu", "French", "Turkish", "Indonesian", "Malay", "Bengali", "Spanish", "German", "Italian", "Portuguese", "Russian", "Chinese", "Japanese", "Korean", "Hindi", "Persian", "Swahili", "Hausa", "Yoruba", "Amharic", "Somali", "Afghan", "Bosnian", "Albanian", "Kurdish", "Pashto", "Tamil", "Punjabi", "Other"]
+        const filtered = languagesList
+          .filter(lang => 
+            lang.toLowerCase().includes(value.toLowerCase()) && 
+            !(profileData.languages || []).includes(lang)
+          )
+          .slice(0, 8)
+        setLanguageSuggestions(filtered)
+        setShowLanguageDropdown(true)
+      }, 200)
+    } else {
+      setLanguageSuggestions([])
+      setShowLanguageDropdown(false)
+    }
+  }
+
+  // Add language
+  const addLanguage = (language: string) => {
+    if (!(profileData.languages || []).includes(language)) {
+      updateProfileData('languages', [...(profileData.languages || []), language])
+      setLanguageSearch("")
+      setLanguageSuggestions([])
+      setShowLanguageDropdown(false)
+    }
+  }
+
+  // Remove language
+  const removeLanguage = (language: string) => {
+    updateProfileData('languages', (profileData.languages || []).filter(l => l !== language))
+  }
+
   const handleBasicInfoChange = (field: keyof ProfileData, value: string | string[]) => {
     updateProfileData(field, value)
   }
@@ -1194,6 +1252,7 @@ export default function ProfileSetupPage() {
       profession: profileData.profession || null,
       marital_status: profileData.maritalStatus || null,
       willing_to_relocate: profileData.willingToRelocate === "yes" ? true : profileData.willingToRelocate === "no" ? false : null,
+      languages_preference: profileData.languages || null,
       mahr_max_amount: profileData.mahrMaxAmount ? Number(profileData.mahrMaxAmount) : null,
       mahr_requirement: profileData.mahrRequirement ? Number(profileData.mahrRequirement) : null,
       work_preference: profileData.workPreference || null,
@@ -1202,6 +1261,12 @@ export default function ProfileSetupPage() {
       finance_style: profileData.financeStyle || null,
       dining_frequency: profileData.diningFrequency || null,
       travel_frequency: profileData.travelFrequency || null,
+      shopping_frequency_preference: profileData.shoppingFrequency || null,
+      shopping_budget_preference_type: profileData.shoppingBudgetType || null,
+      shopping_budget_preference_amount: profileData.shoppingBudgetAmount ? Number(profileData.shoppingBudgetAmount) : null,
+      self_care_frequency_preference: profileData.selfCareFrequency || null,
+      self_care_budget_preference_type: profileData.selfCareBudgetType || null,
+      self_care_budget_preference_amount: profileData.selfCareBudgetAmount ? Number(profileData.selfCareBudgetAmount) : null,
       hair_style: profileData.hairStyle || null,
       polygamy_reason: profileData.polygamyReason || null,
       bio: profileData.bio || null,
@@ -1530,8 +1595,11 @@ export default function ProfileSetupPage() {
           ...(editedFields.has("psychedelics") && { psychedelics: profileData.psychedelics }),
           ...(editedFields.has("halalFood") && { halalFood: profileData.halalFood }),
           ...(editedFields.has("selfCareFrequency") && { selfCareFrequency: profileData.selfCareFrequency }),
-          ...(editedFields.has("selfCareBudget") && { selfCareBudget: profileData.selfCareBudget }),
+          ...(editedFields.has("selfCareBudgetType") && { selfCareBudgetType: profileData.selfCareBudgetType }),
+          ...(editedFields.has("selfCareBudgetAmount") && { selfCareBudgetAmount: profileData.selfCareBudgetAmount }),
           ...(editedFields.has("shoppingFrequency") && { shoppingFrequency: profileData.shoppingFrequency }),
+          ...(editedFields.has("shoppingBudgetType") && { shoppingBudgetType: profileData.shoppingBudgetType }),
+          ...(editedFields.has("shoppingBudgetAmount") && { shoppingBudgetAmount: profileData.shoppingBudgetAmount }),
           ...(editedFields.has("hairStyle") && { hairStyle: profileData.hairStyle }),
           ...(editedFields.has("makeUpStyle") && { makeUpStyle: profileData.makeUpStyle }),
           ...(editedFields.has("bio") && { bio: profileData.bio }),
@@ -2103,6 +2171,69 @@ export default function ProfileSetupPage() {
                       </RadioGroup>
                     </div>
 
+                    {/* Languages - Multi-select */}
+                    <div>
+                      <Label className="font-queensides text-black">Languages</Label>
+                      
+                      {/* Selected Languages Pills */}
+                      {(profileData.languages || []).length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2 mb-3">
+                          {(profileData.languages || []).map((lang) => (
+                            <div
+                              key={lang}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 rounded-xl text-sm font-queensides border border-blue-200/60"
+                            >
+                              <Globe className="w-3.5 h-3.5" />
+                              {lang}
+                              <button
+                                onClick={() => removeLanguage(lang)}
+                                className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Language Search Input */}
+                      <div className="relative">
+                        <Input
+                          value={languageSearch}
+                          onChange={(e) => handleLanguageSearch(e.target.value)}
+                          onFocus={() => {
+                            if (languageSearch.trim().length > 0 && languageSuggestions.length > 0) {
+                              setShowLanguageDropdown(true)
+                            }
+                          }}
+                          placeholder="Search and add languages (e.g., Arabic, English, French)"
+                          className="mt-1"
+                        />
+                        
+                        {/* Language Suggestions Dropdown */}
+                        {showLanguageDropdown && languageSuggestions.length > 0 && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                            {languageSuggestions.map((lang) => (
+                              <button
+                                key={lang}
+                                onClick={() => addLanguage(lang)}
+                                className="w-full px-4 py-2 text-left hover:bg-blue-50 transition-colors font-queensides text-sm flex items-center justify-between"
+                              >
+                                <span>{lang}</span>
+                                <span className="text-xs text-blue-500">Click to add</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {(profileData.languages || []).length === 0 && (
+                        <p className="text-xs text-slate-500 mt-2 font-queensides">
+                          Add languages you speak or prefer
+                        </p>
+                      )}
+                    </div>
+
                     {/* Mahr Max Amount (for males) */}
                     {profileData.gender === "male" && (
                       <div>
@@ -2292,10 +2423,10 @@ export default function ProfileSetupPage() {
                       </label>
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          { value: 'once_week', label: 'Once a Week', emoji: '🍽️' },
-                          { value: 'three_week', label: 'Three times a week', emoji: '🥂' },
-                          { value: 'frequently', label: 'Frequently', emoji: '✨' },
                           { value: 'rarely', label: 'Rarely', emoji: '🏠' },
+                          { value: 'monthly', label: 'Monthly', emoji: '🍽️' },
+                          { value: 'weekly', label: 'Weekly', emoji: '🥂' },
+                          { value: 'multiple_times_week', label: 'Multiple times a week', emoji: '✨' },
                         ].map((option) => (
                           <motion.button
                             key={option.value}
@@ -2377,6 +2508,46 @@ export default function ProfileSetupPage() {
                         ))}
                       </div>
                     </div>
+
+                    {/* Shopping Budget - Type + Amount */}
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
+                        Shopping Budget
+                      </label>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { value: 'less_than', label: 'Less than' },
+                            { value: 'greater_than', label: 'Greater than' },
+                          ].map((option) => (
+                            <motion.button
+                              key={option.value}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => updateProfileData('shoppingBudgetType', option.value)}
+                              className={`p-3 rounded-xl border-2 transition-all duration-300 font-queensides text-sm font-medium ${
+                                profileData.shoppingBudgetType === option.value
+                                  ? 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-400 shadow-md'
+                                  : 'bg-white border-slate-200 hover:border-emerald-300'
+                              }`}
+                            >
+                              {option.label}
+                            </motion.button>
+                          ))}
+                        </div>
+                        {profileData.shoppingBudgetType && profileData.shoppingBudgetType !== 'no_preference' && (
+                          <Input
+                            type="number"
+                            value={profileData.shoppingBudgetAmount || ""}
+                            onChange={(e) => updateProfileData('shoppingBudgetAmount', e.target.value)}
+                            placeholder="Amount"
+                            min="0"
+                            step="50"
+                            className="mt-2"
+                          />
+                        )}
+                      </div>
+                    </div>
                     {/*Self Care Frequency */}
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
@@ -2409,33 +2580,43 @@ export default function ProfileSetupPage() {
                         ))}
                       </div>
                     </div>
-                    {/*self care budget */}
+                    {/* Self Care Budget - Type + Amount */}
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
                         Self Care Budget
                       </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { value: '$100 or less', label: 'Low', emoji: '💰' },
-                          { value: '$101 to $500', label: 'Medium', emoji: '💰' },
-                          { value: '$501 to $1000', label: 'High', emoji: '💰' },
-                          { value: 'over $1000', label: 'Very High', emoji: '💰' },
-                        ].map((option) => (
-                          <motion.button
-                            key={option.value}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => updateProfileData('selfCareBudget', option.value)}
-                            className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 ${
-                              profileData.selfCareBudget === option.value
-                                ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-pink-400 shadow-md'
-                                : 'bg-white border-slate-200 hover:border-pink-300'
-                            }`}
-                          >
-                            <span className="text-2xl">{option.emoji}</span>
-                            <span className="font-queensides text-sm font-medium text-slate-700">{option.label}</span>
-                          </motion.button>
-                        ))}
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { value: 'less_than', label: 'Less than' },
+                            { value: 'greater_than', label: 'Greater than' },
+                          ].map((option) => (
+                            <motion.button
+                              key={option.value}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => updateProfileData('selfCareBudgetType', option.value)}
+                              className={`p-3 rounded-xl border-2 transition-all duration-300 font-queensides text-sm font-medium ${
+                                profileData.selfCareBudgetType === option.value
+                                  ? 'bg-gradient-to-r from-pink-50 to-rose-50 border-pink-400 shadow-md'
+                                  : 'bg-white border-slate-200 hover:border-pink-300'
+                              }`}
+                            >
+                              {option.label}
+                            </motion.button>
+                          ))}
+                        </div>
+                        {profileData.selfCareBudgetType && profileData.selfCareBudgetType !== 'no_preference' && (
+                          <Input
+                            type="number"
+                            value={profileData.selfCareBudgetAmount || ""}
+                            onChange={(e) => updateProfileData('selfCareBudgetAmount', e.target.value)}
+                            placeholder="Amount"
+                            min="0"
+                            step="25"
+                            className="mt-2"
+                          />
+                        )}
                       </div>
                     </div>
 
