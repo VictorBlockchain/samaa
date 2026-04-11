@@ -40,9 +40,9 @@ export function MobileNavigation() {
 
   // Update cart count
   useEffect(() => {
-    const updateCartCount = () => {
+    const updateCartCount = async () => {
       if (userId) {
-        const count = CartService.getCartItemCount(userId)
+        const count = await CartService.getCartItemCount(userId)
         setCartItemCount(count)
       } else {
         setCartItemCount(0)
@@ -247,8 +247,48 @@ export function MobileNavigation() {
                   <p className="text-sm text-slate-600 font-queensides">Explore Samaa features</p>
                 </div>
 
-                {/* Information Section */}
+                {/* Social Section */}
                 <div className="px-6 py-3">
+                  <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Social</h3>
+                </div>
+                <div className="pb-2">
+                  {[
+                    { title: "Social Feed", icon: "📱", category: "social", href: "/social" },
+                    { title: "Community", icon: "👥", category: "social", href: "/community" },
+                  ].map((item, index) => (
+                    <motion.button
+                      key={item.title}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1, duration: 0.4 }}
+                      className="flex items-center space-x-4 py-3 px-6 hover:bg-pink-50/50 transition-all duration-200 group w-full text-left"
+                      onClick={() => {
+                        router.push(item.href)
+                        setIsOpen(false)
+                      }}
+                    >
+                      <div className="w-10 h-10 bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+                        <span className="text-lg">{item.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-medium text-slate-700 font-queensides group-hover:text-pink-600 transition-colors duration-200">
+                          {item.title}
+                        </span>
+                      </div>
+                      <svg
+                        className="w-4 h-4 text-slate-400 group-hover:text-pink-500 transition-colors duration-200"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Information Section */}
+                <div className="px-6 py-3 border-t border-indigo-100/30">
                   <h3 className="text-sm font-semibold text-slate-600 font-queensides uppercase tracking-wide">Information</h3>
                 </div>
                 <div className="pb-2">

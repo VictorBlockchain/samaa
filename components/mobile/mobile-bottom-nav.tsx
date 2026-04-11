@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { Heart, Search, ShoppingBag, User, Inbox, Home } from "lucide-react"
+import { Heart, Search, ShoppingBag, User, Inbox, Home, Users } from "lucide-react"
 import { motion } from "framer-motion"
 import { useRouter, usePathname } from "next/navigation"
 import { useUser } from "@/app/context/UserContext"
@@ -17,7 +17,7 @@ export function MobileBottomNav({ currentTab, setCurrentTab }: MobileBottomNavPr
   const [showMatchModal, setShowMatchModal] = useState(false)
 
   const tabs = [
-    { id: "suitors", icon: Search, label: "Suitors" },
+    { id: "social", icon: Users, label: "social" },
     { id: "shop", icon: ShoppingBag, label: "Shop" },
     { id: "home", icon: Heart, label: "Home" },
     { id: "Inbox", icon: Inbox, label: "Inbox" },
@@ -58,10 +58,12 @@ export function MobileBottomNav({ currentTab, setCurrentTab }: MobileBottomNavPr
       } else {
         router.push("/auth/login")
       }
-    } else if (tabId === "suitors") {
-      router.push("/explore")
+    } else if (tabId === "social") {
+      router.push("/social")
     } else if (tabId === "shop") {
       router.push("/shop")
+    } else if (tabId === "Inbox") {
+      router.push("/inbox")
     } else {
       setCurrentTab(tabId)
     }

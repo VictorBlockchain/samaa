@@ -436,16 +436,136 @@ export class ProductCategoryService {
   }
 }
 
+// Shop Types
+export interface Shop {
+  id: string
+  owner_id: string
+  name: string
+  description?: string
+  logo_url?: string
+  banner_url?: string
+  status: 'pending' | 'active' | 'suspended' | 'closed'
+  verified: boolean
+  
+  // Address
+  address_street?: string
+  address_city?: string
+  address_state?: string
+  address_country?: string
+  address_postal_code?: string
+  
+  // Contact
+  contact_email?: string
+  contact_phone?: string
+  website_url?: string
+  instagram_handle?: string
+  facebook_url?: string
+  
+  // Business/Payment
+  paypal_email?: string
+  bitcoin_address?: string
+  ethereum_address?: string
+  bank_account_info?: {
+    account_name?: string
+    bank_name?: string
+    account_number?: string
+    routing_number?: string
+    swift_code?: string
+  }
+  
+  // Category & Type
+  shop_type: string
+  shop_category_id?: string
+  
+  // Policies
+  return_policy?: string
+  return_policy_days: number
+  shipping_policy?: string
+  shipping_costs?: {
+    domestic?: { standard?: number; express?: number }
+    international?: { standard?: number; express?: number }
+  }
+  processing_time: string
+  free_shipping_threshold?: number
+  
+  // Stats
+  rating: number
+  total_reviews: number
+  total_sales: number
+  total_products: number
+  response_time_hours?: number
+  response_rate: number
+  on_time_delivery_rate: number
+  
+  // Settings
+  vacation_mode: boolean
+  vacation_message?: string
+  auto_accept_orders: boolean
+  minimum_order_amount: number
+  
+  created_at: string
+  updated_at: string
+}
+
+export interface ShopReview {
+  id: string
+  shop_id: string
+  user_id: string
+  order_id?: string
+  rating: number
+  title?: string
+  review_text?: string
+  is_verified_purchase: boolean
+  helpful_count: number
+  reply_text?: string
+  replied_at?: string
+  created_at: string
+  user?: {
+    first_name?: string
+    last_name?: string
+    profile_photo?: string
+  }
+}
+
+export interface CreateShopData {
+  name: string
+  description?: string
+  shop_type: string
+  
+  // Address
+  address_street?: string
+  address_city?: string
+  address_state?: string
+  address_country?: string
+  address_postal_code?: string
+  
+  // Contact
+  contact_email: string
+  contact_phone?: string
+  
+  // Payment
+  paypal_email?: string
+  bitcoin_address?: string
+  
+  // Policies
+  return_policy?: string
+  return_policy_days?: number
+  shipping_policy?: string
+  shipping_costs?: Shop['shipping_costs']
+  processing_time?: string
+  free_shipping_threshold?: number
+}
+
 // Shop Operations
 export class ShopService {
 
-  // Get shop by owner wallet address
-  static async getShopByOwner(ownerWallet: string) {
+  // Get shop by owner user ID (Supabase Auth)
+  static async getShopByOwner(userId: string): Promise<Shop | null> {
     try {
       const { data, error } = await supabase
         .from('shops')
         .select('*')
-        .eq('owner_wallet', ownerWallet)
+        .eq('owner_id', userId)
         .single()
 
       if (error) {
@@ -455,15 +575,33 @@ export class ShopService {
         throw error
       }
 
-      return data
+      return data as Shop
     } catch (error) {
-      console.error('Error fetching shop:', error)
+      console.error('Error fetching shop by owner:', error)
+      return null
+    }
+  }
+
+  // Legacy: Get shop by owner wallet address
+  static async getShopByOwnerWallet(ownerWallet: string): Promise<Shop | null> {
+    try {
+      // First get user by principal/wallet
+      const { data: userData, error: userError } = await supabase
+        .rpc('get_user_by_principal', { p_principal: ownerWallet })
+      
+      if (userError || !userData) {
+        return null
+      }
+      
+      return this.getShopByOwner((userData as any).id)
+    } catch (error) {
+      console.error('Error fetching shop by wallet:', error)
       return null
     }
   }
 
   // Get shop by ID
-  static async getShopById(shopId: string) {
+  static async getShopById(shopId: string): Promise<Shop | null> {
     try {
       const { data, error } = await supabase
         .from('shops')
@@ -478,19 +616,64 @@ export class ShopService {
         throw error
       }
 
-      return data
+      return data as Shop
     } catch (error) {
-      console.error('Error fetching shop:', error)
+      console.error('Error fetching shop by ID:', error)
       return null
     }
   }
 
+  // Get shop with reviews
+  static async getShopWithReviews(shopId: string): Promise<{ shop: Shop | null; reviews: ShopReview[] }> {
+    try {
+      const [shopResult, reviewsResult] = await Promise.all([
+        supabase
+          .from('shops')
+          .select('*')
+          .eq('id', shopId)
+          .single(),
+        supabase
+          .from('shop_reviews')
+          .select(`
+            *,
+            user:users(first_name, last_name, profile_photo)
+          `)
+          .eq('shop_id', shopId)
+          .order('created_at', { ascending: false })
+      ])
+
+      return {
+        shop: shopResult.data as Shop || null,
+        reviews: (reviewsResult.data || []) as ShopReview[]
+      }
+    } catch (error) {
+      console.error('Error fetching shop with reviews:', error)
+      return { shop: null, reviews: [] }
+    }
+  }
+
   // Create new shop
-  static async createShop(shopData: any) {
+  static async createShop(userId: string, shopData: CreateShopData): Promise<Shop | null> {
     try {
       const { data, error } = await supabase
         .from('shops')
-        .insert(shopData)
+        .insert({
+          owner_id: userId,
+          status: 'pending',
+          verified: false,
+          rating: 0,
+          total_reviews: 0,
+          total_sales: 0,
+          total_products: 0,
+          response_rate: 100,
+          on_time_delivery_rate: 100,
+          vacation_mode: false,
+          auto_accept_orders: true,
+          minimum_order_amount: 0,
+          return_policy_days: 14,
+          processing_time: '1-3 business days',
+          ...shopData
+        })
         .select()
         .single()
 
@@ -498,7 +681,7 @@ export class ShopService {
         throw error
       }
 
-      return data
+      return data as Shop
     } catch (error) {
       console.error('Error creating shop:', error)
       return null
@@ -506,7 +689,7 @@ export class ShopService {
   }
 
   // Update shop
-  static async updateShop(shopId: string, updates: any) {
+  static async updateShop(shopId: string, updates: Partial<Shop>): Promise<Shop | null> {
     try {
       const { data, error } = await supabase
         .from('shops')
@@ -522,10 +705,211 @@ export class ShopService {
         throw error
       }
 
-      return data
+      return data as Shop
     } catch (error) {
       console.error('Error updating shop:', error)
       return null
+    }
+  }
+
+  // Upload shop logo
+  static async uploadShopLogo(file: File, userId: string): Promise<string | null> {
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userId}/logo-${Date.now()}.${fileExt}`
+      const filePath = `shop-logos/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('shop-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Error uploading logo:', uploadError)
+        return null
+      }
+
+      const { data } = supabase.storage
+        .from('shop-images')
+        .getPublicUrl(filePath)
+
+      return data.publicUrl
+    } catch (error) {
+      console.error('Error uploading shop logo:', error)
+      return null
+    }
+  }
+
+  // Upload shop banner
+  static async uploadShopBanner(file: File, userId: string): Promise<string | null> {
+    try {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userId}/banner-${Date.now()}.${fileExt}`
+      const filePath = `shop-banners/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('shop-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Error uploading banner:', uploadError)
+        return null
+      }
+
+      const { data } = supabase.storage
+        .from('shop-images')
+        .getPublicUrl(filePath)
+
+      return data.publicUrl
+    } catch (error) {
+      console.error('Error uploading shop banner:', error)
+      return null
+    }
+  }
+
+  // Get all active shops
+  static async getActiveShops(limit: number = 50, offset: number = 0): Promise<Shop[]> {
+    try {
+      const { data, error } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('status', 'active')
+        .order('rating', { ascending: false })
+        .range(offset, offset + limit - 1)
+
+      if (error) {
+        throw error
+      }
+
+      return (data || []) as Shop[]
+    } catch (error) {
+      console.error('Error fetching active shops:', error)
+      return []
+    }
+  }
+
+  // Search shops
+  static async searchShops(query: string, limit: number = 20): Promise<Shop[]> {
+    try {
+      const { data, error } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('status', 'active')
+        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+        .limit(limit)
+
+      if (error) {
+        throw error
+      }
+
+      return (data || []) as Shop[]
+    } catch (error) {
+      console.error('Error searching shops:', error)
+      return []
+    }
+  }
+
+  // Create shop review
+  static async createReview(reviewData: {
+    shop_id: string
+    user_id: string
+    rating: number
+    title?: string
+    review_text?: string
+    order_id?: string
+  }): Promise<ShopReview | null> {
+    try {
+      const { data, error } = await supabase
+        .from('shop_reviews')
+        .insert({
+          ...reviewData,
+          is_verified_purchase: !!reviewData.order_id,
+          helpful_count: 0
+        })
+        .select()
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      return data as ShopReview
+    } catch (error) {
+      console.error('Error creating shop review:', error)
+      return null
+    }
+  }
+
+  // Reply to review (shop owner only)
+  static async replyToReview(reviewId: string, replyText: string, ownerId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('shop_reviews')
+        .update({
+          reply_text: replyText,
+          replied_at: new Date().toISOString(),
+          replied_by: ownerId
+        })
+        .eq('id', reviewId)
+
+      if (error) {
+        throw error
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error replying to review:', error)
+      return false
+    }
+  }
+
+  // Toggle vacation mode
+  static async toggleVacationMode(shopId: string, enabled: boolean, message?: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('shops')
+        .update({
+          vacation_mode: enabled,
+          vacation_message: enabled ? message : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', shopId)
+
+      if (error) {
+        throw error
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error toggling vacation mode:', error)
+      return false
+    }
+  }
+
+  // Delete shop (soft delete by setting status to closed)
+  static async deleteShop(shopId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('shops')
+        .update({
+          status: 'closed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', shopId)
+
+      if (error) {
+        throw error
+      }
+
+      return true
+    } catch (error) {
+      console.error('Error deleting shop:', error)
+      return false
     }
   }
 }

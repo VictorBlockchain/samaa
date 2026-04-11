@@ -30,31 +30,31 @@ export async function POST(request: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object
         const metadata = session.metadata || {}
-        const { userId, type, likes, compliments, planId, orderId, communitySplit } = metadata
+        const { userId, type, views, leads, planId, orderId, communitySplit } = metadata
 
         const amount = session.amount_total ? session.amount_total / 100 : 0
         const communityContribution = communitySplit ? (amount * parseFloat(communitySplit) / 100) : 0
         const platformFee = amount - communityContribution
 
-        if (type === 'likes' && likes && userId) {
-          // Add likes to user's account
-          const { error: likesError } = await supabase.rpc('add_likes', {
+        if (type === 'views' && views && userId) {
+          // Add views to user's account
+          const { error: viewsError } = await supabase.rpc('add_views', {
             p_user_id: userId,
-            p_likes: parseInt(likes),
+            p_views: parseInt(views),
           })
 
-          if (likesError) {
+          if (viewsError) {
             // Fallback: update directly on users table
             const { data: user } = await supabase
               .from('users')
-              .select('available_likes')
+              .select('available_views')
               .eq('id', userId)
               .single()
 
-            const currentLikes = user?.available_likes || 0
+            const currentViews = user?.available_views || 0
             await supabase
               .from('users')
-              .update({ available_likes: currentLikes + parseInt(likes) })
+              .update({ available_views: currentViews + parseInt(views) })
               .eq('id', userId)
           }
 
@@ -65,10 +65,10 @@ export async function POST(request: NextRequest) {
             amount: amount,
             currency: session.currency || 'usd',
             status: 'succeeded',
-            type: 'likes',
+            type: 'views',
             community_contribution: communityContribution,
             platform_fee: platformFee,
-            metadata: { likes: parseInt(likes) },
+            metadata: { views: parseInt(views) },
           }).select().single()
 
           // Process community contribution
@@ -76,28 +76,28 @@ export async function POST(request: NextRequest) {
             await supabase.rpc('process_community_contribution', {
               p_payment_id: payment.id,
               p_amount: amount,
-              p_source_type: 'likes',
+              p_source_type: 'views',
             })
           }
-        } else if (type === 'compliments' && compliments && userId) {
-          // Add compliments to user's account
-          const { error: complimentsError } = await supabase.rpc('add_compliments', {
+        } else if (type === 'leads' && leads && userId) {
+          // Add leads to user's account
+          const { error: leadsError } = await supabase.rpc('add_leads', {
             p_user_id: userId,
-            p_compliments: parseInt(compliments),
+            p_leads: parseInt(leads),
           })
 
-          if (complimentsError) {
+          if (leadsError) {
             // Fallback: update directly on users table
             const { data: user } = await supabase
               .from('users')
-              .select('available_compliments')
+              .select('available_leads')
               .eq('id', userId)
               .single()
 
-            const currentCompliments = user?.available_compliments || 0
+            const currentLeads = user?.available_leads || 0
             await supabase
               .from('users')
-              .update({ available_compliments: currentCompliments + parseInt(compliments) })
+              .update({ available_leads: currentLeads + parseInt(leads) })
               .eq('id', userId)
           }
 
@@ -108,10 +108,10 @@ export async function POST(request: NextRequest) {
             amount: amount,
             currency: session.currency || 'usd',
             status: 'succeeded',
-            type: 'compliments',
+            type: 'leads',
             community_contribution: communityContribution,
             platform_fee: platformFee,
-            metadata: { compliments: parseInt(compliments) },
+            metadata: { leads: parseInt(leads) },
           }).select().single()
 
           // Process community contribution
@@ -119,12 +119,12 @@ export async function POST(request: NextRequest) {
             await supabase.rpc('process_community_contribution', {
               p_payment_id: payment.id,
               p_amount: amount,
-              p_source_type: 'compliments',
+              p_source_type: 'leads',
             })
           }
         } else if (type === 'subscription' && planId && userId) {
-          const likesIncluded = metadata.likesIncluded ? parseInt(metadata.likesIncluded) : 0
-          const complimentsIncluded = metadata.complimentsIncluded ? parseInt(metadata.complimentsIncluded) : 0
+          const viewsIncluded = metadata.viewsIncluded ? parseInt(metadata.viewsIncluded) : 0
+          const leadsIncluded = metadata.leadsIncluded ? parseInt(metadata.leadsIncluded) : 0
 
           // Update user subscription status
           await supabase.from('subscriptions').upsert({
@@ -132,25 +132,25 @@ export async function POST(request: NextRequest) {
             plan_id: planId,
             status: 'active',
             stripe_subscription_id: session.subscription,
-            likes_included: likesIncluded,
-            compliments_included: complimentsIncluded,
+            views_included: viewsIncluded,
+            leads_included: leadsIncluded,
             current_period_start: new Date().toISOString(),
             current_period_end: new Date(
               Date.now() + (planId.includes('yearly') ? 365 : 30) * 24 * 60 * 60 * 1000
             ).toISOString(),
           })
 
-          // Add likes and compliments from subscription
-          if (likesIncluded > 0) {
-            await supabase.rpc('add_likes', {
+          // Add views and leads from subscription
+          if (viewsIncluded > 0) {
+            await supabase.rpc('add_views', {
               p_user_id: userId,
-              p_likes: likesIncluded,
+              p_views: viewsIncluded,
             })
           }
-          if (complimentsIncluded > 0) {
-            await supabase.rpc('add_compliments', {
+          if (leadsIncluded > 0) {
+            await supabase.rpc('add_leads', {
               p_user_id: userId,
-              p_compliments: complimentsIncluded,
+              p_leads: leadsIncluded,
             })
           }
 
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
             type: 'subscription',
             community_contribution: communityContribution,
             platform_fee: platformFee,
-            metadata: { planId, likesIncluded, complimentsIncluded },
+            metadata: { planId, viewsIncluded, leadsIncluded },
           }).select().single()
 
           // Process community contribution

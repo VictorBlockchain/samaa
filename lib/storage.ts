@@ -13,6 +13,7 @@ export const STORAGE_CONFIG = {
     SHOP_VIDEOS: 'shop-videos',
     VOICE_NOTES: 'profile-audio',
     VIDEOS: 'profile-videos',
+    SOCIAL_VIDEOS: 'social-videos',
   }
 }
 
@@ -126,6 +127,7 @@ export async function uploadFile(
       .upload(path, file, {
         cacheControl: "3600",
         upsert: false,
+        contentType: file.type,
       })
 
     if (error) {
@@ -216,6 +218,40 @@ export class ProfileMediaService {
   // Delete profile media
   static async deleteProfileMedia(bucket: string, path: string): Promise<{ success: boolean; error?: string }> {
     return await deleteFile(bucket, path)
+  }
+}
+
+// Social media upload functions
+export class SocialMediaService {
+  
+  // Upload social video
+  static async uploadSocialVideo(
+    file: File,
+    userId: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadResult> {
+    const validation = validateFile(file, 'video')
+    if (!validation.valid) {
+      return { success: false, error: validation.error }
+    }
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`
+    const path = `${userId}/videos/${fileName}`
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.SOCIAL_VIDEOS, path, file, onProgress)
+  }
+
+  // Upload social video thumbnail
+  static async uploadSocialThumbnail(
+    file: File,
+    userId: string,
+    onProgress?: (progress: number) => void
+  ): Promise<UploadResult> {
+    const validation = validateFile(file, 'image')
+    if (!validation.valid) {
+      return { success: false, error: validation.error }
+    }
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${file.name.split('.').pop()}`
+    const path = `${userId}/thumbnails/${fileName}`
+    return await uploadFile(STORAGE_CONFIG.BUCKETS.SOCIAL_VIDEOS, path, file, onProgress)
   }
 }
 

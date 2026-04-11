@@ -611,38 +611,38 @@ export async function sendLikeReceivedNotification(
 }
 
 /**
- * Send compliment received notification
+ * Send lead received notification
  */
-export async function sendComplimentReceivedNotification(
+export async function sendLeadReceivedNotification(
   email: string,
   name: string,
   senderName: string,
-  compliment: string
+  lead: string
 ): Promise<EmailResponse> {
   return sendEmail({
     to: email,
-    subject: `${senderName} sent you a compliment on Samaa`,
+    subject: `${senderName} took the lead on Samaa`,
     html: `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
-          <title>You Received a Compliment</title>
+          <title>Someone Took the Lead!</title>
         </head>
         <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); padding: 40px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0;">You Received a Compliment! ✨</h1>
+            <h1 style="color: white; margin: 0;">Someone Took the Lead! ✨</h1>
           </div>
           <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px;">
             <p style="font-size: 16px; color: #333;">Assalamu alaikum ${name},</p>
             <p style="font-size: 16px; color: #333;">
-              <strong>${senderName}</strong> sent you a compliment:
+              <strong>${senderName}</strong> took the lead and sent you a message:
             </p>
             <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #f59e0b; text-align: center;">
-              <p style="font-size: 18px; color: #333; margin: 0; font-style: italic;">"${compliment}"</p>
+              <p style="font-size: 18px; color: #333; margin: 0; font-style: italic;">"${lead}"</p>
             </div>
             <p style="font-size: 16px; color: #333;">
-              Compliments are a great way to break the ice and show genuine interest!
+              Taking the lead is a great way to show genuine interest and start a meaningful conversation!
             </p>
             <a href="${process.env.NEXT_PUBLIC_APP_URL}/messages" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 25px; margin-top: 20px;">
               Reply Now
@@ -655,7 +655,7 @@ export async function sendComplimentReceivedNotification(
         </body>
       </html>
     `,
-    text: `Assalamu alaikum ${name},\n\n${senderName} sent you a compliment:\n\n"${compliment}"\n\nReply at: ${process.env.NEXT_PUBLIC_APP_URL}/messages\n\nBest regards,\nThe Samaa Team`,
+    text: `Assalamu alaikum ${name},\n\n${senderName} took the lead and sent you a message:\n\n"${lead}"\n\nReply at: ${process.env.NEXT_PUBLIC_APP_URL}/messages\n\nBest regards,\nThe Samaa Team`,
   })
 }
 

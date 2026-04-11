@@ -10,7 +10,7 @@ import {
   sendSubscriptionRenewalEmail,
   sendPromotionalEmail,
   sendLikeReceivedNotification,
-  sendComplimentReceivedNotification,
+  sendLeadReceivedNotification,
   sendOrderConfirmationEmail,
   sendOrderShippedEmail,
   sendShopMessageNotification,
@@ -136,15 +136,15 @@ export async function POST(request: NextRequest) {
         result = await sendLikeReceivedNotification(data.email, data.name, data.likerName, data.likerPhoto)
         break
 
-      case 'compliment-received':
-        // Send compliment received notification
-        if (!data.email || !data.name || !data.senderName || !data.compliment) {
+      case 'lead-received':
+        // Send lead received notification
+        if (!data.email || !data.name || !data.senderName || !data.lead) {
           return NextResponse.json(
-            { error: 'Email, name, senderName, and compliment are required for compliment notification' },
+            { error: 'Email, name, senderName, and compliment are required for lead notification' },
             { status: 400 }
           )
         }
-        result = await sendComplimentReceivedNotification(data.email, data.name, data.senderName, data.compliment)
+        result = await sendLeadReceivedNotification(data.email, data.name, data.senderName, data.lead)
         break
 
       case 'order-confirmation':

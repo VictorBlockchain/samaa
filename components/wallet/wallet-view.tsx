@@ -10,12 +10,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
-import { getLikesProducts, getComplimentsProducts, getSubscriptionPlans } from "@/lib/stripe"
-import type { AdminSettings } from "@/lib/stripe"
+import { getViewsProducts, getLeadsProducts, getSubscriptionPlans } from "@/lib/products"
+import type { AdminSettings } from "@/lib/products"
 import { 
   ArrowLeft, 
   Crown, 
-  Heart, 
+  Eye, 
   Sparkles,
   History, 
   Check, 
@@ -23,7 +23,8 @@ import {
   Clock,
   DollarSign,
   CheckCircle,
-  MessageCircle
+  MessageCircle,
+  Heart
 } from "lucide-react"
 
 interface PaymentRecord {
@@ -34,8 +35,8 @@ interface PaymentRecord {
   status: string
   type: string
   metadata: {
-    likes?: number
-    compliments?: number
+    views?: number
+    leads?: number
     planId?: string
     orderId?: string
   }
@@ -48,27 +49,27 @@ interface Subscription {
   plan_id: string
   status: string
   current_period_end: string
-  likes_included: number
-  compliments_included: number
+  views_included: number
+  leads_included: number
 }
 
 interface UserProfile {
-  available_likes: number
-  available_compliments: number
+  available_views: number
+  available_leads: number
 }
 
-interface LikesProduct {
+interface ViewsProduct {
   id: string
   name: string
-  likes: number
+  views: number
   price: number
   description: string
 }
 
-interface ComplimentsProduct {
+interface LeadsProduct {
   id: string
   name: string
-  compliments: number
+  leads: number
   price: number
   description: string
 }
@@ -78,8 +79,8 @@ interface SubscriptionPlan {
   name: string
   price: number
   interval: 'month' | 'year'
-  likesIncluded: number
-  complimentsIncluded: number
+  viewsIncluded: number
+  leadsIncluded: number
   features: string[]
 }
 
@@ -90,8 +91,8 @@ export default function WalletView() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [likesProducts, setLikesProducts] = useState<LikesProduct[]>([])
-  const [complimentsProducts, setComplimentsProducts] = useState<ComplimentsProduct[]>([])
+  const [viewsProducts, setViewsProducts] = useState<ViewsProduct[]>([])
+  const [leadsProducts, setLeadsProducts] = useState<LeadsProduct[]>([])
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([])
   const [communitySplit, setCommunitySplit] = useState<number>(10)
   
@@ -117,12 +118,12 @@ export default function WalletView() {
   }, [userId])
 
   const fetchProducts = async () => {
-    const likes = await getLikesProducts()
-    const compliments = await getComplimentsProducts()
+    const likes = await getViewsProducts()
+    const compliments = await getLeadsProducts()
     const plans = await getSubscriptionPlans()
     
-    setLikesProducts(likes)
-    setComplimentsProducts(compliments)
+    setViewsProducts(likes)
+    setLeadsProducts(compliments)
     setSubscriptionPlans(plans)
     
     // Get community split from admin settings
@@ -171,7 +172,7 @@ export default function WalletView() {
     
     const { data, error } = await supabase
       .from('users')
-      .select('available_likes, available_compliments')
+      .select('available_views, available_leads')
       .eq('id', userId)
       .single()
 
@@ -311,7 +312,7 @@ export default function WalletView() {
             <div className="w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Crown className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-2">Sign In Required</h2>
+            <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">Sign In Required</h2>
             <p className="text-slate-600 font-queensides mb-6">
               Please sign in to access your wallet and purchase features.
             </p>
@@ -338,7 +339,7 @@ export default function WalletView() {
               <ArrowLeft className="w-6 h-6 text-indigo-600" />
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-slate-800 font-qurova">Wallet</h1>
+              <h1 className="text-xl font-bold text-slate-800 font-queensides">Wallet</h1>
               <p className="text-sm text-slate-600 font-queensides">
                 Manage your subscription and purchases
               </p>
@@ -349,13 +350,13 @@ export default function WalletView() {
           {/* Available Likes & Compliments */}
           <div className="px-4 pb-4">
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gradient-to-r from-rose-500 to-pink-600 rounded-2xl p-4 text-white">
+              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-4 text-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <Heart className="w-6 h-6" />
+                    <Eye className="w-6 h-6" />
                     <div>
-                      <p className="text-sm opacity-90 font-queensides">Likes</p>
-                      <p className="text-2xl font-bold font-qurova">{profile?.available_likes || 0}</p>
+                      <p className="text-sm opacity-90 font-queensides">Views</p>
+                      <p className="text-2xl font-bold font-queensides">{profile?.available_views || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -365,8 +366,8 @@ export default function WalletView() {
                   <div className="flex items-center space-x-3">
                     <MessageCircle className="w-6 h-6" />
                     <div>
-                      <p className="text-sm opacity-90 font-queensides">Compliments</p>
-                      <p className="text-2xl font-bold font-qurova">{profile?.available_compliments || 0}</p>
+                      <p className="text-sm opacity-90 font-queensides">Leads</p>
+                      <p className="text-2xl font-bold font-queensides">{profile?.available_leads || 0}</p>
                     </div>
                   </div>
                 </div>
@@ -423,14 +424,14 @@ export default function WalletView() {
                 <span className="hidden sm:inline">Subscription</span>
                 <span className="sm:hidden">Sub</span>
               </TabsTrigger>
-              <TabsTrigger value="likes" className="font-queensides text-xs sm:text-sm">
+              <TabsTrigger value="views" className="font-queensides text-xs sm:text-sm">
                 <Heart className="w-4 h-4 mr-1 sm:mr-2" />
-                Likes
+                Views
               </TabsTrigger>
-              <TabsTrigger value="compliments" className="font-queensides text-xs sm:text-sm">
+              <TabsTrigger value="lead" className="font-queensides text-xs sm:text-sm">
                 <MessageCircle className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Compliments</span>
-                <span className="sm:hidden">Comp</span>
+                <span className="hidden sm:inline">Lead</span>
+                <span className="sm:hidden">Lead</span>
               </TabsTrigger>
               <TabsTrigger value="history" className="font-queensides text-xs sm:text-sm">
                 <History className="w-4 h-4 mr-1 sm:mr-2" />
@@ -449,7 +450,7 @@ export default function WalletView() {
                   <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50">
                     <CardHeader>
                       <div className="flex items-center justify-between">
-                        <CardTitle className="font-qurova">Active Subscription</CardTitle>
+                        <CardTitle className="font-queensides">Active Subscription</CardTitle>
                         <Badge className="bg-green-100 text-green-700">Active</Badge>
                       </div>
                       <CardDescription className="font-queensides">
@@ -462,7 +463,7 @@ export default function WalletView() {
                           <div className="flex items-center space-x-2">
                             <Heart className="w-4 h-4 text-rose-500" />
                             <span className="text-sm text-slate-600 font-queensides">
-                              {subscription.likes_included} likes/mo
+                              {subscription.views_included} likes/mo
                             </span>
                           </div>
                         </div>
@@ -470,7 +471,7 @@ export default function WalletView() {
                           <div className="flex items-center space-x-2">
                             <MessageCircle className="w-4 h-4 text-amber-500" />
                             <span className="text-sm text-slate-600 font-queensides">
-                              {subscription.compliments_included} comps/mo
+                              {subscription.leads_included} comps/mo
                             </span>
                           </div>
                         </div>
@@ -499,7 +500,7 @@ export default function WalletView() {
                           </div>
                         )}
                         <CardHeader>
-                          <CardTitle className="font-qurova">{plan.name}</CardTitle>
+                          <CardTitle className="font-queensides">{plan.name}</CardTitle>
                           <CardDescription className="font-queensides">
                             <span className="text-2xl font-bold text-slate-800">${plan.price}</span>
                             <span className="text-slate-600">/{plan.interval}</span>
@@ -507,15 +508,15 @@ export default function WalletView() {
                         </CardHeader>
                         <CardContent>
                           <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="bg-rose-50 rounded-lg p-2 text-center">
-                              <Heart className="w-4 h-4 text-rose-500 mx-auto" />
-                              <p className="text-sm font-medium text-slate-700 font-queensides">{plan.likesIncluded}</p>
-                              <p className="text-xs text-slate-500 font-queensides">likes</p>
+                            <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                              <Eye className="w-4 h-4 text-emerald-500 mx-auto" />
+                              <p className="text-sm font-medium text-slate-700 font-queensides">{plan.viewsIncluded}</p>
+                              <p className="text-xs text-slate-500 font-queensides">views</p>
                             </div>
                             <div className="bg-amber-50 rounded-lg p-2 text-center">
                               <MessageCircle className="w-4 h-4 text-amber-500 mx-auto" />
-                              <p className="text-sm font-medium text-slate-700 font-queensides">{plan.complimentsIncluded}</p>
-                              <p className="text-xs text-slate-500 font-queensides">compliments</p>
+                              <p className="text-sm font-medium text-slate-700 font-queensides">{plan.leadsIncluded}</p>
+                              <p className="text-xs text-slate-500 font-queensides">leads</p>
                             </div>
                           </div>
                           <ul className="space-y-2">
@@ -548,7 +549,7 @@ export default function WalletView() {
             </TabsContent>
 
             {/* Buy Likes Tab */}
-            <TabsContent value="likes">
+            <TabsContent value="views">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -557,7 +558,7 @@ export default function WalletView() {
                 <p className="text-center text-slate-600 font-queensides mb-4">
                   Get more likes to increase your visibility
                 </p>
-                {likesProducts.map((product) => (
+                {viewsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
                     {product.id === 'likes_100' && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-queensides">
@@ -576,12 +577,12 @@ export default function WalletView() {
                             <Heart className="w-6 h-6 text-rose-500" />
                           </div>
                           <div>
-                            <CardTitle className="font-qurova">{product.name}</CardTitle>
+                            <CardTitle className="font-queensides">{product.name}</CardTitle>
                             <CardDescription className="font-queensides">{product.description}</CardDescription>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-slate-800 font-qurova">${product.price}</p>
+                          <p className="text-2xl font-bold text-slate-800 font-queensides">${product.price}</p>
                         </div>
                       </div>
                     </CardHeader>
@@ -607,7 +608,7 @@ export default function WalletView() {
             </TabsContent>
 
             {/* Buy Compliments Tab */}
-            <TabsContent value="compliments">
+            <TabsContent value="lead">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -616,7 +617,7 @@ export default function WalletView() {
                 <p className="text-center text-slate-600 font-queensides mb-4">
                   Spread kindness with compliments
                 </p>
-                {complimentsProducts.map((product) => (
+                {leadsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
                     {product.id === 'compliments_100' && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-queensides">
@@ -635,12 +636,12 @@ export default function WalletView() {
                             <MessageCircle className="w-6 h-6 text-amber-500" />
                           </div>
                           <div>
-                            <CardTitle className="font-qurova">{product.name}</CardTitle>
+                            <CardTitle className="font-queensides">{product.name}</CardTitle>
                             <CardDescription className="font-queensides">{product.description}</CardDescription>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-2xl font-bold text-slate-800 font-qurova">${product.price}</p>
+                          <p className="text-2xl font-bold text-slate-800 font-queensides">${product.price}</p>
                         </div>
                       </div>
                     </CardHeader>
@@ -711,8 +712,8 @@ export default function WalletView() {
                               <div>
                                 <p className="font-medium text-slate-800 font-queensides capitalize">
                                   {payment.type}
-                                  {payment.metadata.likes && ` - ${payment.metadata.likes} likes`}
-                                  {payment.metadata.compliments && ` - ${payment.metadata.compliments} comps`}
+                                  {payment.metadata.views && ` - ${payment.metadata.views} views`}
+                                  {payment.metadata.leads && ` - ${payment.metadata.leads} leads`}
                                 </p>
                                 <p className="text-sm text-slate-500 font-queensides">
                                   {formatDate(payment.created_at)}
@@ -720,7 +721,7 @@ export default function WalletView() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className="font-bold text-slate-800 font-qurova">
+                              <p className="font-bold text-slate-800 font-queensides">
                                 {formatCurrency(payment.amount, payment.currency)}
                               </p>
                               <Badge variant={payment.status === 'succeeded' ? 'default' : 'secondary'} className={
@@ -736,12 +737,14 @@ export default function WalletView() {
                           </div>
                         </CardContent>
                       </Card>
+                      
                     ))}
                   </div>
                 )}
               </motion.div>
             </TabsContent>
           </Tabs>
+          <br/><br/><br/><br/><br/><br/>
         </div>
       </div>
     </div>

@@ -240,9 +240,9 @@ export default function CommunityPage() {
               <ArrowLeft className="w-6 h-6 text-emerald-600" />
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-slate-800 font-qurova">Community Fund</h1>
+              <h1 className="text-xl font-bold text-slate-800 font-queensides">Community Fund</h1>
               <p className="text-sm text-slate-600 font-queensides">
-                Supporting masjids and Nikah celebrations
+                Supporting masjids and Mahr
               </p>
             </div>
             <div className="w-10" />
@@ -259,7 +259,7 @@ export default function CommunityPage() {
                 </div>
                 <div>
                   <p className="text-sm opacity-90 font-queensides">Community Balance</p>
-                  <p className="text-3xl font-bold font-qurova">
+                  <p className="text-3xl font-bold font-queensides">
                     {formatCurrency(communityFund?.total_balance || 0)}
                   </p>
                 </div>
@@ -268,13 +268,13 @@ export default function CommunityPage() {
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="bg-white/10 rounded-xl p-3">
                 <p className="text-sm opacity-90 font-queensides">Total Donated</p>
-                <p className="text-xl font-bold font-qurova">
+                <p className="text-xl font-bold font-queensides">
                   {formatCurrency(communityFund?.total_donated || 0)}
                 </p>
               </div>
               <div className="bg-white/10 rounded-xl p-3">
                 <p className="text-sm opacity-90 font-queensides">Members Helped</p>
-                <p className="text-xl font-bold font-qurova">
+                <p className="text-xl font-bold font-queensides">
                   {masjids.filter(m => m.status === 'donated').length}
                 </p>
               </div>
@@ -287,13 +287,13 @@ export default function CommunityPage() {
                 </p>
               </div>
               <div className="bg-white/5 rounded-lg p-2">
-                <p className="text-xs opacity-75 font-queensides">From Likes</p>
+                <p className="text-xs opacity-75 font-queensides">From Leads</p>
                 <p className="text-sm font-bold font-queensides">
                   {formatCurrency(communityFund?.total_likes_contrib || 0)}
                 </p>
               </div>
               <div className="bg-white/5 rounded-lg p-2">
-                <p className="text-xs opacity-75 font-queensides">From Comps</p>
+                <p className="text-xs opacity-75 font-queensides">From Views</p>
                 <p className="text-sm font-bold font-queensides">
                   {formatCurrency(communityFund?.total_compliments_contrib || 0)}
                 </p>
@@ -318,7 +318,7 @@ export default function CommunityPage() {
             <TabsContent value="overview">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-slate-800 font-qurova">
+                  <h2 className="text-lg font-bold text-slate-800 font-queensides">
                     Vote for Donations
                   </h2>
                   <p className="text-sm text-slate-500 font-queensides">
@@ -355,7 +355,7 @@ export default function CommunityPage() {
                           <CardHeader className="pb-2">
                             <div className="flex items-start justify-between">
                               <div>
-                                <CardTitle className="font-qurova text-lg">{masjid.name}</CardTitle>
+                                <CardTitle className="font-queensides text-lg">{masjid.name}</CardTitle>
                                 <CardDescription className="font-queensides flex items-center mt-1">
                                   <MapPin className="w-3 h-3 mr-1" />
                                   {masjid.city}, {masjid.state}
@@ -384,7 +384,7 @@ export default function CommunityPage() {
                             <div className="bg-slate-50 rounded-lg p-3 mb-3">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-sm text-slate-500 font-queensides">Requested</span>
-                                <span className="font-bold text-slate-800 font-qurova">
+                                <span className="font-bold text-slate-800 font-queensides">
                                   {formatCurrency(masjid.requested_amount)}
                                 </span>
                               </div>
@@ -450,7 +450,7 @@ export default function CommunityPage() {
             <TabsContent value="apply">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-qurova">Apply for Donation</CardTitle>
+                  <CardTitle className="font-queensides">Apply for Donation</CardTitle>
                   <CardDescription className="font-queensides">
                     Submit your masjid for community funding consideration
                   </CardDescription>

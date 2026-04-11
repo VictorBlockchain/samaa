@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Bell, Heart, MessageCircle, UserPlus, Gift } from "lucide-react"
+import { ArrowLeft, Bell, Eye, MessageCircle, UserPlus, Gift } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
 import { Card } from "@/components/ui/card"
@@ -23,7 +23,7 @@ interface Notification {
 const NOTIFICATIONS: Notification[] = []
 
 export default function NotificationsPage() {
-  const [activeTab, setActiveTab] = useState<"all" | "likes" | "messages" | "matches">("all")
+  const [activeTab, setActiveTab] = useState<"all" | "views" | "messages" | "matches">("all")
   const [notifications, setNotifications] = useState(NOTIFICATIONS)
   
   const router = useRouter()
@@ -31,7 +31,7 @@ export default function NotificationsPage() {
 
   const tabs = [
     { id: "all", label: "All", icon: Bell },
-    { id: "likes", label: "Likes", icon: Heart },
+    { id: "views", label: "Views", icon: Eye },
     { id: "messages", label: "Messages", icon: MessageCircle },
     { id: "matches", label: "Matches", icon: UserPlus },
   ]
@@ -60,7 +60,7 @@ export default function NotificationsPage() {
 
   const filteredNotifications = notifications.filter(notification => {
     if (activeTab === "all") return true
-    if (activeTab === "likes") return notification.type === "like"
+    if (activeTab === "views") return notification.type === "like"
     if (activeTab === "messages") return notification.type === "message"
     if (activeTab === "matches") return notification.type === "match"
     return true

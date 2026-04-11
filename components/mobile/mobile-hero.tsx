@@ -4,7 +4,7 @@ import { motion, useScroll } from "framer-motion"
 import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useAuth } from "@/app/context/AuthContext"
-import { User, Search, MessageCircle, Heart, MessageSquare, Camera } from "lucide-react"
+import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { SwipeCard } from "./swipe-card"
@@ -25,9 +25,11 @@ export function MobileHero() {
   const [userProfile, setUserProfile] = useState<any>(null)
   const [profileComplete, setProfileComplete] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
-  const [availableLikes, setAvailableLikes] = useState(0)
-  const [availableCompliments, setAvailableCompliments] = useState(0)
+  const [availableViews, setAvailableViews] = useState(0)
+  const [availableLeads, setAvailableLeads] = useState(0)
   const [isLoadingCredits, setIsLoadingCredits] = useState(false)
+  const [mediaType, setMediaType] = useState<'photos' | 'videos'>('photos')
+  const [referralCode, setReferralCode] = useState('')
 
   const { isAuthenticated, userId } = useAuth()
 
@@ -49,7 +51,7 @@ export function MobileHero() {
             return
           }
           
-          // Load available likes and compliments
+          // Load available views and leads
           await loadUserCredits()
         } catch (error) {
           console.error('Error loading profile:', error)
@@ -65,7 +67,7 @@ export function MobileHero() {
     checkProfile()
   }, [isAuthenticated, userId])
 
-  // Load user's available likes and compliments
+  // Load user's available views and leads
   const loadUserCredits = async () => {
     if (!userId) return
     
@@ -73,7 +75,7 @@ export function MobileHero() {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('available_likes, available_compliments')
+        .select('available_views, available_leads, referral_code')
         .eq('id', userId)
         .single()
       
@@ -83,9 +85,10 @@ export function MobileHero() {
       }
       
       if (data) {
-        setAvailableLikes(data.available_likes || 0)
-        setAvailableCompliments(data.available_compliments || 0)
-        console.log('[MobileHero] Loaded credits:', { likes: data.available_likes, compliments: data.available_compliments })
+        setAvailableViews(data.available_views || 0)
+        setAvailableLeads(data.available_leads || 0)
+        setReferralCode(data.referral_code || '')
+        console.log('[MobileHero] Loaded credits:', { views: data.available_views, leads: data.available_leads })
       }
     } catch (error) {
       console.error('[MobileHero] Error loading credits:', error)
@@ -235,7 +238,7 @@ export function MobileHero() {
   }
 
   return (
-    <div ref={containerRef} className="min-h-screen relative pt-24">
+    <div ref={containerRef} className="min-h-screen relative pt-12">
       <div className="relative z-10 min-h-screen">
         {isAuthenticated ? (
           // Logged in version - Profile Setup or Messages
@@ -254,378 +257,116 @@ export function MobileHero() {
                     </div>
                   </div>
                 ) : profileComplete ? (
-                  /* Message Tabs for Complete Profiles */
+                  <>
+                  
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
                     className="space-y-6"
                   >
-                    {/* Welcome Back Message with Profile Picture */}
-                    <div className="text-center mb-6">
-                      {/* Circular Profile Picture */}
-                      <motion.div
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ delay: 0.2, duration: 0.6 }}
-                        className="relative mb-4"
-                      >
-                        <div className="relative w-24 h-24 mx-auto">
-                          {/* Gradient Border */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 p-1 shadow-2xl">
-                            <div className="w-full h-full rounded-full overflow-hidden bg-white">
-                              {userProfile?.profilePhoto || (userProfile?.photos && userProfile.photos[0]) ? (
-                                <img
-                                  src={userProfile.profilePhoto || userProfile.photos[0]}
-                                  alt={`${userProfile.firstName} ${userProfile.lastName}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                                  <User className="w-12 h-12 text-indigo-600" />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Online Status Indicator */}
-                          <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-400 rounded-full border-3 border-white shadow-lg"></div>
-                        </div>
-                      </motion.div>
-                      
-                      <h2 className="text-xl font-bold text-slate-800 font-qurova mb-2">
-                        Welcome back, {userProfile?.firstName}! ✨
-                      </h2>
-                      <p className="text-slate-600 font-queensides">
-                        Here are your recent messages and conversations
-                      </p>
-                    </div>
-
-                    {/* Likes & Compliments - Two Column Layout */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.6 }}
-                      className="grid grid-cols-2 gap-3"
-                    >
-                      {/* Likes Card */}
-                      <div className="relative group bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200/60 rounded-2xl p-3 hover:shadow-lg transition-all duration-300 overflow-hidden">
-                        <div className="absolute inset-0 opacity-5">
-                          <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
-                            <pattern id="likes-pattern-complete" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
-                              <circle cx="4" cy="4" r="0.5" fill="currentColor" />
-                              <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
-                            </pattern>
-                            <rect width="100%" height="100%" fill="url(#likes-pattern-complete)" />
-                          </svg>
-                        </div>
-                        
-                        <div className="relative z-10 text-center">
-                          <div className="w-10 h-10 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md">
-                            <Heart className="w-5 h-5 text-white" />
-                          </div>
-                          {isLoadingCredits ? (
-                            <div className="w-6 h-6 border-2 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
-                          ) : (
-                            <p className="text-2xl font-bold text-slate-800 font-qurova mb-1">
-                              {availableLikes}
-                            </p>
-                          )}
-                          <p className="text-xs font-medium text-rose-600 font-queensides">Likes Left</p>
-                        </div>
-                        
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-rose-400/20 rounded-full blur-lg group-hover:bg-rose-400/30 transition-all duration-300"></div>
-                      </div>
-
-                      {/* Compliments Card */}
-                      <div className="relative group bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl p-3 hover:shadow-lg transition-all duration-300 overflow-hidden">
-                        <div className="absolute inset-0 opacity-5">
-                          <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
-                            <pattern id="compliments-pattern-complete" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
-                              <circle cx="4" cy="4" r="0.5" fill="currentColor" />
-                              <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
-                            </pattern>
-                            <rect width="100%" height="100%" fill="url(#compliments-pattern-complete)" />
-                          </svg>
-                        </div>
-                        
-                        <div className="relative z-10 text-center">
-                          <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-md">
-                            <MessageSquare className="w-5 h-5 text-white" />
-                          </div>
-                          {isLoadingCredits ? (
-                            <div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-1"></div>
-                          ) : (
-                            <p className="text-2xl font-bold text-slate-800 font-qurova mb-1">
-                              {availableCompliments}
-                            </p>
-                          )}
-                          <p className="text-xs font-medium text-amber-600 font-queensides">Compliments Left</p>
-                        </div>
-                        
-                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-amber-400/20 rounded-full blur-lg group-hover:bg-amber-400/30 transition-all duration-300"></div>
-                      </div>
-                    </motion.div>
-
                     {/* Swipe Card Interface */}
-                    <SwipeCard />
+                    <SwipeCard 
+                      availableLeads={availableLeads}
+                      availableViews={availableViews}
+                      onBuyLeads={() => router.push('/wallet')}
+                      onBuyViews={() => router.push('/wallet')}
+                    />
 
-                    {/* Quick Actions - Hidden for now, integrated into SwipeCard */}
-                    <div className="hidden grid-cols-2 gap-3">
+                    {/* Media Type Toggle */}
+                    <div className="flex justify-center gap-2">
                       <button
-                        onClick={() => router.push('/explore')}
-                        className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white py-3 px-4 rounded-xl font-queensides font-medium transition-all duration-300 flex items-center justify-center space-x-2"
+                        onClick={() => setMediaType('photos')}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-queensides font-medium transition-all ${
+                          mediaType === 'photos'
+                            ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md'
+                            : 'bg-white/80 text-slate-600 border border-slate-200 hover:bg-white'
+                        }`}
                       >
-                        <Search className="w-4 h-4" />
-                        <span>Explore</span>
+                        <ImageIcon className="w-4 h-4" />
+                        Photos
                       </button>
                       <button
-                        onClick={() => userId && router.push(`/profile?userId=${userId}`)}
-                        className="bg-white/60 hover:bg-white/80 border border-indigo-200/50 text-slate-700 py-3 px-4 rounded-xl font-queensides font-medium transition-all duration-300 flex items-center justify-center space-x-2"
+                        onClick={() => setMediaType('videos')}
+                        className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-queensides font-medium transition-all ${
+                          mediaType === 'videos'
+                            ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-md'
+                            : 'bg-white/80 text-slate-600 border border-slate-200 hover:bg-white'
+                        }`}
                       >
-                        <User className="w-4 h-4" />
-                        <span>Profile</span>
+                        <Video className="w-4 h-4" />
+                        Videos
                       </button>
                     </div>
                   </motion.div>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="space-y-4 mt-10"
+                  >
+                    {/* Value Proposition Cards */}
+                    <div className="grid gap-4">
+                      {/* Take the Lead Card */}
+                      <div 
+                        className="relative overflow-hidden bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-3xl p-6 border border-indigo-200/60 hover:border-indigo-300 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 group"
+                        onClick={() => router.push('/inbox')}
+                      >
+                        <h3 className="text-xl font-bold text-slate-800 font-queensides mb-2">Take the Lead</h3>
+                        <p className="text-base text-slate-600 font-queensides leading-relaxed">
+                          Samaa encourages real connections. Send the first message and stand out from the crowd.
+                        </p>
+                      </div>
+                  
+                      {/* Refer Friends Card */}
+                      <div 
+                        className="relative overflow-hidden bg-gradient-to-r from-emerald-50 via-teal-50 to-cyan-50 rounded-3xl p-6 border border-emerald-200/60 hover:border-emerald-300 shadow-sm hover:shadow-md transition-all duration-300 group"
+                        onClick={() => router.push('/referrals')}
+                      >
+                        <h3 className="text-xl font-bold text-slate-800 font-queensides mb-2">Refer Friends, Earn Rewards</h3>
+                        <p className="text-base text-slate-600 font-queensides leading-relaxed mb-3">
+                          Invite your friends and earn bonus views when they join. Get cash when they subscribe!
+                        </p>
+                        {referralCode && (
+                          <div className="flex items-center gap-2 bg-white/60 rounded-xl p-3 border border-emerald-200/40">
+                            <span className="text-sm text-slate-500 font-queensides">Your code:</span>
+                            <span className="font-mono font-bold text-emerald-600">{referralCode}</span>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigator.clipboard.writeText(`${window.location.origin}/auth/signup?ref=${referralCode}`)
+                              }}
+                              className="ml-auto text-xs bg-emerald-500 text-white px-3 py-1 rounded-lg font-queensides hover:bg-emerald-600 transition-colors"
+                            >
+                              Copy Link
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                  
+                      {/* Community Card */}
+                      <div 
+                        className="relative overflow-hidden bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 rounded-3xl p-6 border border-amber-200/60 hover:border-amber-300 cursor-pointer shadow-sm hover:shadow-md transition-all duration-300 group"
+                        onClick={() => router.push('/community')}
+                      >
+                        <h3 className="text-xl font-bold text-slate-800 font-queensides mb-2">Community</h3>
+                        <p className="text-base text-slate-600 font-queensides leading-relaxed">
+                          Samaa is a community for healthy marriages. After you match, shop for your wedding dress, gifts and family items. Sell your goods and services to other community members.
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  </>
                 ) : (
                   /* Profile Setup Flow */
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
-                    className="space-y-6"
-                  >
-                  {/* Welcome Message */}
-                  <div className="text-center mb-8">
-                    {/* Circular Profile Picture */}
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.2, duration: 0.6 }}
-                      className="relative mb-6"
-                    >
-                      <div className="relative w-32 h-32 mx-auto">
-                        {/* Gradient Border */}
-                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500 p-1 shadow-2xl">
-                          <div className="w-full h-full rounded-full overflow-hidden bg-white">
-                            {userProfile?.profilePhoto || (userProfile?.photos && userProfile.photos[0]) ? (
-                              <img
-                                src={userProfile.profilePhoto || userProfile.photos[0]}
-                                alt={`${userProfile.firstName} ${userProfile.lastName}`}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                                <User className="w-16 h-16 text-indigo-600" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Online Status Indicator */}
-                        <div className="absolute bottom-1 right-1 w-6 h-6 bg-green-400 rounded-full border-4 border-white shadow-lg"></div>
-                        
-                        {/* Add Photo Button (if no photos) */}
-                        {(!userProfile?.profilePhoto && (!userProfile?.photos || userProfile.photos.length === 0)) && (
-                          <button
-                            onClick={() => router.push('/profile/setup')}
-                            className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white p-2 rounded-full shadow-lg transition-all duration-300"
-                          >
-                            <Camera className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
+                  <></>
 
-                    {/* Welcome Text */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3, duration: 0.5 }}
-                    >
-                      <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-2">
-                        Welcome back, {userProfile?.firstName}! ✨
-                      </h2>
-                      <p className="text-slate-600 font-queensides">
-                        Ready to find your perfect match?
-                      </p>
-                    </motion.div>
-                  </div>
-
-                  {/* Likes & Compliments - Two Column Layout */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, duration: 0.6 }}
-                    className="grid grid-cols-2 gap-4 mb-6"
-                  >
-                    {/* Likes Card */}
-                    <div className="relative group bg-gradient-to-br from-rose-50 to-pink-50 border border-rose-200/60 rounded-2xl p-4 hover:shadow-lg transition-all duration-300 overflow-hidden">
-                      {/* Islamic pattern overlay */}
-                      <div className="absolute inset-0 opacity-5">
-                        <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
-                          <pattern id="likes-pattern" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
-                            <circle cx="4" cy="4" r="0.5" fill="currentColor" />
-                            <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
-                          </pattern>
-                          <rect width="100%" height="100%" fill="url(#likes-pattern)" />
-                        </svg>
-                      </div>
-                      
-                      <div className="relative z-10 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-rose-400 to-pink-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
-                          <Heart className="w-6 h-6 text-white" />
-                        </div>
-                        {isLoadingCredits ? (
-                          <div className="w-8 h-8 border-2 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                        ) : (
-                          <p className="text-3xl font-bold text-slate-800 font-qurova mb-1">
-                            {availableLikes || 0}
-                          </p>
-                        )}
-                        <p className="text-sm font-medium text-rose-600 font-queensides">Likes Remaining</p>
-                        <button
-                          onClick={() => router.push('/wallet')}
-                          className="mt-3 text-xs font-medium text-rose-500 hover:text-rose-600 transition-colors"
-                        >
-                          Get More →
-                        </button>
-                      </div>
-                      
-                      {/* Bottom glow effect */}
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-rose-400/20 rounded-full blur-lg group-hover:bg-rose-400/30 transition-all duration-300"></div>
-                    </div>
-
-                    {/* Compliments Card */}
-                    <div className="relative group bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/60 rounded-2xl p-4 hover:shadow-lg transition-all duration-300 overflow-hidden">
-                      {/* Islamic pattern overlay */}
-                      <div className="absolute inset-0 opacity-5">
-                        <svg className="w-full h-full" viewBox="0 0 40 40" fill="none">
-                          <pattern id="compliments-pattern" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
-                            <circle cx="4" cy="4" r="0.5" fill="currentColor" />
-                            <path d="M2 4 L4 2 L6 4 L4 6 Z" fill="currentColor" opacity="0.3" />
-                          </pattern>
-                          <rect width="100%" height="100%" fill="url(#compliments-pattern)" />
-                        </svg>
-                      </div>
-                      
-                      <div className="relative z-10 text-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-md">
-                          <MessageSquare className="w-6 h-6 text-white" />
-                        </div>
-                        {isLoadingCredits ? (
-                          <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                        ) : (
-                          <p className="text-3xl font-bold text-slate-800 font-qurova mb-1">
-                            {availableCompliments || 0}
-                          </p>
-                        )}
-                        <p className="text-sm font-medium text-amber-600 font-queensides">Compliments Remaining</p>
-                        <button
-                          onClick={() => router.push('/wallet')}
-                          className="mt-3 text-xs font-medium text-amber-500 hover:text-amber-600 transition-colors"
-                        >
-                          Get More →
-                        </button>
-                      </div>
-                      
-                      {/* Bottom glow effect */}
-                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-3/4 h-4 bg-amber-400/20 rounded-full blur-lg group-hover:bg-amber-400/30 transition-all duration-300"></div>
-                    </div>
-                  </motion.div>
-
-                  {/* Profile Setup Instructions */}
-                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200/50 rounded-xl p-4 mb-6">
-                    <div className="text-center">
-                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-400 to-purple-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <User className="w-6 h-6 text-white" />
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-800 font-qurova mb-2">Ready to Find Your Match?</h3>
-                      <p className="text-slate-700 font-queensides leading-relaxed">
-                        Click the <span className="font-semibold text-indigo-600">profile icon</span> in the bottom menu to set up your profile and start connecting
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Getting Started Section */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, duration: 0.6 }}
-                    className="relative rounded-2xl p-6 border border-indigo-200/50 hover:border-indigo-300/60 transition-all duration-300 overflow-hidden bg-gradient-to-br from-white/90 to-indigo-50/80 backdrop-blur-sm shadow-lg mb-6"
-                  >
-                    {/* Arabic-inspired corner decorations */}
-                    <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
-                    <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
-                    <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
-                    <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
-
-                    {/* Subtle background pattern */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/10 to-purple-50/10 opacity-50"></div>
-
-                    <div className="relative z-10">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center">
-                          <span className="text-xl">🚀</span>
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-800 font-qurova">Getting Started</h3>
-                      </div>
-
-                      <div className="space-y-3 text-slate-600 font-queensides">
-                        <p className="leading-relaxed">
-                          You're now signed in! Complete your profile to start <span className="font-semibold text-indigo-600">connecting with potential matches</span>.
-                        </p>
-
-                        <p className="leading-relaxed">
-                          Your profile helps us find <span className="font-semibold text-purple-600">compatible matches</span> based on your preferences and Islamic values.
-                        </p>
-                      </div>
-
-                      {/* Benefits */}
-                      <div className="grid grid-cols-2 gap-3 mt-5">
-                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 border border-indigo-200/50 shadow-sm hover:shadow-md transition-all duration-200">
-                          <div className="text-center">
-                            <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">🔐</span>
-                            </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">Secure</p>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200/50 shadow-sm hover:shadow-md transition-all duration-200">
-                          <div className="text-center">
-                            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">🤝</span>
-                            </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">Halal</p>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200/50 shadow-sm hover:shadow-md transition-all duration-200">
-                          <div className="text-center">
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">👨‍👩‍👧</span>
-                            </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">Family Focus</p>
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200/50 shadow-sm hover:shadow-md transition-all duration-200">
-                          <div className="text-center">
-                            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                              <span className="text-white text-sm">🕌</span>
-                            </div>
-                            <p className="text-sm font-queensides text-slate-700 font-semibold">Islamic Values</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Center decorative element */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-400/30 rounded-full opacity-50"></div>
-                  </motion.div>
-                </motion.div>
                 )}
               </div>
-            </div>
+            </div>    
+
           </>
         ) : (
           // Original hero content for non-logged in users

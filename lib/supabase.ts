@@ -12,6 +12,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
   },
+  global: {
+    headers: {
+      'Accept': 'application/json',
+    },
+  },
 })
 
 // Database types (will be auto-generated in production)

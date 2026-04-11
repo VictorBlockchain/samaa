@@ -1,189 +1,52 @@
 import Stripe from 'stripe'
 import { supabase } from './supabase'
+import { getAdminSettings } from './products'
+import type { AdminSettings } from './products'
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2026-03-25.dahlia',
-})
+// Lazy-initialize Stripe only when needed (server-side only)
+let _stripe: Stripe | null = null
 
-// Admin settings interface
-export interface AdminSettings {
-  premium_monthly_price: number
-  premium_yearly_price: number
-  premium_monthly_likes: number
-  premium_monthly_compliments: number
-  premium_yearly_likes: number
-  premium_yearly_compliments: number
-  likes_25_price: number
-  likes_50_price: number
-  likes_100_price: number
-  likes_250_price: number
-  likes_500_price: number
-  compliments_25_price: number
-  compliments_50_price: number
-  compliments_100_price: number
-  compliments_250_price: number
-  compliments_500_price: number
-  community_split_percentage: number
-}
-
-// Fetch admin settings from database
-export async function getAdminSettings(): Promise<AdminSettings | null> {
-  try {
-    const { data, error } = await supabase
-      .from('admin_settings')
-      .select('*')
-      .limit(1)
-      .single()
-
-    if (error) {
-      console.error('Error fetching admin settings:', error)
-      return null
-    }
-
-    return data
-  } catch (error) {
-    console.error('Error fetching admin settings:', error)
+function getStripe(): Stripe | null {
+  // Only initialize on server side
+  if (typeof window !== 'undefined') {
     return null
   }
-}
-
-// Default likes products (prices will be overridden by admin settings)
-export const DEFAULT_LIKES_PRODUCTS = [
-  { id: 'likes_25', name: '25 Likes', likes: 25, price: 14.99, description: 'Boost your visibility with 25 likes' },
-  { id: 'likes_50', name: '50 Likes', likes: 50, price: 26.99, description: 'Get more matches with 50 likes' },
-  { id: 'likes_100', name: '100 Likes', likes: 100, price: 48.99, description: 'Popular choice! 100 likes' },
-  { id: 'likes_250', name: '250 Likes', likes: 250, price: 109.99, description: 'Best value! 250 likes' },
-  { id: 'likes_500', name: '500 Likes', likes: 500, price: 196.99, description: 'Ultimate package! 500 likes' },
-]
-
-// Default compliments products
-export const DEFAULT_COMPLIMENTS_PRODUCTS = [
-  { id: 'compliments_25', name: '25 Compliments', compliments: 25, price: 14.99, description: 'Spread kindness with 25 compliments' },
-  { id: 'compliments_50', name: '50 Compliments', compliments: 50, price: 26.99, description: 'Make someone\'s day with 50 compliments' },
-  { id: 'compliments_100', name: '100 Compliments', compliments: 100, price: 48.99, description: 'Popular choice! 100 compliments' },
-  { id: 'compliments_250', name: '250 Compliments', compliments: 250, price: 109.99, description: 'Best value! 250 compliments' },
-  { id: 'compliments_500', name: '500 Compliments', compliments: 500, price: 196.99, description: 'Ultimate package! 500 compliments' },
-]
-
-// Get likes products with dynamic pricing
-export async function getLikesProducts() {
-  const settings = await getAdminSettings()
   
-  if (!settings) {
-    return DEFAULT_LIKES_PRODUCTS
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY
+    if (!key) {
+      console.warn('STRIPE_SECRET_KEY is not configured')
+      return null
+    }
+    _stripe = new Stripe(key, {
+      apiVersion: '2026-03-25.dahlia',
+    })
   }
-
-  return [
-    { id: 'likes_25', name: '25 Likes', likes: 25, price: settings.likes_25_price, description: 'Boost your visibility with 25 likes' },
-    { id: 'likes_50', name: '50 Likes', likes: 50, price: settings.likes_50_price, description: 'Get more matches with 50 likes' },
-    { id: 'likes_100', name: '100 Likes', likes: 100, price: settings.likes_100_price, description: 'Popular choice! 100 likes' },
-    { id: 'likes_250', name: '250 Likes', likes: 250, price: settings.likes_250_price, description: 'Best value! 250 likes' },
-    { id: 'likes_500', name: '500 Likes', likes: 500, price: settings.likes_500_price, description: 'Ultimate package! 500 likes' },
-  ]
+  return _stripe
 }
 
-// Get compliments products with dynamic pricing
-export async function getComplimentsProducts() {
-  const settings = await getAdminSettings()
-  
-  if (!settings) {
-    return DEFAULT_COMPLIMENTS_PRODUCTS
-  }
+// Export stripe instance (will be null on client side)
+export const stripe = {
+  get checkout() { return getStripe()?.checkout },
+  get customers() { return getStripe()?.customers },
+  get paymentIntents() { return getStripe()?.paymentIntents },
+  get subscriptions() { return getStripe()?.subscriptions },
+  get products() { return getStripe()?.products },
+  get prices() { return getStripe()?.prices },
+  get billingPortal() { return getStripe()?.billingPortal },
+  get promotionCodes() { return getStripe()?.promotionCodes },
+  get coupons() { return getStripe()?.coupons },
+} as Stripe
 
-  return [
-    { id: 'compliments_25', name: '25 Compliments', compliments: 25, price: settings.compliments_25_price, description: 'Spread kindness with 25 compliments' },
-    { id: 'compliments_50', name: '50 Compliments', compliments: 50, price: settings.compliments_50_price, description: 'Make someone\'s day with 50 compliments' },
-    { id: 'compliments_100', name: '100 Compliments', compliments: 100, price: settings.compliments_100_price, description: 'Popular choice! 100 compliments' },
-    { id: 'compliments_250', name: '250 Compliments', compliments: 250, price: settings.compliments_250_price, description: 'Best value! 250 compliments' },
-    { id: 'compliments_500', name: '500 Compliments', compliments: 500, price: settings.compliments_500_price, description: 'Ultimate package! 500 compliments' },
-  ]
-}
-
-// Default subscription plans
-export const DEFAULT_SUBSCRIPTION_PLANS = [
-  {
-    id: 'premium_monthly',
-    name: 'Premium Monthly',
-    price: 19.99,
-    interval: 'month' as const,
-    likesIncluded: 25,
-    complimentsIncluded: 25,
-    features: [
-      'Unlimited messaging',
-      '25 likes per month',
-      '25 compliments per month',
-      'See who likes you',
-      'Advanced filters',
-      'Priority support',
-      'Read receipts',
-    ],
-  },
-  {
-    id: 'premium_yearly',
-    name: 'Premium Yearly',
-    price: 149.99,
-    interval: 'year' as const,
-    likesIncluded: 300,
-    complimentsIncluded: 300,
-    features: [
-      'Unlimited messaging',
-      '300 likes per year',
-      '300 compliments per year',
-      'See who likes you',
-      'Advanced filters',
-      'Priority support',
-      'Read receipts',
-      'Save 37% vs monthly',
-    ],
-  },
-]
-
-// Get subscription plans with dynamic pricing
-export async function getSubscriptionPlans() {
-  const settings = await getAdminSettings()
-  
-  if (!settings) {
-    return DEFAULT_SUBSCRIPTION_PLANS
-  }
-
-  return [
-    {
-      id: 'premium_monthly',
-      name: 'Premium Monthly',
-      price: settings.premium_monthly_price,
-      interval: 'month' as const,
-      likesIncluded: settings.premium_monthly_likes,
-      complimentsIncluded: settings.premium_monthly_compliments,
-      features: [
-        'Unlimited messaging',
-        `${settings.premium_monthly_likes} likes per month`,
-        `${settings.premium_monthly_compliments} compliments per month`,
-        'See who likes you',
-        'Advanced filters',
-        'Priority support',
-        'Read receipts',
-      ],
-    },
-    {
-      id: 'premium_yearly',
-      name: 'Premium Yearly',
-      price: settings.premium_yearly_price,
-      interval: 'year' as const,
-      likesIncluded: settings.premium_yearly_likes,
-      complimentsIncluded: settings.premium_yearly_compliments,
-      features: [
-        'Unlimited messaging',
-        `${settings.premium_yearly_likes} likes per year`,
-        `${settings.premium_yearly_compliments} compliments per year`,
-        'See who likes you',
-        'Advanced filters',
-        'Priority support',
-        'Read receipts',
-        'Save 37% vs monthly',
-      ],
-    },
-  ]
-}
+// Re-export from products.ts for backward compatibility
+export { 
+  getViewsProducts, 
+  getLeadsProducts, 
+  getSubscriptionPlans,
+  getAdminSettings,
+  DEFAULT_SUBSCRIPTION_PLANS
+} from './products'
+export type { AdminSettings } from './products'
 
 // Payment status types
 export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'cancelled'
@@ -213,7 +76,7 @@ export interface PaymentRecord {
 export async function createLikesCheckoutSession(
   userId: string,
   userEmail: string,
-  product: { id: string; name: string; likes: number; price: number; description: string }
+  product: { id: string; name: string; views: number; price: number; description: string }
 ): Promise<string | null> {
   try {
     // Get community split percentage
@@ -241,8 +104,8 @@ export async function createLikesCheckoutSession(
       customer_email: userEmail,
       metadata: {
         userId,
-        type: 'likes',
-        likes: product.likes.toString(),
+        type: 'views',
+        views: product.views.toString(),
         productId: product.id,
         communitySplit: communitySplit.toString(),
       },
@@ -259,7 +122,7 @@ export async function createLikesCheckoutSession(
 export async function createComplimentsCheckoutSession(
   userId: string,
   userEmail: string,
-  product: { id: string; name: string; compliments: number; price: number; description: string }
+  product: { id: string; name: string; leads: number; price: number; description: string }
 ): Promise<string | null> {
   try {
     const settings = await getAdminSettings()
@@ -286,8 +149,8 @@ export async function createComplimentsCheckoutSession(
       customer_email: userEmail,
       metadata: {
         userId,
-        type: 'compliments',
-        compliments: product.compliments.toString(),
+        type: 'leads',
+        leads: product.leads.toString(),
         productId: product.id,
         communitySplit: communitySplit.toString(),
       },
@@ -325,7 +188,7 @@ export async function createSubscriptionCheckoutSession(
             currency: 'usd',
             product_data: {
               name: plan.name,
-              description: `${plan.likesIncluded} likes, ${plan.complimentsIncluded} compliments included`,
+              description: `${plan.likesIncluded} views, ${plan.complimentsIncluded} leads included`,
             },
             unit_amount: Math.round(plan.price * 100),
             recurring: {
