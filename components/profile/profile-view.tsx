@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { useState, useEffect, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
 import {
   ArrowLeft,
@@ -26,6 +26,12 @@ import {
   User,
   PiggyBank,
   Settings,
+  X,
+  CheckCircle,
+  Image,
+  FileText,
+  Volume2,
+  Users,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { useRouter } from "next/navigation"
@@ -35,6 +41,7 @@ import { MobileNavigation } from "@/components/mobile/mobile-navigation"
 import { ProfileService } from "@/lib/database"
 import { getSignedUrlForPath, storagePathFromUrlOrPath, STORAGE_CONFIG } from "@/lib/storage"
 import { ArabicCard, ArabicCardContent, ArabicCardTitle, ArabicCardDescription } from "@/components/ui/arabic-card"
+import { supabase } from "@/lib/supabase"
 
 interface ProfileData {
   firstName: string
@@ -96,6 +103,358 @@ interface ProfileData {
   availableViews?: number
 }
 
+// ─── Profile Scoring Algorithm ───────────────────────────────────────────────
+
+interface ScoreBreakdown {
+  label: string
+  icon: React.ReactNode
+  points: number
+  maxPoints: number
+  detail: string
+}
+
+function calculateProfileScore(profile: ProfileData): { total: number; breakdown: ScoreBreakdown[] } {
+  const breakdown: ScoreBreakdown[] = []
+
+  // 1. Basic Info — 10 pts
+  let basicPts = 0
+  if (profile.firstName) basicPts += 2
+  if (profile.age) basicPts += 2
+  if (profile.gender) basicPts += 1
+  if (profile.city || profile.location) basicPts += 2
+  if (profile.nationality) basicPts += 2
+  if (profile.height) basicPts += 1
+  breakdown.push({ label: "Basic Info", icon: <User className="w-4 h-4" />, points: basicPts, maxPoints: 10, detail: `Name, age, gender, location, nationality, height` })
+
+  // 2. Photos — 12 pts (1=3, 2=5, 3=7, 4=10, 5+=12)
+  const photoCount = profile.profile_photos?.length ?? 0
+  let photoPts = 0
+  if (photoCount >= 5) photoPts = 12
+  else if (photoCount === 4) photoPts = 10
+  else if (photoCount === 3) photoPts = 7
+  else if (photoCount === 2) photoPts = 5
+  else if (photoCount === 1) photoPts = 3
+  breakdown.push({ label: "Photos", icon: <Image className="w-4 h-4" />, points: photoPts, maxPoints: 12, detail: `${photoCount} photo${photoCount !== 1 ? "s" : ""} uploaded` })
+
+  // 3. Video Intro — 8 pts
+  const videoPts = profile.videoIntro ? 8 : 0
+  breakdown.push({ label: "Video Intro", icon: <Video className="w-4 h-4" />, points: videoPts, maxPoints: 8, detail: videoPts > 0 ? "Video uploaded" : "No video yet" })
+
+  // 4. Voice Intro — 7 pts
+  const voicePts = profile.voiceIntro ? 7 : 0
+  breakdown.push({ label: "Voice Intro", icon: <Volume2 className="w-4 h-4" />, points: voicePts, maxPoints: 7, detail: voicePts > 0 ? "Voice note uploaded" : "No voice note yet" })
+
+  // 5. Bio — 10 pts (char count: 0=0, 1-50=2, 51-150=5, 151-300=8, 301+=10)
+  const bioLen = (profile.bio || "").length
+  let bioPts = 0
+  if (bioLen >= 301) bioPts = 10
+  else if (bioLen >= 151) bioPts = 8
+  else if (bioLen >= 51) bioPts = 5
+  else if (bioLen >= 1) bioPts = 2
+  breakdown.push({ label: "Bio", icon: <FileText className="w-4 h-4" />, points: bioPts, maxPoints: 10, detail: `${bioLen} characters written` })
+
+  // 6. Islamic Values — 14 pts (bonus for 5 daily prayers & religiosity depth)
+  let islamicPts = 0
+  if (profile.religiosity) {
+    islamicPts += 2
+    if (/very\s*practicing|practicing/i.test(profile.religiosity)) islamicPts += 1
+  }
+  if (profile.prayerFrequency) {
+    islamicPts += 2
+    // Bonus for 5 daily prayers
+    if (/5\s*daily|five\s*daily|all\s*five|5\s*times|five\s*times/i.test(profile.prayerFrequency)) islamicPts += 3
+  }
+  if (profile.sect) islamicPts += 2
+  if (profile.halalFood) islamicPts += 2
+  if (profile.marriageIntention) islamicPts += 2
+  islamicPts = Math.min(islamicPts, 14)
+  const prayerDetail = /5\s*daily|five\s*daily|all\s*five|5\s*times|five\s*times/i.test(profile.prayerFrequency || "")
+    ? "5 daily prayers (+3 bonus)"
+    : "Religious preferences filled"
+  breakdown.push({ label: "Islamic Values", icon: <Moon className="w-4 h-4" />, points: islamicPts, maxPoints: 14, detail: prayerDetail })
+
+  // 7. Education & Career — 5 pts
+  let eduPts = 0
+  if (profile.education) eduPts += 2.5
+  if (profile.profession) eduPts += 2.5
+  breakdown.push({ label: "Education & Career", icon: <GraduationCap className="w-4 h-4" />, points: Math.round(eduPts), maxPoints: 5, detail: `Education & profession` })
+
+  // 8. Psychedelics — 15 pts (highest-value category)
+  let psychPts = 0
+  const psychTypes = profile.psychedelicsTypes ?? []
+  const hasMushrooms = psychTypes.some(t => /mushroom|psilocybin|shroom/i.test(t))
+  if (profile.psychedelics) {
+    psychPts += 3 // filled the preference at all
+    if (psychTypes.length >= 3) psychPts += 4
+    else if (psychTypes.length >= 2) psychPts += 3
+    else if (psychTypes.length >= 1) psychPts += 2
+    if (hasMushrooms) psychPts += 8 // mushrooms = biggest bonus
+  }
+  psychPts = Math.min(psychPts, 15)
+  const psychDetail = hasMushrooms
+    ? `Mushrooms selected (+8 bonus) · ${psychTypes.length} type${psychTypes.length !== 1 ? "s" : ""}`
+    : psychTypes.length > 0
+    ? `${psychTypes.length} type${psychTypes.length !== 1 ? "s" : ""} selected`
+    : profile.psychedelics ? "Preference set, add types for more" : "Not filled"
+  breakdown.push({ label: "Psychedelics", icon: <Sparkles className="w-4 h-4" />, points: psychPts, maxPoints: 15, detail: psychDetail })
+
+  // 9. Finance & Style — 8 pts (thrift, responsible spending, natural hair, finance style)
+  let finPts = 0
+  if (profile.financeStyle) {
+    finPts += 2
+    if (/thrift|frugal|saver|budget/i.test(profile.financeStyle)) finPts += 2
+    else if (/responsible|balanced|moderate/i.test(profile.financeStyle)) finPts += 1
+  }
+  if (profile.hairStyle) {
+    finPts += 1
+    if (/natural|no\s*product|minimal/i.test(profile.hairStyle)) finPts += 1
+  }
+  if (profile.shoppingFrequency) finPts += 1
+  if (profile.selfCareBudget) finPts += 1
+  finPts = Math.min(finPts, 8)
+  const finDetail = /thrift|frugal|saver|budget/i.test(profile.financeStyle || "")
+    ? "Thrifty spender (+2 bonus)"
+    : /natural|no\s*product|minimal/i.test(profile.hairStyle || "")
+    ? "Natural hair (+1 bonus)"
+    : "Finance & style preferences"
+  breakdown.push({ label: "Finance & Style", icon: <DollarSign className="w-4 h-4" />, points: finPts, maxPoints: 8, detail: finDetail })
+
+  // 10. Lifestyle — 4 pts (smoking, alcohol, self-care — psychedelics & finance scored separately)
+  let lifePts = 0
+  const lifeFields = [profile.smoking, profile.alcohol, profile.selfCareFrequency, profile.selfCareBudget ? undefined : profile.shoppingFrequency].filter(Boolean)
+  lifeFields.forEach(() => { lifePts += 1 })
+  if (profile.smoking) lifePts = Math.max(lifePts, 1)
+  if (profile.alcohol) lifePts = Math.max(lifePts, 1)
+  lifePts = Math.min(lifePts + (profile.selfCareFrequency ? 1 : 0), 4)
+  breakdown.push({ label: "Lifestyle", icon: <Palette className="w-4 h-4" />, points: Math.min(lifePts, 4), maxPoints: 4, detail: `Lifestyle preferences filled` })
+
+  // 11. Family & Marriage — 4 pts
+  let famPts = 0
+  if (profile.maritalStatus) famPts += 1
+  if (profile.hasChildren && profile.hasChildren !== "no") famPts += 1
+  else if (profile.hasChildren === "no") famPts += 1
+  if (profile.wantChildren) famPts += 1
+  if (profile.livingArrangements) famPts += 1
+  breakdown.push({ label: "Family & Marriage", icon: <Users className="w-4 h-4" />, points: Math.min(famPts, 4), maxPoints: 4, detail: `Family preferences filled` })
+
+  // 12. Polygamy Preferences — 4 pts (char count)
+  const polyLen = (profile.polygamyReason || "").length
+  let polyPts = 0
+  if (polyLen >= 151) polyPts = 4
+  else if (polyLen >= 51) polyPts = 3
+  else if (polyLen >= 1) polyPts = 2
+  breakdown.push({ label: "Polygamy Preferences", icon: <Heart className="w-4 h-4" />, points: polyPts, maxPoints: 4, detail: polyLen > 0 ? `${polyLen} characters written` : "Not filled" })
+
+  // 13. Interests & Personality — 7 pts
+  let intPts = 0
+  const interestCount = profile.interests?.length ?? 0
+  const personalityCount = profile.personality?.length ?? 0
+  if (interestCount >= 5) intPts += 3; else if (interestCount >= 3) intPts += 2; else if (interestCount >= 1) intPts += 1
+  if (personalityCount >= 3) intPts += 4; else if (personalityCount >= 2) intPts += 3; else if (personalityCount >= 1) intPts += 1
+  breakdown.push({ label: "Interests & Personality", icon: <Heart className="w-4 h-4" />, points: Math.min(intPts, 7), maxPoints: 7, detail: `${interestCount} interests, ${personalityCount} personality traits` })
+
+  const total = breakdown.reduce((sum, b) => sum + b.points, 0)
+  return { total: Math.min(total, 100), breakdown }
+}
+
+// ─── Profile Score Modal ─────────────────────────────────────────────────────
+
+function ProfileScoreModal({ profile, isOpen, onClose, onScoreCalculated }: {
+  profile: ProfileData
+  isOpen: boolean
+  onClose: () => void
+  onScoreCalculated: (score: number) => void
+}) {
+  const [phase, setPhase] = useState<"scoring" | "results">("scoring")
+  const [result, setResult] = useState<{ total: number; breakdown: ScoreBreakdown[] } | null>(null)
+  const [revealedRows, setRevealedRows] = useState(0)
+
+  useEffect(() => {
+    if (!isOpen) {
+      setPhase("scoring")
+      setResult(null)
+      setRevealedRows(0)
+      return
+    }
+    // Start scoring animation
+    const timer = setTimeout(() => {
+      const r = calculateProfileScore(profile)
+      setResult(r)
+      setPhase("results")
+      onScoreCalculated(r.total)
+    }, 2200)
+    return () => clearTimeout(timer)
+  }, [isOpen])
+
+  // Stagger reveal rows
+  useEffect(() => {
+    if (phase !== "results" || !result) return
+    if (revealedRows >= result.breakdown.length) return
+    const t = setTimeout(() => setRevealedRows(prev => prev + 1), 120)
+    return () => clearTimeout(t)
+  }, [phase, revealedRows, result])
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="relative w-full max-w-md max-h-[85vh] overflow-y-auto"
+      >
+        <ArabicCard>
+          <ArabicCardContent>
+            {/* Close button */}
+            <button onClick={onClose} className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/80 border border-pink-200/60 flex items-center justify-center hover:bg-pink-50 transition-colors">
+              <X className="w-4 h-4 text-slate-500" />
+            </button>
+
+            <AnimatePresence mode="wait">
+              {phase === "scoring" ? (
+                <motion.div
+                  key="scoring"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="py-8 text-center"
+                >
+                  {/* Animated spinner */}
+                  <div className="relative w-24 h-24 mx-auto mb-6">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 rounded-full border-4 border-pink-100 border-t-pink-500"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Star className="w-8 h-8 text-pink-400" />
+                    </div>
+                  </div>
+                  <ArabicCardTitle>Scoring your profile...</ArabicCardTitle>
+                  <ArabicCardDescription>
+                    Analyzing completeness across 13 dimensions
+                  </ArabicCardDescription>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="results"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="py-4"
+                >
+                  {/* Score circle */}
+                  <div className="text-center mb-6">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.2 }}
+                      className="relative w-28 h-28 mx-auto mb-4"
+                    >
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#fce7f3" strokeWidth="8" />
+                        <motion.circle
+                          cx="50" cy="50" r="42" fill="none"
+                          stroke="url(#scoreGradient)" strokeWidth="8" strokeLinecap="round"
+                          strokeDasharray={`${(result?.total ?? 0) * 2.64} 264`}
+                          initial={{ strokeDasharray: "0 264" }}
+                          animate={{ strokeDasharray: `${(result?.total ?? 0) * 2.64} 264` }}
+                          transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
+                        />
+                        <defs>
+                          <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#ec4899" />
+                            <stop offset="100%" stopColor="#f43f5e" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.5 }}
+                          className="text-3xl font-bold text-pink-600 font-queensides"
+                        >
+                          {result?.total ?? 0}%
+                        </motion.span>
+                      </div>
+                    </motion.div>
+                    <ArabicCardTitle>Profile Score</ArabicCardTitle>
+                    <ArabicCardDescription className="text-xs">
+                      {(result?.total ?? 0) >= 80 ? "Excellent! Your profile is highly complete" :
+                       (result?.total ?? 0) >= 60 ? "Good profile! A few areas to improve" :
+                       (result?.total ?? 0) >= 40 ? "Getting there — fill more sections to stand out" :
+                       "Needs work — complete more sections to attract matches"}
+                    </ArabicCardDescription>
+                  </div>
+
+                  {/* Breakdown rows */}
+                  <div className="space-y-2">
+                    {result?.breakdown.map((item, i) => (
+                      <motion.div
+                        key={item.label}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={i < revealedRows ? { opacity: 1, x: 0 } : { opacity: 0, x: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-gradient-to-r from-pink-50/60 to-rose-50/40 border border-pink-100/50"
+                      >
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          item.points === item.maxPoints
+                            ? "bg-gradient-to-br from-emerald-400 to-teal-500 text-white"
+                            : item.points > 0
+                            ? "bg-gradient-to-br from-pink-400 to-rose-500 text-white"
+                            : "bg-slate-100 text-slate-400"
+                        }`}>
+                          {item.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-slate-700 font-queensides">{item.label}</p>
+                            <p className={`text-xs font-bold font-queensides ${
+                              item.points === item.maxPoints ? "text-emerald-600" : item.points > 0 ? "text-pink-600" : "text-slate-400"
+                            }`}>
+                              {item.points}/{item.maxPoints}
+                            </p>
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-queensides truncate">{item.detail}</p>
+                          {/* Progress bar */}
+                          <div className="mt-1 h-1 rounded-full bg-pink-100 overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={i < revealedRows ? { width: `${(item.points / item.maxPoints) * 100}%` } : { width: 0 }}
+                              transition={{ duration: 0.6, delay: 0.1 }}
+                              className={`h-full rounded-full ${
+                                item.points === item.maxPoints
+                                  ? "bg-gradient-to-r from-emerald-400 to-teal-500"
+                                  : "bg-gradient-to-r from-pink-400 to-rose-500"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </ArabicCardContent>
+        </ArabicCard>
+      </motion.div>
+    </div>
+  )
+}
+
 // UI Kit Section Divider
 function SectionDivider({ icon: Icon, title, color = "pink" }: { 
   icon: any
@@ -148,6 +507,7 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
   const [isLoading, setIsLoading] = useState(true)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [viewMode, setViewMode] = useState<'my-profile' | 'my-match'>('my-profile')
+  const [showScoreModal, setShowScoreModal] = useState(false)
 
   // Helper function to format date
   const formatDate = (dateString: string) => {
@@ -401,7 +761,10 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
 
                 {/* Bio Rating & Chat Rating - Two Column */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="group p-3.5 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200/60 hover:shadow-md hover:shadow-pink-100 transition-all duration-300 hover:-translate-y-0.5">
+                  <div
+                    className={`group p-3.5 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 border border-pink-200/60 hover:shadow-md hover:shadow-pink-100 transition-all duration-300 hover:-translate-y-0.5 ${isOwnProfile ? "cursor-pointer active:scale-95" : ""}`}
+                    onClick={() => { if (isOwnProfile) setShowScoreModal(true) }}
+                  >
                     <div className="flex items-center gap-2.5">
                       <div className="w-9 h-9 bg-gradient-to-br from-pink-400 to-rose-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
                         <Star className="w-4.5 h-4.5 text-white" />
@@ -1047,6 +1410,26 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
           </div>
         </div>
       </div>
+
+      {/* Profile Score Modal */}
+      {profile !== null && isOwnProfile && (
+        <ProfileScoreModal
+          profile={profile!}
+          isOpen={showScoreModal}
+          onClose={() => setShowScoreModal(false)}
+          onScoreCalculated={async (score) => {
+            try {
+              await supabase
+                .from('users')
+                .update({ profile_rating: score, updated_at: new Date().toISOString() })
+                .eq('id', profileUserId)
+              setProfile(prev => prev ? { ...prev, profileRating: score } : prev)
+            } catch (err) {
+              console.error('Error saving profile score:', err)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

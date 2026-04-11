@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getMediaUrl, STORAGE_CONFIG } from "@/lib/storage"
 import { Toaster } from "@/components/ui/toaster"
 import { AddToCartSheet } from "@/components/shop/add-to-cart-sheet"
+import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
 
 // Product interface
 interface Product {
@@ -1100,18 +1101,11 @@ export function ShopView() {
 
         {/* Empty State - No Products */}
         {!shopProductsLoading && !searchTerm && allProducts.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
-          >
-            <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Package className="w-8 h-8 text-pink-400" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-700 font-display mb-2">No products available</h3>
-            <p className="text-slate-600 font-queensides mb-4">
+          <ArabicEmptyStateCard icon={<Package className="w-12 h-12" />}>
+            <ArabicEmptyStateCardTitle>No products available</ArabicEmptyStateCardTitle>
+            <ArabicEmptyStateCardDescription className="mb-4">
               Be the first to add products to the marketplace!
-            </p>
+            </ArabicEmptyStateCardDescription>
             <Button
               onClick={() => setActiveTab("myshop")}
               className="font-queensides bg-gradient-to-r from-pink-400 to-rose-500 text-white"
@@ -1119,7 +1113,7 @@ export function ShopView() {
               <Store className="w-4 h-4 mr-2" />
               Open My Shop
             </Button>
-          </motion.div>
+          </ArabicEmptyStateCard>
         )}
 
         {/* Featured Shops Section */}
