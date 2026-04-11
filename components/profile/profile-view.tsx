@@ -1248,7 +1248,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
             </div>
             <div className="p-1 rounded-xl text-center">
               <svg className="w-8 h-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2.293 2.293c-.63.63-.184 1.707.707 1.707H18a2 2 0 002-2v-6a2 2 0 00-2-2h-5.293c-.495 0-.964.14-1.38.415l-2.293 2.293a1 1 0 101.414 1.414l2.293-2.293a1 1 0 00-1.414-1.414z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
               </svg>
               <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Shopping Budget</p>
               <p className="text-slate-800 font-queensides font-medium">
@@ -1264,9 +1264,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
               </p>
             </div>
             <div className="p-1 rounded-xl text-center">
-              <svg className="w-8 h-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2.293 2.293c-.63.63-.184 1.707.707 1.707H18a2 2 0 002-2v-6a2 2 0 00-2-2h-5.293c-.495 0-.964.14-1.38.415l-2.293 2.293a1 1 0 101.414 1.414l2.293-2.293a1 1 0 00-1.414-1.414z" />
-              </svg>
+              <Briefcase className="w-8 h-8 text-amber-500 mx-auto mb-2" />
               <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Work Pref</p>
               <p className="text-slate-800 font-queensides font-medium capitalize">{profile.workPreference ? profile.workPreference.replace('_', ' ') : 'N/A'}</p>
             </div>
