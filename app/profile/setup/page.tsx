@@ -941,7 +941,7 @@ export default function ProfileSetupPage() {
       selfCareBudgetAmount: (profile as any).self_care_budget_preference_amount ? String((profile as any).self_care_budget_preference_amount) : "",
       shoppingBudgetType: (profile as any).shopping_budget_preference_type || "",
       shoppingBudgetAmount: (profile as any).shopping_budget_preference_amount ? String((profile as any).shopping_budget_preference_amount) : "",
-      languages: [], // Will be loaded from user_preferences below
+      languages: Array.isArray((profile as any).languages) ? (profile as any).languages : [],
       personality: Array.isArray((profile as any).personality) ? (profile as any).personality : [],
       profilePhoto: profile.profile_photo || null,
       additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
@@ -1016,7 +1016,6 @@ export default function ProfileSetupPage() {
         if (!s) return
         setProfileData((prev) => ({
           ...prev,
-          languages: Array.isArray((s as any).languages_preference) ? (s as any).languages_preference : prev.languages,
           preferences: {
             ...prev.preferences,
             ageRange: {
@@ -1270,14 +1269,8 @@ export default function ProfileSetupPage() {
       hair_style: profileData.hairStyle || null,
       polygamy_reason: profileData.polygamyReason || null,
       bio: profileData.bio || null,
+      languages: profileData.languages && profileData.languages.length > 0 ? profileData.languages : null,
     } as any)
-    
-    // Save languages to user_preferences table
-    if (profileData.languages && profileData.languages.length > 0) {
-      await UserSettingsService.upsertUserSettings(userId, {
-        languages_preference: profileData.languages,
-      } as any)
-    }
     
     return !!row
   }
