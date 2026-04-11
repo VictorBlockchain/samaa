@@ -4,7 +4,7 @@ import { motion, useScroll } from "framer-motion"
 import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useAuth } from "@/app/context/AuthContext"
-import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video } from "lucide-react"
+import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { SwipeCard } from "./swipe-card"
@@ -30,8 +30,21 @@ export function MobileHero() {
   const [isLoadingCredits, setIsLoadingCredits] = useState(false)
   const [mediaType, setMediaType] = useState<'photos' | 'videos'>('photos')
   const [referralCode, setReferralCode] = useState('')
+  const [showMobileModal, setShowMobileModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(true)
 
   const { isAuthenticated, userId } = useAuth()
+
+  // Detect if user is on mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
+      setIsMobile(mobile)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Load user profile when authenticated
   useEffect(() => {
@@ -100,31 +113,31 @@ export function MobileHero() {
   const features = [
     {
       id: 0,
-      icon: "💎",
-      title: "No Monthly Fees",
-      price: "$0",
-      priceSubtext: "Forever",
+      icon: Sparkles,
+      title: "25 Leads & Views",
+      price: "$24.99",
+      priceSubtext: "monthly",
       description:
-        "We want connections, marriage & families. No monthly fees, no hidden costs. Just pure love.",
+        "If you like her, take the lead. Do more than like, send her a message. We want connections, marriage & families.",
       color: "indigo",
     },
     {
       id: 1,
-      icon: "💬",
-      title: "Real Connections",
-      description: "No mindless swiping. Start meaningful conversations with your potential life partner from day one.",
+      icon: Users,
+      title: "Profiles",
+      description: "Enhanced profiles with more details and options. Personality showcase profiles with profile rating system.",
       color: "purple",
     },
     {
       id: 2,
-      icon: "🤝",
-      title: "Guardian Involvement",
-      description: "Wali/guardian involvement built into the process, following Islamic traditions and values.",
+      icon: Store,
+      title: "Shops + Markets",
+      description: "Create a shop or market for your business. Sell your products and connect with customers.",
       color: "blue",
     },
     {
       id: 3,
-      icon: "🕌",
+      icon: MoonStar,
       title: "Islamic Values",
       description:
         "A platform built on Islamic principles, helping you find a spouse the halal way.",
@@ -135,7 +148,7 @@ export function MobileHero() {
   const secondFeatures = [
     {
       id: 0,
-      icon: "✅",
+      icon: BadgeCheck,
       title: "Verified Profiles",
       description:
         "Know who you're talking to with verified profiles and community references.",
@@ -143,7 +156,7 @@ export function MobileHero() {
     },
     {
       id: 1,
-      icon: "🔒",
+      icon: Shield,
       title: "Privacy First",
       description:
         "Your privacy is protected. Control who sees your profile and information.",
@@ -151,7 +164,7 @@ export function MobileHero() {
     },
     {
       id: 2,
-      icon: "💬",
+      icon: Clapperboard,
       title: "Video Introductions",
       description:
         "Share video and voice introductions to let others know the real you.",
@@ -159,7 +172,7 @@ export function MobileHero() {
     },
     {
       id: 3,
-      icon: "🛍️",
+      icon: ShoppingCart,
       title: "Wedding Shop",
       description:
         "Plan your wedding with our marketplace for Muslim fashion and gifts.",
@@ -471,7 +484,9 @@ export function MobileHero() {
                         : "hover:bg-white/10 border border-transparent"
                     }`}
                   >
-                    <div className="text-2xl mb-1">{feature.icon}</div>
+                    <div className="mb-1 flex justify-center">
+                      {React.createElement(feature.icon, { className: "w-6 h-6 text-indigo-600" })}
+                    </div>
                     <div className="text-xs font-queensides text-slate-600 leading-tight">
                       {feature.title.split(" ").slice(0, 2).join(" ")}
                     </div>
@@ -486,7 +501,7 @@ export function MobileHero() {
             {/* Active Feature Card */}
 
             <motion.div
-              key={activeTab}
+              key={`feature-${activeTab}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
@@ -639,8 +654,8 @@ export function MobileHero() {
                 <div className="relative z-10 text-center">
                   {/* Crypto Icons */}
 
-                  <h3 className="text-xl font-bold text-slate-800 mb-3 font-queensides">Powered by Crypto</h3>
-
+                  <h3 className="text-xl font-bold text-slate-800 mb-3 font-queensides">Get $10</h3>
+               <h5 className="text-md font-medium text-slate-600 mb-5 font-queensides">Refer marriage candidates, get $10 with their 1st subscription.</h5>
                   {/* Trust badges */}
                 </div>
 
@@ -661,149 +676,6 @@ export function MobileHero() {
               </div>
             </motion.div>
 
-            {/* Second Feature Tabs */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.2, duration: 0.8, ease: "easeOut" }}
-              className="mb-6"
-            >
-              <div className="grid grid-cols-4 gap-2 p-2 bg-white/10 backdrop-blur-sm rounded-2xl border border-purple-200/20">
-                {secondFeatures.map((feature, index) => (
-                  <button
-                    key={feature.id}
-                    onClick={() => {
-                      setActiveSecondTab(index)
-                      setHasSecondTabBeenClicked(true)
-                    }}
-                    className={`relative p-3 rounded-xl transition-all duration-300 ${
-                      activeSecondTab === index
-                        ? "bg-gradient-to-br from-purple-400/20 to-indigo-400/20 border border-purple-300/40 shadow-lg"
-                        : "hover:bg-white/10 border border-transparent"
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">{feature.icon}</div>
-                    <div className="text-xs font-queensides font-bold text-slate-700 leading-tight">
-                      {feature.title.split(" ").slice(0, 2).join(" ")}
-                    </div>
-                    {activeSecondTab === index && (
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1 w-2 h-2 bg-purple-400 rounded-full"></div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Active Second Feature Card */}
-            {hasSecondTabBeenClicked && (
-              <motion.div
-                key={activeSecondTab}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="relative group mb-8"
-              >
-                <div
-                  className={`relative rounded-2xl p-8 border-2 ${getColorClasses(secondFeatures[activeSecondTab].color).border} transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5`}
-                >
-                  {/* Arabic corner decorations */}
-                  <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-purple-400/60 rounded-tl-xl"></div>
-                  <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-indigo-400/60 rounded-tr-xl"></div>
-                  <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-indigo-400/60 rounded-bl-xl"></div>
-                  <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-purple-400/60 rounded-br-xl"></div>
-
-                  {/* Geometric pattern overlay */}
-                  <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-purple-300/30 rounded-full opacity-20"></div>
-                  <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
-                  <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
-
-                  <div className="relative z-10 text-center">
-                    {/* Token Icons (only for Samaa Token) */}
-                    {secondFeatures[activeSecondTab].id === 0 && (
-                      <div className="flex justify-center space-x-2 mb-4">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-400/20 to-purple-500/20 rounded-full border border-indigo-300/40 flex items-center justify-center">
-                          <div className="text-sm">🪙</div>
-                        </div>
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 rounded-full border border-purple-300/40 flex items-center justify-center">
-                          <div className="text-sm">💎</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Wallet Animation (for Dowry Wallets) */}
-                    {secondFeatures[activeSecondTab].id === 1 && (
-                      <div className="flex justify-center space-x-3 mb-4">
-                        <div className="w-10 h-6 bg-purple-100/50 rounded border border-purple-300/40 flex items-center justify-center backdrop-blur-sm">
-                          <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
-                        </div>
-                        <div className="w-10 h-6 bg-indigo-100/50 rounded border border-indigo-300/40 flex items-center justify-center backdrop-blur-sm">
-                          <div className="w-1 h-1 bg-indigo-500 rounded-full"></div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Shop Icons (for Shop feature) */}
-                    {secondFeatures[activeSecondTab].id === 3 && (
-                      <div className="flex justify-center space-x-2 mb-4">
-                        <div className="w-6 h-6 bg-green-100/50 rounded border border-green-300/40 flex items-center justify-center backdrop-blur-sm">
-                          <div className="text-xs">🏪</div>
-                        </div>
-                        <div className="w-6 h-6 bg-emerald-100/50 rounded border border-emerald-300/40 flex items-center justify-center backdrop-blur-sm">
-                          <div className="text-xs">💳</div>
-                        </div>
-                      </div>
-                    )}
-
-                    <h3 className="text-2xl font-bold text-slate-800 mb-4 font-queensides">
-                      {secondFeatures[activeSecondTab].title}
-                    </h3>
-                    <p className="text-slate-600 font-queensides leading-relaxed text-base">
-                      {secondFeatures[activeSecondTab].description}
-                    </p>
-
-                    {/* Feature-specific indicators */}
-                    {secondFeatures[activeSecondTab].id === 0 && (
-                      <div className="flex justify-center space-x-4 text-sm mt-6">
-                        <div className="flex items-center space-x-2 text-indigo-600">
-                          <div className="w-2 h-2 bg-indigo-500/70 rounded-full"></div>
-                          <span className="font-queensides">Native Token</span>
-                        </div>
-                        <div className="flex items-center space-x-2 text-purple-600">
-                          <div className="w-2 h-2 bg-purple-500/70 rounded-full"></div>
-                          <span className="font-queensides">Earn & Spend</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Arabic-Inspired Card Divider */}
-                  <div className="flex items-center justify-center mt-5">
-                    <div
-                      className={`flex-1 h-px bg-gradient-to-r from-transparent ${getColorClasses(secondFeatures[activeSecondTab].color).divider} to-transparent`}
-                    ></div>
-                    <div className="mx-4 flex items-center space-x-1">
-                      <div
-                        className={`w-1 h-1 ${getColorClasses(secondFeatures[activeSecondTab].color).dots} rounded-full`}
-                      ></div>
-                      <div
-                        className={`w-2 h-2 border ${getColorClasses(secondFeatures[activeSecondTab].color).dotBorder} rounded-full flex items-center justify-center`}
-                      >
-                        <div
-                          className={`w-0.5 h-0.5 ${getColorClasses(secondFeatures[activeSecondTab].color).dotCenter} rounded-full`}
-                        ></div>
-                      </div>
-                      <div
-                        className={`w-1 h-1 ${getColorClasses(secondFeatures[activeSecondTab].color).dots} rounded-full`}
-                      ></div>
-                    </div>
-                    <div
-                      className={`flex-1 h-px bg-gradient-to-r from-transparent ${getColorClasses(secondFeatures[activeSecondTab].color).divider} to-transparent`}
-                    ></div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
             {/* Call to Action Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -811,9 +683,51 @@ export function MobileHero() {
               transition={{ delay: 1.8, duration: 0.8, ease: "easeOut" }}
               className="mt-8 space-y-4"
             >
-              {/* Connect Wallet Button */}
+              {/* Sign Up / Login Button */}
               <div className="relative w-full">
-                <WalletButton className="w-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-6 px-8 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl backdrop-blur-sm overflow-hidden group" />
+                <button
+                  onClick={() => {
+                    if (!isMobile) {
+                      setShowMobileModal(true)
+                    } else {
+                      router.push(isAuthenticated ? "/profile" : "/auth/login")
+                    }
+                  }}
+                  className="relative w-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-6 px-8 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl backdrop-blur-sm overflow-hidden group"
+                >
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                  </div>
+                  
+                  <div className="relative z-10 flex items-center justify-center gap-3">
+                    {isAuthenticated ? (
+                      <>
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-lg font-queensides font-bold">My Profile</div>
+                          <div className="text-xs font-queensides opacity-90">View & edit your profile</div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-lg font-queensides font-bold">Sign Up / Login</div>
+                          <div className="text-xs font-queensides opacity-90">Start your journey to marriage</div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </button>
 
                 {/* Arabic-inspired corner decorations */}
                 <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-white/30 rounded-tl-xl pointer-events-none"></div>
@@ -921,6 +835,106 @@ export function MobileHero() {
 
 
       </div>
+
+      {/* Mobile-Only Modal */}
+      {showMobileModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="relative w-full max-w-md bg-gradient-to-br from-white to-indigo-50/30 rounded-3xl shadow-2xl overflow-hidden border border-indigo-200/50"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowMobileModal(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all group z-10"
+            >
+              <X className="w-5 h-5 text-slate-600 group-hover:text-slate-800" />
+            </button>
+
+            {/* Content */}
+            <div className="p-8">
+              {/* Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="w-20 h-20 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-3xl flex items-center justify-center shadow-xl">
+                  <Smartphone className="w-10 h-10 text-white" />
+                </div>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-2xl font-bold text-slate-800 font-queensides text-center mb-3">
+                Best Experience on Mobile
+              </h3>
+
+              {/* Description */}
+              <p className="text-slate-600 font-queensides text-center leading-relaxed mb-6">
+                Samaa works best on mobile. No app to download—just visit{' '}
+                <span className="font-semibold text-indigo-600">Samaa.app</span>{' '}
+                on your mobile browser for the full experience.
+              </p>
+
+              {/* Features */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center gap-3 bg-white/60 rounded-xl p-3 border border-indigo-100">
+                  <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-slate-700 font-queensides">Swipe through profiles easily</p>
+                </div>
+                <div className="flex items-center gap-3 bg-white/60 rounded-xl p-3 border border-indigo-100">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-slate-700 font-queensides">Smooth video playback</p>
+                </div>
+                <div className="flex items-center gap-3 bg-white/60 rounded-xl p-3 border border-indigo-100">
+                  <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <p className="text-sm text-slate-700 font-queensides">Optimized touch interactions</p>
+                </div>
+              </div>
+
+              {/* QR Code Placeholder */}
+              <div className="bg-white rounded-2xl p-4 border border-indigo-100 mb-6">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="text-center">
+                    <p className="text-xs text-slate-500 font-queensides mb-2">Scan on mobile</p>
+                    <div className="w-24 h-24 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl flex items-center justify-center border-2 border-dashed border-indigo-200">
+                      <Smartphone className="w-8 h-8 text-indigo-400" />
+                    </div>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-slate-800 font-queensides">Samaa.app</p>
+                    <p className="text-xs text-slate-500 font-queensides mt-1">Open on your phone</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowMobileModal(false)}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-3.5 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 font-queensides"
+              >
+                Got it, thanks!
+              </button>
+            </div>
+
+            {/* Decorative elements */}
+            <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-xl"></div>
+            <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-300/40 rounded-tr-xl"></div>
+            <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-300/40 rounded-bl-xl"></div>
+            <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-300/40 rounded-br-xl"></div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,10 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { HeartIcon } from "@/components/ui/heart-icon"
-import { X, Smartphone } from "lucide-react"
+import { X, Smartphone, Sparkles, Users, Store, MoonStar } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
+import { useRouter } from "next/navigation"
 
 export function DesktopHero() {
   const [isVisible, setIsVisible] = useState(false)
@@ -12,6 +14,7 @@ export function DesktopHero() {
   const [activeTab, setActiveTab] = useState(0)
   const [activeSecondTab, setActiveSecondTab] = useState(0)
   const [hasSecondTabBeenClicked, setHasSecondTabBeenClicked] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     setIsVisible(true)
@@ -20,34 +23,34 @@ export function DesktopHero() {
   const features = [
     {
       id: 0,
-      icon: "💎",
-      title: "No Monthly Fees",
-      price: "$0",
-      priceSubtext: "Forever",
+      icon: Sparkles,
+      title: "25 Leads & Views",
+      price: "$24.99",
+      priceSubtext: "monthly",
       description:
-        "While others charge $30-50/month, Samaa is completely free. No buying likes, no premium features, no hidden costs.",
+        "If you like her, take the lead. Do more than like, send her a message. We want connections, marriage & families.",
       color: "indigo",
     },
     {
       id: 1,
-      icon: "💬",
-      title: "Real Conversations",
-      description: "No mindless swiping. Start meaningful conversations with your potential life partner from day one.",
+      icon: Users,
+      title: "Profiles",
+      description: "Enhanced profiles with more details and options. Personality showcase profiles with profile rating system.",
       color: "purple",
     },
     {
       id: 2,
-      icon: "👛",
-      title: "Financial Transparency",
-      description: "Dowry wallets and purses eliminate money worries. See financial intentions upfront, the halal way.",
+      icon: Store,
+      title: "Shops + Markets",
+      description: "Create a shop or market for your business. Sell your products and connect with customers.",
       color: "blue",
     },
     {
       id: 3,
-      icon: "🚀",
-      title: "The Future of Islamic Marriage",
+      icon: MoonStar,
+      title: "Islamic Values",
       description:
-        "Blockchain-powered, Web3-native platform that respects Islamic values while embracing tomorrow's technology.",
+        "A platform built on Islamic principles, helping you find a spouse the halal way.",
       color: "indigo",
     },
   ]
@@ -229,7 +232,9 @@ export function DesktopHero() {
                       : "hover:bg-white/10 border border-transparent"
                   }`}
                 >
-                  <div className="text-4xl mb-3">{feature.icon}</div>
+                  <div className="mb-3 flex justify-center">
+                    {React.createElement(feature.icon, { className: "w-8 h-8 text-indigo-600" })}
+                  </div>
                   <div className="text-sm font-queensides text-slate-600 leading-tight">{feature.title}</div>
                   {activeTab === index && (
                     <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-2 w-3 h-3 bg-indigo-400 rounded-full"></div>
@@ -284,21 +289,44 @@ export function DesktopHero() {
             transition={{ delay: 1.8, duration: 0.8, ease: "easeOut" }}
             className="mt-12 space-y-6"
           >
-            {/* Connect Wallet Button - Opens Mobile Popup */}
-            <button
-              onClick={() => setShowMobilePopup(true)}
-              className="relative w-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-8 px-12 rounded-3xl transition-all duration-300 shadow-xl hover:shadow-2xl backdrop-blur-sm overflow-hidden group"
-            >
-              <div className="absolute top-3 left-3 w-8 h-8 border-l-2 border-t-2 border-white/30 rounded-tl-2xl"></div>
-              <div className="absolute top-3 right-3 w-8 h-8 border-r-2 border-t-2 border-white/30 rounded-tr-2xl"></div>
-              <div className="absolute bottom-3 left-3 w-8 h-8 border-l-2 border-b-2 border-white/30 rounded-bl-2xl"></div>
-              <div className="absolute bottom-3 right-3 w-8 h-8 border-r-2 border-b-2 border-white/30 rounded-br-2xl"></div>
+            {/* Sign Up / Login Button */}
+            <div className="relative w-full">
+              <button
+                onClick={() => setShowMobilePopup(true)}
+                className="relative w-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-8 px-12 rounded-3xl transition-all duration-300 shadow-xl hover:shadow-2xl backdrop-blur-sm overflow-hidden group"
+              >
+                {/* Shimmer effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                </div>
+                
+                <div className="relative z-10 flex items-center justify-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <div className="text-2xl font-queensides font-bold">Sign Up / Login</div>
+                    <div className="text-sm font-queensides opacity-90">Start your journey to marriage</div>
+                  </div>
+                </div>
+              </button>
 
-              <div className="relative z-10 flex items-center justify-center space-x-4">
-                <HeartIcon className="w-8 h-8 text-white" />
-                <span className="text-2xl font-queensides tracking-wide">Connect Wallet</span>
+              {/* Arabic-inspired corner decorations */}
+              <div className="absolute top-3 left-3 w-8 h-8 border-l-2 border-t-2 border-white/30 rounded-tl-2xl pointer-events-none"></div>
+              <div className="absolute top-3 right-3 w-8 h-8 border-r-2 border-t-2 border-white/30 rounded-tr-2xl pointer-events-none"></div>
+              <div className="absolute bottom-3 left-3 w-8 h-8 border-l-2 border-b-2 border-white/30 rounded-bl-2xl pointer-events-none"></div>
+              <div className="absolute bottom-3 right-3 w-8 h-8 border-r-2 border-b-2 border-white/30 rounded-br-2xl pointer-events-none"></div>
+
+              {/* Geometric pattern overlay */}
+              <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none">
+                <div className="absolute top-4 left-4 w-3 h-3 border border-white/40 transform rotate-45"></div>
+                <div className="absolute top-6 right-6 w-2 h-2 bg-white/30 rounded-full"></div>
+                <div className="absolute bottom-4 left-6 w-2 h-2 bg-white/30 rounded-full"></div>
+                <div className="absolute bottom-6 right-4 w-3 h-3 border border-white/40 transform rotate-45"></div>
               </div>
-            </button>
+            </div>
           </motion.div>
 
           {/* Islamic-Inspired Closing Divider */}
@@ -351,84 +379,103 @@ export function DesktopHero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-6"
             onClick={() => setShowMobilePopup(false)}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-indigo-200/50 overflow-hidden max-w-lg w-full"
+              className="relative bg-gradient-to-br from-white to-indigo-50/30 backdrop-blur-xl rounded-3xl shadow-2xl border border-indigo-200/50 overflow-hidden max-w-lg w-full"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Islamic corner decorations */}
-              <div className="absolute top-4 left-4 w-8 h-8 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-xl"></div>
-              <div className="absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 border-purple-300/40 rounded-tr-xl"></div>
-              <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-purple-300/40 rounded-bl-xl"></div>
-              <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-indigo-300/40 rounded-br-xl"></div>
-
               {/* Close button */}
               <button
                 onClick={() => setShowMobilePopup(false)}
-                className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors z-10"
+                className="absolute top-4 right-4 w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-md hover:shadow-lg transition-all group z-10"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5 text-slate-600 group-hover:text-slate-800" />
               </button>
 
               {/* Content */}
-              <div className="p-12 text-center">
-                {/* Mobile icon */}
-                <div className="w-20 h-20 mx-auto mb-8 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center">
-                  <Smartphone className="w-10 h-10 text-indigo-600" />
+              <div className="p-10">
+                {/* Icon */}
+                <div className="flex justify-center mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-3xl flex items-center justify-center shadow-xl">
+                    <Smartphone className="w-10 h-10 text-white" />
+                  </div>
                 </div>
 
                 {/* Title */}
-                <h2 className="text-3xl font-bold text-slate-800 mb-4 font-queensides">Best Experience on Mobile</h2>
+                <h3 className="text-2xl font-bold text-slate-800 font-queensides text-center mb-3">
+                  Best Experience on Mobile
+                </h3>
 
                 {/* Description */}
-                <p className="text-lg text-slate-600 mb-8 font-queensides leading-relaxed">
-                  Samaa is designed for mobile-first Islamic matrimony. For the best experience with profile setup,
-                  messaging, and all features, please visit us on your mobile device.
+                <p className="text-slate-600 font-queensides text-center leading-relaxed mb-6">
+                  Samaa works best on mobile. No app to download—just visit{' '}
+                  <span className="font-semibold text-indigo-600">Samaa.app</span>{' '}
+                  on your mobile browser for the full experience.
                 </p>
 
-                {/* Features list */}
-                <div className="space-y-4 mb-8">
-                  <div className="flex items-center space-x-3 text-left">
-                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                    <span className="text-slate-600 font-queensides">Easy profile management</span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-left">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                    <span className="text-slate-600 font-queensides">Optimized messaging experience</span>
-                  </div>
-                  <div className="flex items-center space-x-3 text-left">
-                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                    <span className="text-slate-600 font-queensides">Touch-friendly Islamic features</span>
-                  </div>
-                </div>
-
-                {/* QR Code placeholder */}
-                <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-indigo-200/30 flex items-center justify-center">
-                  <div className="text-4xl">📱</div>
-                </div>
-
-                <p className="text-sm text-slate-500 font-queensides">
-                  Scan with your phone or visit samaa.app on mobile
-                </p>
-
-                {/* Islamic divider */}
-                <div className="flex items-center justify-center mt-8">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/30 to-transparent"></div>
-                  <div className="mx-4 flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-indigo-400/60 rounded-full"></div>
-                    <div className="w-3 h-3 border border-purple-400/40 rounded-full flex items-center justify-center">
-                      <div className="w-1 h-1 bg-indigo-500/70 rounded-full"></div>
+                {/* Features */}
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center gap-3 bg-white/60 rounded-xl p-3 border border-indigo-100">
+                    <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                     </div>
-                    <div className="w-2 h-2 bg-purple-400/60 rounded-full"></div>
+                    <p className="text-sm text-slate-700 font-queensides">Swipe through profiles easily</p>
                   </div>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300/30 to-transparent"></div>
+                  <div className="flex items-center gap-3 bg-white/60 rounded-xl p-3 border border-indigo-100">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-slate-700 font-queensides">Smooth video playback</p>
+                  </div>
+                  <div className="flex items-center gap-3 bg-white/60 rounded-xl p-3 border border-indigo-100">
+                    <div className="w-8 h-8 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-4 h-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-slate-700 font-queensides">Optimized touch interactions</p>
+                  </div>
                 </div>
+
+                {/* QR Code Placeholder */}
+                <div className="bg-white rounded-2xl p-4 border border-indigo-100 mb-6">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500 font-queensides mb-2">Scan on mobile</p>
+                      <div className="w-24 h-24 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl flex items-center justify-center border-2 border-dashed border-indigo-200">
+                        <Smartphone className="w-8 h-8 text-indigo-400" />
+                      </div>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-slate-800 font-queensides">Samaa.app</p>
+                      <p className="text-xs text-slate-500 font-queensides mt-1">Open on your phone</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setShowMobilePopup(false)}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-3.5 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 font-queensides"
+                >
+                  Got it, thanks!
+                </button>
               </div>
+
+              {/* Decorative elements */}
+              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-xl"></div>
+              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-300/40 rounded-tr-xl"></div>
+              <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-300/40 rounded-bl-xl"></div>
+              <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-300/40 rounded-br-xl"></div>
             </motion.div>
           </motion.div>
         )}
