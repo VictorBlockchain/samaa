@@ -1117,10 +1117,10 @@ export class ProductService {
         .from('products')
         .select(`
           *,
-          shops!inner(name, owner_wallet, contact_email, contact_phone),
+          shops!inner(id, name, owner_id, contact_info, logo_url),
           product_categories(name)
         `)
-        .eq('uuid', productId)
+        .eq('id', productId)
         .single()
 
       if (error) {

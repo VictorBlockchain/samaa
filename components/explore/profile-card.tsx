@@ -19,10 +19,10 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { UserProfile } from "@/lib/matching"
+import type { MatchProfile } from "@/lib/matching"
 
 interface ProfileCardProps {
-  profile: UserProfile
+  profile: MatchProfile
   onViewProfile: () => void
   onSendMessage: () => void
   showMessageButton?: boolean
@@ -40,21 +40,22 @@ export function ProfileCard({
   const [isPlayingVideo, setIsPlayingVideo] = useState(false)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
 
+  const photos = profile.profile_photos && profile.profile_photos.length > 0
+    ? profile.profile_photos
+    : profile.profile_photo
+      ? [profile.profile_photo]
+      : ['/placeholder-user.jpg']
+
   const nextPhoto = () => {
     setCurrentPhotoIndex((prev) => 
-      prev === profile.photos.length - 1 ? 0 : prev + 1
+      prev === photos.length - 1 ? 0 : prev + 1
     )
   }
 
   const prevPhoto = () => {
     setCurrentPhotoIndex((prev) => 
-      prev === 0 ? profile.photos.length - 1 : prev - 1
+      prev === 0 ? photos.length - 1 : prev - 1
     )
-  }
-
-  const calculateAge = (birthDate: string) => {
-    // For demo, we'll use the age directly from profile
-    return profile.age
   }
 
   const getCompatibilityColor = (score: number) => {
@@ -63,6 +64,8 @@ export function ProfileCard({
     if (score >= 70) return "text-yellow-600 bg-yellow-100"
     return "text-gray-600 bg-gray-100"
   }
+
+  const locationDisplay = profile.location || [profile.city, profile.country].filter(Boolean).join(', ') || 'Unknown'
 
   return (
     <motion.div
@@ -79,7 +82,7 @@ export function ProfileCard({
       {/* Photo Section */}
       <div className="relative aspect-[3/4] overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
         <img
-          src={profile.photos[currentPhotoIndex]}
+          src={photos[currentPhotoIndex] || '/placeholder-user.jpg'}
           alt={profile.name}
           className="w-full h-full object-cover"
         />
@@ -90,7 +93,7 @@ export function ProfileCard({
         <div className="absolute bottom-1/4 left-1/4 w-1 h-1 bg-white/20 rounded-full"></div>
         
         {/* Photo Navigation */}
-        {profile.photos.length > 1 && (
+        {photos.length > 1 && (
           <>
             <button
               onClick={prevPhoto}
@@ -107,7 +110,7 @@ export function ProfileCard({
             
             {/* Photo Indicators */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1">
-              {profile.photos.map((_, index) => (
+              {photos.map((_, index) => (
                 <div
                   key={index}
                   className={`w-2 h-2 rounded-full transition-colors ${
@@ -120,9 +123,10 @@ export function ProfileCard({
         )}
 
         {/* Compatibility Score */}
-        {profile.compatibility_score && (
+        {profile.compatibility_score > 0 && (
           <div className="absolute top-4 right-4">
             <Badge className={`${getCompatibilityColor(profile.compatibility_score)} font-bold`}>
+              <Heart className="w-3 h-3 mr-1" />
               {profile.compatibility_score}% Match
             </Badge>
           </div>
@@ -179,9 +183,10 @@ export function ProfileCard({
         {/* Location */}
         <div className="flex items-center space-x-2 text-slate-600 mb-4">
           <MapPin className="w-4 h-4" />
-          <span className="font-queensides">
-            {profile.location.city}, {profile.location.country}
-          </span>
+          <span className="font-queensides">{locationDisplay}</span>
+          {profile.distance_miles !== null && (
+            <span className="text-xs text-indigo-500 font-queensides">({profile.distance_miles} mi)</span>
+          )}
         </div>
 
         {/* Bio */}
@@ -189,47 +194,55 @@ export function ProfileCard({
           {profile.bio}
         </p>
 
-        {/* Islamic Values */}
-        <div className="mb-4">
-          <h3 className="text-sm font-semibold text-slate-800 font-queensides mb-2">
-            Islamic Values
-          </h3>
-          <div className="flex flex-wrap gap-2">
+        {/* Ratings Row */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {profile.profile_rating > 0 && (
             <Badge variant="outline" className="text-xs">
-              Prays {profile.islamic_values.prayer_frequency}
+              Profile: {profile.profile_rating}%
             </Badge>
+          )}
+          {profile.chat_rating > 0 && (
             <Badge variant="outline" className="text-xs">
-              {profile.islamic_values.islamic_education} Islamic education
+              Chat: {profile.chat_rating}%
             </Badge>
+          )}
+          {profile.religiosity && (
             <Badge variant="outline" className="text-xs">
-              Marriage {profile.islamic_values.marriage_timeline.replace('_', ' ')}
+              {profile.religiosity}
             </Badge>
-            {profile.islamic_values.hijab_preference && (
-              <Badge variant="outline" className="text-xs">
-                Hijab: {profile.islamic_values.hijab_preference}
-              </Badge>
-            )}
-          </div>
+          )}
+          {profile.prayer_frequency && (
+            <Badge variant="outline" className="text-xs">
+              Prays: {profile.prayer_frequency.replace(/_/g, ' ')}
+            </Badge>
+          )}
+          {profile.marriage_intention && (
+            <Badge variant="outline" className="text-xs">
+              Marriage: {profile.marriage_intention.replace(/_/g, ' ')}
+            </Badge>
+          )}
         </div>
 
         {/* Interests */}
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-slate-800 font-queensides mb-2">
-            Interests
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {profile.interests.slice(0, 4).map((interest, index) => (
-              <Badge key={index} className="bg-indigo-100 text-indigo-700 text-xs">
-                {interest}
-              </Badge>
-            ))}
-            {profile.interests.length > 4 && (
-              <Badge className="bg-slate-100 text-slate-600 text-xs">
-                +{profile.interests.length - 4} more
-              </Badge>
-            )}
+        {profile.interests && profile.interests.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-slate-800 font-queensides mb-2">
+              Interests
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {profile.interests.slice(0, 4).map((interest, index) => (
+                <Badge key={index} className="bg-indigo-100 text-indigo-700 text-xs">
+                  {interest}
+                </Badge>
+              ))}
+              {profile.interests.length > 4 && (
+                <Badge className="bg-slate-100 text-slate-600 text-xs">
+                  +{profile.interests.length - 4} more
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Elegant Divider */}
         <div className="flex items-center justify-center mb-6">

@@ -108,3 +108,77 @@ Buckets: `profile-photos`, `profile-videos`, `profile-audio`, `social-videos`, `
 - `lib/social.ts` — `getVideos()`, `getVideoById()`, `getUserVideos()` now resolve signed URLs
 - `components/social/video-card.tsx` — poster fallback validates URLs start with `http`
 - `components/social/video-upload.tsx` — stores path only (not full URL) in database
+
+---
+
+## 3. 500 (Internal Server Error) — Nested Select Joins
+
+### Problem
+Supabase nested select queries like `order_items (...)` or `products!inner(...)` cause 500 errors:
+```typescript
+// BAD — causes 500 error
+const { data } = await supabase
+  .from('orders')
+  .select(`
+    *,
+    order_items (
+      id, product_name, quantity
+    )
+  `)
+```
+
+### Root Cause
+Supabase's PostgREST doesn't reliably handle nested foreign key joins, especially with complex relationships or when foreign keys aren't properly configured.
+
+### Fix
+**Use separate queries instead of nested selects:**
+
+```typescript
+// GOOD — fetch orders first
+const { data: orders } = await supabase
+  .from('orders')
+  .select('*')
+  .eq('user_id', userId)
+
+// Then fetch related items separately
+const ordersWithItems = await Promise.all(
+  orders.map(async (order) => {
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('*')
+      .eq('order_id', order.id)
+    
+    return { ...order, items: items || [] }
+  })
+)
+```
+
+**For cart items (batch query pattern):**
+
+```typescript
+// Fetch cart items
+const { data: cartItems } = await supabase
+  .from('cart_items')
+  .select('*')
+  .eq('user_id', userId)
+
+// Fetch all products in one query
+const productIds = cartItems.map(item => item.product_id)
+const { data: products } = await supabase
+  .from('products')
+  .select('id, name, images, base_price, shop_id')
+  .in('id', productIds)
+
+// Create lookup map for efficient joining
+const productMap = new Map(products.map(p => [p.id, p]))
+
+// Transform with joined data
+const items = cartItems.map(item => ({
+  ...item,
+  product: productMap.get(item.product_id)
+}))
+```
+
+### Files Fixed
+- `components/shop/shop-view.tsx` — `loadOrders()` uses separate queries
+- `lib/cart.ts` — `getCartItems()` uses batch query pattern with Maps

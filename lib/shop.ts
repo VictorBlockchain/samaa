@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { getMediaUrl, STORAGE_CONFIG } from './storage'
 
 // Product interface matching Supabase schema
 export interface Product {
@@ -148,7 +149,9 @@ export class ProductService {
         shop_logo: item.shops?.logo_url,
         category_name: item.product_categories?.name,
         shops: undefined,
-        product_categories: undefined
+        product_categories: undefined,
+        // Convert image paths to full URLs
+        images: item.images?.map((img: string) => getMediaUrl(STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, img) || img) || []
       }))
 
       return { products, count: count || 0 }
@@ -165,30 +168,60 @@ export class ProductService {
         .from('products')
         .select(`
           *,
-          shops!inner(name, logo_url),
+          shops(name, logo_url, owner_id),
           product_categories(name)
         `)
         .eq('id', id)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error('Error fetching product:', error)
         return null
       }
+      
+      if (!data) {
+        console.log('[fetchProductById] No product found for id:', id)
+        return null
+      }
 
+      console.log('[fetchProductById] Raw product data:', { 
+        id: data.id, 
+        images: data.images,
+        shop: data.shops 
+      })
+
+      // Convert image paths to full URLs
+      const convertedImages = data.images?.map((img: string) => {
+        const url = getMediaUrl(STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, img)
+        console.log('[fetchProductById] Image conversion:', { original: img, converted: url })
+        return url || img
+      }) || []
+      
       return {
         ...data,
         shop_name: data.shops?.name,
         shop_logo: data.shops?.logo_url,
         category_name: data.product_categories?.name,
         shops: undefined,
-        product_categories: undefined
+        product_categories: undefined,
+        images: convertedImages
       }
     } catch (error) {
       console.error('Error fetching product:', error)
       return null
     }
+  }
+
+  // Alias for fetchProductById (used by shop-item-view)
+  static async getProductById(id: string): Promise<any> {
+    return this.fetchProductById(id)
+  }
+
+  // Get products by shop ID (used by shop-view)
+  static async getProductsByShop(shopId: string): Promise<Product[]> {
+    const result = await this.fetchProducts({ shop_id: shopId, limit: 100 })
+    return result.products
   }
 
   // Create product
@@ -204,24 +237,35 @@ export class ProductService {
     condition?: string
     requires_shipping?: boolean
     is_digital?: boolean
+    sku?: string
+    brand?: string
   }): Promise<Product | null> {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .insert({
-          ...product,
-          is_active: true,
-          is_featured: false
-        })
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error creating product:', error)
+      // Use API route to bypass RLS issues with table grants
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.error('No active session')
         return null
       }
 
-      return data
+      const response = await fetch('/api/shop/create-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(product),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error('Error creating product:', result.error)
+        return null
+      }
+
+      return result.product
     } catch (error) {
       console.error('Error creating product:', error)
       return null

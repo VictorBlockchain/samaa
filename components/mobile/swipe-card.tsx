@@ -1,25 +1,14 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Check, Heart, MessageCircle, Star, MapPin, Send, Sparkles, Eye } from "lucide-react"
+import { X, Check, Heart, MessageCircle, Star, MapPin, Send, Sparkles, Eye, Percent } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
-
-interface Profile {
-  id: string
-  name: string
-  age: number
-  location: string
-  bio: string
-  image: string
-  photos?: string[]
-  profileRating: number
-  verified: boolean
-  distance: string
-}
+import type { MatchProfile } from "@/lib/matching"
+import { ArabicCard, ArabicCardContent, ArabicCardTitle, ArabicCardDescription } from "@/components/ui/arabic-card"
 
 interface SwipeCardProps {
-  profiles?: Profile[]
+  profiles: MatchProfile[]
   availableLeads?: number
   availableViews?: number
   onSendLead?: (profileId: string, message: string) => Promise<void>
@@ -27,53 +16,8 @@ interface SwipeCardProps {
   onBuyViews?: () => void
 }
 
-const defaultProfiles: Profile[] = [
-  {
-    id: '1',
-    name: 'Aisha',
-    age: 26,
-    location: 'New York, NY',
-    bio: 'Seeking a pious partner for a blessed marriage journey',
-    image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1200&fit=crop',
-    photos: [
-      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1200&fit=crop',
-      'https://images.unsplash.com/photo-1517841905240-472988bab389?w=800&h=1200&fit=crop',
-    ],
-    profileRating: 92,
-    verified: true,
-    distance: '5 miles away',
-  },
-  {
-    id: '2',
-    name: 'Fatima',
-    age: 24,
-    location: 'Brooklyn, NY',
-    bio: 'Dedicated to my faith and looking for someone who shares Islamic values',
-    image: 'https://images.unsplash.com/photo-1517841905240-472988bab389?w=800&h=1200&fit=crop',
-    photos: [
-      'https://images.unsplash.com/photo-1517841905240-472988bab389?w=800&h=1200&fit=crop',
-      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&h=1200&fit=crop',
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=800&h=1200&fit=crop',
-    ],
-    profileRating: 88,
-    verified: true,
-    distance: '8 miles away',
-  },
-  {
-    id: '3',
-    name: 'Maryam',
-    age: 28,
-    location: 'Queens, NY',
-    bio: 'Practicing Muslim seeking a righteous spouse for halal marriage',
-    image: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&h=1200&fit=crop',
-    profileRating: 95,
-    verified: false,
-    distance: '12 miles away',
-  },
-]
-
 export function SwipeCard({ 
-  profiles = defaultProfiles, 
+  profiles = [], 
   availableLeads = 3,
   availableViews = 5,
   onSendLead,
@@ -90,9 +34,25 @@ export function SwipeCard({
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [photoDirection, setPhotoDirection] = useState<string | null>(null)
   
+  if (!profiles || profiles.length === 0) {
+    return (
+      <ArabicCard>
+        <ArabicCardContent>
+          <Heart className="w-12 h-12 text-pink-300 mx-auto mb-3" />
+          <ArabicCardTitle>No matches found yet</ArabicCardTitle>
+          <ArabicCardDescription>Try adjusting your preferences</ArabicCardDescription>
+        </ArabicCardContent>
+      </ArabicCard>
+    )
+  }
   const currentProfile = profiles[currentIndex]
-  const profilePhotos = currentProfile?.photos || [currentProfile?.image]
-  const currentPhoto = profilePhotos[currentPhotoIndex] || currentProfile?.image
+  if (!currentProfile) return null
+  const profilePhotos = currentProfile.profile_photos && currentProfile.profile_photos.length > 0
+    ? currentProfile.profile_photos
+    : currentProfile.profile_photo
+      ? [currentProfile.profile_photo]
+      : ['/placeholder-user.jpg']
+  const currentPhoto = profilePhotos[currentPhotoIndex] || profilePhotos[0]
   
   // Reset photo index when profile changes
   useEffect(() => {
@@ -199,7 +159,7 @@ export function SwipeCard({
               <AnimatePresence mode="wait">
                 <motion.img
                   key={`${currentIndex}-${currentPhotoIndex}`}
-                  src={currentPhoto}
+                  src={currentPhoto || '/placeholder-user.jpg'}
                   alt={currentProfile.name}
                   className="w-full h-full object-cover"
                   initial={{ opacity: 0, x: photoDirection === 'left' ? 100 : photoDirection === 'right' ? -100 : 0 }}
@@ -220,7 +180,7 @@ export function SwipeCard({
                 <h2 className="text-3xl font-bold text-white font-queensides">
                   {currentProfile.name}, {currentProfile.age}
                 </h2>
-                {currentProfile.verified && (
+                {currentProfile.is_verified && (
                   <div className="w-6 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center">
                     <Check className="w-3.5 h-3.5 text-white" />
                   </div>
@@ -229,19 +189,29 @@ export function SwipeCard({
               
               <div className="flex items-center gap-2 text-gray-300 mb-3">
                 <MapPin className="w-4 h-4" />
-                <span className="font-queensides text-sm">{currentProfile.location}</span>
-                <span className="text-pink-400 text-xs">• {currentProfile.distance}</span>
+                <span className="font-queensides text-sm">{currentProfile.location || [currentProfile.city, currentProfile.country].filter(Boolean).join(', ')}</span>
+                {currentProfile.distance_miles !== null && (
+                  <span className="text-pink-400 text-xs">• {currentProfile.distance_miles} mi away</span>
+                )}
               </div>
               
-              <p className="text-gray-200 font-queensides text-sm leading-relaxed mb-3">
+              <p className="text-gray-200 font-queensides text-sm leading-relaxed mb-3 line-clamp-2">
                 {currentProfile.bio}
               </p>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Compatibility Score */}
+                <div className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-pink-500/30 to-purple-500/30 backdrop-blur-sm rounded-full border border-white/20">
+                  <Heart className="w-3.5 h-3.5 text-pink-300" />
+                  <span className="text-white text-xs font-queensides font-semibold">
+                    {currentProfile.compatibility_score}% Match
+                  </span>
+                </div>
+                {/* Profile Score */}
                 <div className="flex items-center gap-1 px-3 py-1 bg-white bg-opacity-20 backdrop-blur-sm rounded-full">
                   <Star className="w-3.5 h-3.5 text-amber-300" />
                   <span className="text-white text-xs font-queensides font-semibold">
-                    {currentProfile.profileRating}% Profile Score
+                    {currentProfile.profile_rating}% Profile
                   </span>
                 </div>
               </div>
@@ -318,13 +288,13 @@ export function SwipeCard({
               {/* Profile Preview */}
               <div className="flex items-center gap-3 mb-4 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl">
                 <img
-                  src={currentProfile.image}
+                  src={currentProfile.profile_photo || profilePhotos[0] || '/placeholder-user.jpg'}
                   alt={currentProfile.name}
                   className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
                 />
                 <div>
                   <p className="font-semibold text-slate-800 font-queensides">{currentProfile.name}, {currentProfile.age}</p>
-                  <p className="text-xs text-slate-500 font-queensides">{currentProfile.location}</p>
+                  <p className="text-xs text-slate-500 font-queensides">{currentProfile.location || [currentProfile.city, currentProfile.country].filter(Boolean).join(', ')}</p>
                 </div>
               </div>
 
@@ -425,13 +395,13 @@ export function SwipeCard({
               {/* Profile Preview */}
               <div className="flex items-center gap-3 mb-4 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl">
                 <img
-                  src={currentProfile.image}
+                  src={currentProfile.profile_photo || profilePhotos[0] || '/placeholder-user.jpg'}
                   alt={currentProfile.name}
                   className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
                 />
                 <div>
                   <p className="font-semibold text-slate-800 font-queensides">{currentProfile.name}, {currentProfile.age}</p>
-                  <p className="text-xs text-slate-500 font-queensides">{currentProfile.location}</p>
+                  <p className="text-xs text-slate-500 font-queensides">{currentProfile.location || [currentProfile.city, currentProfile.country].filter(Boolean).join(', ')}</p>
                 </div>
               </div>
 

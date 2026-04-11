@@ -103,6 +103,30 @@ export function getPublicUrl(bucket: string, path: string): string {
   return data.publicUrl
 }
 
+/**
+ * Convert a storage path to a full URL for display in the app.
+ * For public buckets (shop-images, shop-videos), returns the public URL.
+ * For private buckets, returns the path as-is (use getSignedUrlForPath for rendering).
+ */
+export function getMediaUrl(bucket: string, pathOrUrl: string | undefined | null): string | null {
+  if (!pathOrUrl) return null
+  
+  // If it's already a full URL, return as-is
+  if (pathOrUrl.startsWith('http')) return pathOrUrl
+  
+  // If it's a video path stored with "video:" prefix, extract the path
+  const cleanPath = pathOrUrl.startsWith('video:') ? pathOrUrl.slice(6) : pathOrUrl
+  
+  // Check if this is a public bucket
+  const publicBuckets = [STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, STORAGE_CONFIG.BUCKETS.SHOP_VIDEOS]
+  if (publicBuckets.includes(bucket)) {
+    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${bucket}/${cleanPath}`
+  }
+  
+  // For private buckets, return the path (caller should use getSignedUrlForPath)
+  return cleanPath
+}
+
 export type UploadResult = {
   success: boolean
   /** Storage object path to store in Postgres, e.g. `<userId>/<timestamp>.jpg` */

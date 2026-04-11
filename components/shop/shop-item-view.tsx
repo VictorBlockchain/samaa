@@ -4,12 +4,12 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ArrowLeft, Heart, Star, Play, ShoppingCart, Truck, Shield, RotateCcw, Eye, Edit3, Plus, Minus, Share2, X } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@/app/context/UserContext"
+import { useAuth } from "@/app/context/AuthContext"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { CartService } from "@/lib/cart"
-import { WishlistService } from "@/lib/database"
+import { WishlistService, ProductService } from "@/lib/database"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import { AddToCartSheet } from "@/components/shop/add-to-cart-sheet"
@@ -21,13 +21,15 @@ interface Product {
   images: string[]
   video?: string
   price: number
-  currency: "SOL" | "SAMAA"
+  currency: "USD"
   category: string
   seller: string
   rating: number
   reviews: number
   inStock: boolean
   shopId?: string
+  shopName?: string
+  shopLogo?: string
   features?: string[]
   specifications?: Record<string, string>
   stockCount?: number
@@ -35,175 +37,14 @@ interface Product {
   colors?: string[]
 }
 
-// Mock global products (same as in shop-view)
-const GLOBAL_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Elegant Hijab Set",
-    description: "Beautiful modest hijab set perfect for daily wear. Made from premium breathable fabric with elegant designs inspired by traditional Islamic patterns.",
-    images: [
-      "https://images.unsplash.com/photo-1583391733956-6c78276477e2?w=400&h=600&fit=crop&crop=face",
-      "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=400&h=500&fit=crop",
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=550&fit=crop",
-    ],
-    video: "https://example.com/hijab-demo.mp4",
-    price: 1.25,
-    currency: "SOL",
-    category: "Women's Clothes",
-    seller: "Modest Fashion Co",
-    rating: 4.8,
-    reviews: 124,
-    inStock: true,
-    stockCount: 15,
-    sizes: ["S", "M", "L", "XL", "One Size"],
-    colors: ["Black", "Navy Blue", "Burgundy", "Cream"],
-    features: [
-      "Premium breathable fabric",
-      "Traditional Islamic patterns",
-      "Available in multiple colors",
-      "Easy care instructions",
-      "Ethically sourced materials"
-    ],
-    specifications: {
-      Material: "100% Cotton",
-      Care: "Machine washable",
-      Origin: "Made in Turkey"
-    }
-  },
-  {
-    id: "2",
-    name: "Islamic Calligraphy Art",
-    description: "Hand-crafted Islamic calligraphy artwork featuring beautiful Arabic verses in elegant gold lettering on premium canvas",
-    images: ["https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=500&fit=crop"],
-    price: 750,
-    currency: "SAMAA",
-    category: "Arts & Crafts",
-    seller: "Art Gallery",
-    rating: 4.9,
-    reviews: 89,
-    inStock: true,
-    stockCount: 5,
-    features: ["Hand-crafted", "Authentic calligraphy", "Premium frame"],
-    specifications: {
-      Size: "24x18 inches",
-      Frame: "Wooden frame included",
-      Artist: "Master calligrapher"
-    }
-  },
-  {
-    id: "3",
-    name: "Prayer Beads",
-    description: "Traditional prayer beads made from natural materials, perfect for daily prayers and meditation",
-    images: ["https://images.unsplash.com/photo-1609205807107-e8ec2120f9de?w=400&h=400&fit=crop"],
-    price: 135,
-    currency: "SAMAA",
-    category: "Accessories",
-    seller: "Spiritual Goods",
-    rating: 4.7,
-    reviews: 67,
-    inStock: true,
-    stockCount: 20,
-    features: ["Natural materials", "Traditional design", "Blessed by imam"],
-    specifications: {
-      Material: "Natural wood",
-      Beads: "99 beads",
-      Origin: "Handmade in Morocco"
-    }
-  },
-  {
-    id: "4",
-    name: "Men's Thobe",
-    description: "Classic white thobe for prayer and formal occasions. Comfortable, breathable fabric perfect for daily wear and special events.",
-    images: ["https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face"],
-    price: 2.15,
-    currency: "SOL",
-    category: "Men's Clothes",
-    seller: "Traditional Wear",
-    rating: 4.6,
-    reviews: 45,
-    inStock: true,
-    stockCount: 8,
-    sizes: ["M", "L", "XL", "XXL", "58 inches", "60 inches"],
-    colors: ["White", "Cream", "Light Gray"],
-    features: ["Classic design", "Comfortable fit", "Formal occasions"],
-    specifications: {
-      Material: "100% Cotton",
-      Care: "Machine washable"
-    }
-  },
-  {
-    id: "5",
-    name: "Bridal Hijab with Pearls",
-    description: "Luxurious bridal hijab adorned with hand-sewn pearls and delicate embroidery. Perfect for your special day with elegant Islamic styling.",
-    images: ["https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=400&h=700&fit=crop&crop=face"],
-    price: 3.5,
-    currency: "SOL",
-    category: "Bride Fashion",
-    seller: "Bridal Boutique",
-    rating: 4.9,
-    reviews: 67,
-    inStock: true,
-    stockCount: 12,
-    sizes: ["One Size"],
-    colors: ["Ivory", "Champagne", "Blush Pink"],
-    features: ["Hand-sewn pearls", "Delicate embroidery", "Premium silk fabric"],
-    specifications: {
-      Material: "100% Silk",
-      Care: "Dry clean only",
-      Origin: "Handmade in Lebanon"
-    }
-  },
-  {
-    id: "6",
-    name: "Groom's Wedding Thobe",
-    description: "Premium wedding thobe with gold embroidery and traditional cut",
-    images: ["/placeholder.svg?height=400&width=400"],
-    price: 4.2,
-    currency: "SOL",
-    category: "Groom Fashion",
-    seller: "Groom's Corner",
-    rating: 4.8,
-    reviews: 43,
-    inStock: true,
-    stockCount: 8,
-    sizes: ["M", "L", "XL", "XXL"],
-    colors: ["Cream", "Gold", "White"],
-    features: ["Gold thread embroidery", "Traditional cut", "Premium fabric"],
-    specifications: {
-      Material: "Premium Cotton Blend",
-      Care: "Dry clean recommended",
-      Origin: "Made in Morocco"
-    }
-  },
-  {
-    id: "7",
-    name: "Islamic Wedding Gift Set",
-    description: "Beautiful gift set with Quran, prayer beads, and decorative items",
-    images: ["/placeholder.svg?height=400&width=400"],
-    price: 850,
-    currency: "SAMAA",
-    category: "Wedding Gifts",
-    seller: "Sacred Gifts",
-    rating: 4.7,
-    reviews: 89,
-    inStock: true,
-    stockCount: 25,
-    features: ["Complete gift set", "Beautiful packaging", "Blessed items"],
-    specifications: {
-      Contents: "Quran, Prayer Beads, Decorative Box",
-      Language: "Arabic with English translation",
-      Origin: "Assembled in UAE"
-    }
-  }
-]
-
 interface ShopItemViewProps {
   itemId: string
 }
 
 export function ShopItemView({ itemId }: ShopItemViewProps) {
   const router = useRouter()
-  const { address, isConnected } = useUser()
+  const { user, isAuthenticated } = useAuth()
+  const userId = user?.id || null
   const [product, setProduct] = useState<Product | null>(null)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
@@ -214,39 +55,16 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   const [isWished, setIsWished] = useState(false)
   const [showCartSheet, setShowCartSheet] = useState(false)
   const [addingToCart, setAddingToCart] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [showShopDetails, setShowShopDetails] = useState(false)
   const { toast } = useToast()
 
-  // Mock exchange rates (in real app, fetch from API)
-  const SOL_TO_USD = 23.45 // 1 SOL = $23.45
-  const SAMAA_TO_USD = 0.12 // 1 SAMAA = $0.12
+  // Mock exchange rates removed - all prices now in USD
 
-  const convertToUSD = (price: number, currency: "SOL" | "SAMAA") => {
-    if (currency === "SOL") {
-      return (price * SOL_TO_USD).toFixed(2)
-    } else {
-      return (price * SAMAA_TO_USD).toFixed(2)
-    }
+  const formatPrice = (price: number | undefined | null) => {
+    if (price === undefined || price === null) return "$0.00"
+    return `$${price.toFixed(2)}`
   }
-
-  const getAlternateCurrency = (price: number, currency: "SOL" | "SAMAA") => {
-    const usdValue = parseFloat(convertToUSD(price, currency))
-    if (currency === "SOL") {
-      return `${Math.round(usdValue / SAMAA_TO_USD)} SAMAA`
-    } else {
-      return `${(usdValue / SOL_TO_USD).toFixed(3)} SOL`
-    }
-  }
-
-  useEffect(() => {
-    loadProduct()
-  }, [itemId, address])
-
-  // Load wishlist status
-  useEffect(() => {
-    if (address && itemId) {
-      WishlistService.isInWishlist(address, itemId).then(setIsWished)
-    }
-  }, [address, itemId])
 
   const isClothingCategory = (category: string) => {
     return category === "Women's Clothes" ||
@@ -255,29 +73,84 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
            category === "Groom Fashion"
   }
 
-  const loadProduct = () => {
-    // First check global products
-    let foundProduct = GLOBAL_PRODUCTS.find(p => p.id === itemId)
-    
-    if (!foundProduct && address) {
-      // Check user shops for the product
-      const userShop = localStorage.getItem(`shop_${address}`)
-      if (userShop) {
-        const shop = JSON.parse(userShop)
-        foundProduct = shop.products.find((p: Product) => p.id === itemId)
-        if (foundProduct) {
+  useEffect(() => {
+    loadProduct()
+  }, [itemId, userId])
+
+  // Load wishlist status
+  useEffect(() => {
+    if (userId && product?.id) {
+      WishlistService.isInWishlist(userId, product.id).then(setIsWished)
+    }
+  }, [userId, product?.id])
+
+  const loadProduct = async () => {
+    setLoading(true)
+    try {
+      // Fetch product from Supabase
+      const productData = await ProductService.getProductById(itemId)
+      console.log(productData.images)
+      if (productData) {
+        // Separate images and videos from the images array
+        const imagePaths: string[] = []
+        let videoPath: string | undefined = productData.video
+        
+        ;(productData.images || []).forEach((img: string) => {
+          if (img.startsWith('video:')) {
+            // Extract video path
+            videoPath = img.slice(6)
+          } else if (!img.endsWith('.mp4') && !img.endsWith('.webm') && !img.endsWith('.mov')) {
+            // Only include actual image files
+            imagePaths.push(img)
+          }
+        })
+        
+        // Transform Supabase data to component format
+        const transformedProduct: Product = {
+          id: productData.id,
+          name: productData.name,
+          description: productData.description || "",
+          images: imagePaths,
+          video: videoPath ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-videos/${videoPath}` : undefined,
+          price: parseFloat(productData.base_price) || 0,
+          currency: "USD",
+          category: productData.product_categories?.name || productData.category || "",
+          seller: productData.shops?.name || "Unknown Seller",
+          rating: productData.rating || 0,
+          reviews: productData.total_reviews || 0,
+          inStock: productData.stock_count > 0,
+          shopId: productData.shops?.id,
+          shopName: productData.shops?.name,
+          shopLogo: productData.shops?.logo_url,
+          features: productData.features || [],
+          specifications: productData.specifications || {},
+          stockCount: productData.stock_count || 0,
+          sizes: productData.sizes || [],
+          colors: productData.colors || [],
+        }
+        
+        setProduct(transformedProduct)
+        
+        // Check if user owns this shop
+        if (userId && productData.shops?.owner_id === userId) {
           setIsOwner(true)
         }
       }
-    }
-
-    if (foundProduct) {
-      setProduct(foundProduct)
+    } catch (error) {
+      console.error('Error loading product:', error)
+      toast({ 
+        title: "Failed to load product", 
+        description: "Please try again later.", 
+        variant: "destructive", 
+        duration: 5000 
+      })
+    } finally {
+      setLoading(false)
     }
   }
 
   const handlePurchase = () => {
-    if (!isConnected) {
+    if (!isAuthenticated) {
       toast({ title: "Please sign in to make a purchase", variant: "destructive", duration: 5000 })
       return
     }
@@ -285,7 +158,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   }
 
   const handleAddToCart = () => {
-    if (!isConnected || !address || !product) {
+    if (!isAuthenticated || !userId || !product) {
       toast({ title: "Please sign in to add items to cart", variant: "destructive", duration: 5000 })
       return
     }
@@ -293,10 +166,10 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   }
 
   const handleCartSheetConfirm = async (qty: number, size?: string, color?: string) => {
-    if (!address || !product) return
+    if (!userId || !product) return
     setAddingToCart(true)
     try {
-      const success = await CartService.addToCart(address, {
+      const success = await CartService.addToCart(userId, {
         productId: product.id,
         quantity: qty,
         selectedSize: size,
@@ -317,15 +190,15 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
   }
 
   const toggleWishlist = async () => {
-    if (!address || !product) {
+    if (!userId || !product) {
       toast({ title: "Please sign in", variant: "destructive", duration: 5000 })
       return
     }
     if (isWished) {
-      const ok = await WishlistService.removeFromWishlist(address, product.id)
+      const ok = await WishlistService.removeFromWishlist(userId, product.id)
       if (ok) { setIsWished(false); toast({ title: "Removed from wishlist", duration: 3000 }) }
     } else {
-      const ok = await WishlistService.addToWishlist(address, product.id)
+      const ok = await WishlistService.addToWishlist(userId, product.id)
       if (ok) { setIsWished(true); toast({ title: "Added to wishlist", duration: 3000 }) }
     }
   }
@@ -346,13 +219,33 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
     console.log("Edit product:", product?.id)
   }
 
+  const handleViewStore = () => {
+    if (product?.shopId) {
+      router.push(`/shop?shopId=${product.shopId}`)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative">
+        <CelestialBackground />
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+            <p className="text-slate-600 font-queensides">Loading product...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (!product) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-indigo-50 relative">
         <CelestialBackground intensity="light" />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <Card className="p-8 text-center max-w-md mx-4">
-            <h2 className="text-xl font-bold text-slate-800 font-qurova mb-4">Product Not Found</h2>
+            <h2 className="text-xl font-bold text-slate-800 font-queensides mb-4">Product Not Found</h2>
             <p className="text-slate-600 font-queensides mb-6">
               The product you're looking for doesn't exist or has been removed.
             </p>
@@ -380,7 +273,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
               <ArrowLeft className="w-6 h-6 text-indigo-600" />
             </button>
             <div className="text-center">
-              <h1 className="text-xl font-bold text-slate-800 font-qurova">Product Details</h1>
+              <h1 className="text-xl font-bold text-slate-800 font-queensides">Product Details</h1>
               <p className="text-sm text-slate-600 font-queensides">{product.category}</p>
             </div>
             <div className="flex gap-2">
@@ -416,17 +309,11 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           <Card className="overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg border border-indigo-200/50 mb-6">
             <div className="relative">
               <img
-                src={product.images[selectedImage] || "/placeholder.svg"}
+                src={'https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/' + product.images[selectedImage]}
                 alt={product.name}
                 className="w-full h-80 object-cover"
               />
 
-              {/* Stock Badge */}
-              {product.stockCount && (
-                <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 text-xs font-bold rounded-full font-queensides">
-                  {product.stockCount} in stock
-                </div>
-              )}
             </div>
 
             {/* Image Thumbnails */}
@@ -443,7 +330,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
                           : "border-slate-200 hover:border-indigo-300"
                       }`}
                     >
-                      <img src={image || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
+                      <img src={'https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/' + image} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -455,7 +342,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           {product.video && (
             <Card className="overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg border border-indigo-200/50 mb-6">
               <div className="p-4">
-                <h3 className="font-bold text-slate-800 font-qurova mb-3 flex items-center">
+                <h3 className="font-bold text-slate-800 font-queensides mb-3 flex items-center">
                   <Play className="w-5 h-5 mr-2 text-indigo-600" />
                   Product Video
                 </h3>
@@ -482,17 +369,18 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           <Card className="overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg border border-indigo-200/50 p-4 mb-6">
             <div className="flex items-center space-x-3">
               <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-lg font-bold text-indigo-600 font-qurova">
+                <span className="text-lg font-bold text-indigo-600 font-queensides">
                   {product.seller.charAt(0)}
                 </span>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-slate-800 font-qurova">{product.seller}</h3>
+                <h3 className="font-bold text-slate-800 font-queensides">{product.seller}</h3>
                 <p className="text-sm text-slate-600 font-queensides">Verified Seller</p>
               </div>
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleViewStore}
                 className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-queensides"
               >
                 <Eye className="w-4 h-4 mr-1" />
@@ -503,7 +391,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
 
           {/* Product Info */}
           <Card className="overflow-hidden bg-white/95 backdrop-blur-sm shadow-lg border border-indigo-200/50 p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-3 font-qurova text-slate-800">{product.name}</h2>
+            <h2 className="text-2xl font-bold mb-3 font-queensides text-slate-800">{product.name}</h2>
 
             <div className="flex items-center space-x-4 mb-4">
               <div className="flex items-center space-x-1">
@@ -518,11 +406,8 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
 
             <div className="flex items-center justify-between mb-6">
               <div>
-                <div className="text-3xl font-bold text-indigo-600 font-qurova">
-                  {product.price} {product.currency}
-                </div>
-                <div className="text-base text-slate-500 font-queensides">
-                  ${convertToUSD(product.price, product.currency)} • {getAlternateCurrency(product.price, product.currency)}
+                <div className="text-3xl font-bold text-indigo-600 font-queensides">
+                  {formatPrice(product.price)}
                 </div>
               </div>
               <div className="flex items-center space-x-3">
@@ -547,7 +432,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           {/* Available Sizes - Show all available sizes */}
           {product.sizes && product.sizes.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-semibold mb-3 font-qurova text-slate-800">Available Sizes:</h4>
+              <h4 className="font-semibold mb-3 font-queensides text-slate-800">Available Sizes:</h4>
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size) => (
                   <span
@@ -564,7 +449,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           {/* Available Colors - Show all available colors */}
           {product.colors && product.colors.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-semibold mb-3 font-qurova text-slate-800">Available Colors:</h4>
+              <h4 className="font-semibold mb-3 font-queensides text-slate-800">Available Colors:</h4>
               <div className="flex flex-wrap gap-2">
                 {product.colors.map((color) => (
                   <span
@@ -581,7 +466,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           {/* Size Selection - Only for clothing */}
           {isClothingCategory(product.category) && product.sizes && product.sizes.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-semibold mb-3 font-qurova text-slate-800">Select Size:</h4>
+              <h4 className="font-semibold mb-3 font-queensides text-slate-800">Select Size:</h4>
               <div className="grid grid-cols-4 gap-2">
                 {product.sizes.map((size) => (
                   <button
@@ -603,7 +488,7 @@ export function ShopItemView({ itemId }: ShopItemViewProps) {
           {/* Color Selection - Only for clothing */}
           {isClothingCategory(product.category) && product.colors && product.colors.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-semibold mb-3 font-qurova text-slate-800">Select Color:</h4>
+              <h4 className="font-semibold mb-3 font-queensides text-slate-800">Select Color:</h4>
               <div className="grid grid-cols-2 gap-2">
                 {product.colors.map((color) => (
                   <button

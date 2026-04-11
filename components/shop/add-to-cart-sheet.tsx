@@ -43,6 +43,7 @@ export function AddToCartSheet({
   const hasSizes = product.sizes && product.sizes.length > 0
   const hasColors = product.colors && product.colors.length > 0
   const totalPrice = (product.price * quantity).toFixed(2)
+  const displayPrice = `$${product.price.toFixed(2)}`
 
   const canConfirm = (!hasSizes || selectedSize) && (!hasColors || selectedColor)
 
@@ -93,7 +94,7 @@ export function AddToCartSheet({
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-20 h-20 rounded-2xl overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100 flex-shrink-0">
                   <img
-                    src={product.images[0] || "/placeholder.svg"}
+                    src={product.images[0] ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}` : "/placeholder.svg"}
                     alt={product.name}
                     className="w-full h-full object-cover"
                   />
@@ -103,7 +104,7 @@ export function AddToCartSheet({
                     {product.name}
                   </h3>
                   <p className="text-pink-600 font-bold font-queensides text-xl mt-1">
-                    ${product.price} {product.currency && product.currency !== "USD" ? product.currency : ""}
+                    {displayPrice}
                   </p>
                 </div>
               </div>

@@ -1,78 +1,77 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { ArrowLeft, Users, Sparkles, Heart, MessageCircle, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useUser } from "@/app/context/UserContext"
 import { motion, AnimatePresence } from "framer-motion"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { ProfileCard } from "./profile-card"
-import { MatchingService, UserProfile } from "@/lib/matching"
-
-
+import { MatchingService, type MatchProfile } from "@/lib/matching"
+import { supabase } from "@/lib/supabase"
 
 export function ExploreView() {
   const [activeTab, setActiveTab] = useState<"wants-you" | "potentials" | "you-want-them">("potentials")
-  const [potentialMatches, setPotentialMatches] = useState<UserProfile[]>([])
-  const [usersWhoMessagedMe, setUsersWhoMessagedMe] = useState<UserProfile[]>([])
-  const [usersIMessaged, setUsersIMessaged] = useState<UserProfile[]>([])
+  const [potentialMatches, setPotentialMatches] = useState<MatchProfile[]>([])
+  const [usersWhoMessagedMe, setUsersWhoMessagedMe] = useState<MatchProfile[]>([])
+  const [usersIMessaged, setUsersIMessaged] = useState<MatchProfile[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0)
 
   const router = useRouter()
-  const { address, isConnected } = useUser()
+  const { userId, isAuthenticated } = useUser()
 
   // Load matches when component mounts or tab changes
   useEffect(() => {
-    if (isConnected && address) {
+    if (isAuthenticated && userId) {
       loadMatches()
     }
-  }, [isConnected, address, activeTab])
+  }, [isAuthenticated, userId, activeTab])
 
-  const loadMatches = async () => {
-    if (!address) return
+  const loadMatches = useCallback(async () => {
+    if (!userId) return
 
     setIsLoading(true)
     try {
       switch (activeTab) {
-        case 'potentials':
-          const matches = await MatchingService.getPotentialMatches(address)
+        case 'potentials': {
+          // Use the matching service directly (runs client-side with Supabase)
+          const matches = await MatchingService.getPotentialMatches(userId)
           setPotentialMatches(matches)
           break
-        case 'wants-you':
-          const messagesReceived = await MatchingService.getUsersWhoMessagedMe(address)
+        }
+        case 'wants-you': {
+          const messagesReceived = await MatchingService.getUsersWhoMessagedMe(userId)
           setUsersWhoMessagedMe(messagesReceived)
           break
-        case 'you-want-them':
-          const messagesSent = await MatchingService.getUsersIMessaged(address)
+        }
+        case 'you-want-them': {
+          const messagesSent = await MatchingService.getUsersIMessaged(userId)
           setUsersIMessaged(messagesSent)
           break
+        }
       }
     } catch (error) {
       console.error('Error loading matches:', error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [userId, activeTab])
 
-  const handleViewProfile = async (profile: UserProfile) => {
-    if (!address) return
+  const handleViewProfile = async (profile: MatchProfile) => {
+    if (!userId) return
 
     // Record profile view
-    await MatchingService.recordProfileView(address, profile.wallet_address)
+    await MatchingService.recordProfileView(userId, profile.id)
 
     // Navigate to profile page
-    router.push(`/profile?address=${profile.wallet_address}`)
+    router.push(`/profile?userId=${profile.id}`)
   }
 
-  const handleSendMessage = (profile: UserProfile) => {
-    if (!address) return
-
-    // Navigate to messaging interface to compose message
-    router.push(`/messages/compose/${profile.wallet_address}`)
+  const handleSendMessage = (profile: MatchProfile) => {
+    if (!userId) return
+    router.push(`/inbox?to=${profile.id}`)
   }
-
-
 
   const getCurrentMatches = () => {
     switch (activeTab) {
@@ -158,7 +157,7 @@ export function ExploreView() {
 
         {/* Content */}
         <div className="p-6">
-          {!isConnected ? (
+          {!isAuthenticated ? (
             /* Not Connected State */
             <div className="flex items-center justify-center min-h-[60vh]">
               <div className="text-center max-w-md mx-auto">
@@ -177,7 +176,7 @@ export function ExploreView() {
                   transition={{ delay: 0.4, duration: 0.6 }}
                   className="text-2xl font-bold text-amber-800 font-qurova mb-4"
                 >
-                  Connect Your Wallet
+                  Sign In Required
                 </motion.h2>
 
                 <motion.p
@@ -186,7 +185,7 @@ export function ExploreView() {
                   transition={{ delay: 0.6, duration: 0.6 }}
                   className="text-amber-700 font-queensides leading-relaxed mb-8"
                 >
-                  Please connect your wallet to discover your matches
+                  Please sign in to discover your matches
                 </motion.p>
               </div>
             </div>

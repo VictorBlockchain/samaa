@@ -48,6 +48,8 @@ export interface Order {
   stripeChargeId?: string
   paymentCompletedAt?: string
   trackingNumber?: string
+  shippedBy?: string  // Shipping carrier: ups, usps, fedex, dhl, other (camelCase)
+  shipped_by?: string  // Shipping carrier: ups, usps, fedex, dhl, other (snake_case - for raw DB data)
   trackingUrl?: string
   estimatedDelivery?: string
   deliveredAt?: string
@@ -70,6 +72,11 @@ export interface Order {
   lastNotificationSentAt?: string
   notes?: string
   adminNotes?: string
+  feeCollected?: number  // Fee collected from this order
+  amountEarned?: number  // Net amount after fees
+  payoutDate?: string
+  payoutMethod?: 'paypal' | 'stripe' | 'bitcoin'
+  payoutTransactionId?: string
   createdAt: string
   updatedAt: string
 }
@@ -80,37 +87,62 @@ export class CartService {
   // Get cart items for user from Supabase
   static async getCartItems(userId: string): Promise<CartItem[]> {
     try {
-      const { data, error } = await supabase
+      // First, fetch cart items
+      const { data: cartItems, error: cartError } = await supabase
         .from('cart_items')
-        .select(`
-          *,
-          products!inner(id, name, images, base_price, shop_id, shops(name))
-        `)
+        .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching cart:', error)
+      if (cartError) {
+        console.error('Error fetching cart items:', cartError)
         return []
       }
 
+      if (!cartItems || cartItems.length === 0) {
+        return []
+      }
+
+      // Then, fetch products for each cart item
+      const productIds = cartItems.map(item => item.product_id)
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, name, images, base_price, shop_id')
+        .in('id', productIds)
+
+      // Fetch shop names
+      const shopIds = products?.map(p => p.shop_id) || []
+      const { data: shops } = await supabase
+        .from('shops')
+        .select('id, name')
+        .in('id', shopIds)
+
+      // Create lookup maps
+      const productMap = new Map(products?.map(p => [p.id, p]) || [])
+      const shopMap = new Map(shops?.map(s => [s.id, s.name]) || [])
+
       // Transform to CartItem interface
-      return (data || []).map(item => ({
-        id: item.id,
-        productId: item.product_id,
-        productUuid: item.product_id,
-        productName: item.products.name,
-        productImage: item.products.images?.[0] || '',
-        price: item.products.base_price,
-        currency: 'USD',
-        quantity: item.quantity,
-        selectedSize: item.selected_size,
-        selectedColor: item.selected_color,
-        shopId: item.products.shop_id,
-        shopName: item.products.shops?.name || '',
-        sellerWallet: '',
-        addedAt: item.created_at
-      }))
+      return cartItems.map(item => {
+        const product = productMap.get(item.product_id)
+        const shopName = product ? shopMap.get(product.shop_id) || '' : ''
+        
+        return {
+          id: item.id,
+          productId: item.product_id,
+          productUuid: item.product_id,
+          productName: product?.name || 'Unknown Product',
+          productImage: product?.images?.[0] || '',
+          price: product?.base_price || 0,
+          currency: 'USD',
+          quantity: item.quantity,
+          selectedSize: item.selected_size,
+          selectedColor: item.selected_color,
+          shopId: product?.shop_id || '',
+          shopName: shopName,
+          sellerWallet: '',
+          addedAt: item.created_at
+        }
+      })
     } catch (error) {
       console.error('Error fetching cart:', error)
       return []
@@ -128,15 +160,21 @@ export class CartService {
     }
   ): Promise<boolean> {
     try {
-      // Check if item already exists
-      const { data: existingItem } = await supabase
+      // Check if item already exists - use .maybeSingle() to avoid 406 error
+      const { data: existingItem, error: queryError } = await supabase
         .from('cart_items')
         .select('id, quantity')
         .eq('user_id', userId)
         .eq('product_id', item.productId)
         .eq('selected_size', item.selectedSize || null)
         .eq('selected_color', item.selectedColor || null)
-        .single()
+        .maybeSingle()
+
+      // Ignore PGRST116 (no rows found) error - that's expected for new items
+      if (queryError && queryError.code !== 'PGRST116') {
+        console.error('Error checking cart item:', queryError)
+        return false
+      }
 
       if (existingItem) {
         // Update quantity
@@ -292,6 +330,12 @@ export class OrderService {
     }
   ): Promise<Order | null> {
     try {
+      console.log('[createOrder] Starting order creation...', {
+        userId,
+        itemsCount: cartItems.length,
+        subtotal: CartService.getCartTotal(cartItems)
+      })
+
       // Calculate totals
       const subtotal = CartService.getCartTotal(cartItems)
       const promoDiscountAmount = options?.promoDiscountAmount || 0
@@ -299,18 +343,45 @@ export class OrderService {
       const taxAmount = 0 // Can be calculated based on location
       const totalAmount = subtotal - promoDiscountAmount + shippingAmount + taxAmount
 
+      // Fetch shop fee percentage
+      const shopId = cartItems[0]?.shopId
+      const { data: shopData, error: shopError } = await supabase
+        .from('shops')
+        .select('id, shop_fee')
+        .eq('id', shopId)
+        .single()
+
+      if (shopError) {
+        console.error('[createOrder] Error fetching shop fee:', shopError)
+      }
+
+      const shopFeePercent = shopData?.shop_fee || 13 // Default to 13%
+      const feeCollected = Math.round((totalAmount * shopFeePercent / 100) * 100) / 100 // Round to 2 decimals
+      const amountEarned = totalAmount - feeCollected
+
+      console.log('[createOrder] Fee calculation:', {
+        totalAmount,
+        shopFeePercent,
+        feeCollected,
+        amountEarned
+      })
+
+      console.log('[createOrder] Inserting order into database...')
+
       // Create order
       const { data: order, error } = await supabase
         .from('orders')
         .insert({
           user_id: userId,
-          shop_id: cartItems[0]?.shopId, // First item's shop (simplified)
+          shop_id: shopId,
           status: 'pending',
           subtotal,
           tax_amount: taxAmount,
           shipping_amount: shippingAmount,
           discount_amount: promoDiscountAmount,
           total_amount: totalAmount,
+          fee_collected: feeCollected,
+          amount_earned: amountEarned,
           currency: 'USD',
           shipping_address: shippingAddress,
           promo_code_id: options?.promoCodeId || null,
@@ -322,14 +393,17 @@ export class OrderService {
         .single()
 
       if (error) {
-        console.error('Error creating order:', error)
+        console.error('[createOrder] Error inserting order:', error)
         return null
       }
+
+      console.log('[createOrder] Order created successfully:', order.id)
 
       // Create order items
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
-        product_id: item.productId,
+        product_id: item.productId,  // Changed from variant_id to product_id
+        variant_id: null,  // Nullable since we're using product_id
         product_name: item.productName,
         variant_title: [item.selectedSize, item.selectedColor].filter(Boolean).join(' - ') || 'Standard',
         quantity: item.quantity,
@@ -337,16 +411,21 @@ export class OrderService {
         total_price: item.price * item.quantity
       }))
 
+      console.log('[createOrder] Inserting order items:', orderItems)
+
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems)
 
       if (itemsError) {
-        console.error('Error creating order items:', itemsError)
+        console.error('[createOrder] Error creating order items:', itemsError)
+        console.error('[createOrder] Failed items data:', JSON.stringify(orderItems, null, 2))
         // Rollback order
         await supabase.from('orders').delete().eq('id', order.id)
         return null
       }
+
+      console.log('[createOrder] Order items created successfully')
 
       // Return order with items
       return {
@@ -371,16 +450,20 @@ export class OrderService {
         paymentMethod: order.payment_method,
         stripeSessionId: order.stripe_session_id,
         stripePaymentIntentId: order.stripe_payment_intent_id,
+        trackingNumber: order.tracking_number,
+        shippedBy: order.shipped_by,
         deliveryStatus: order.delivery_status || 'pending',
         deliveryAttempts: order.delivery_attempts || 0,
         fulfillmentStatus: order.fulfillment_status || 'unfulfilled',
         itemsCount: cartItems.length,
         customerNotified: order.customer_notified || false,
+        feeCollected: order.fee_collected,
+        amountEarned: order.amount_earned,
         createdAt: order.created_at,
         updatedAt: order.updated_at
       }
     } catch (error) {
-      console.error('Error creating order:', error)
+      console.error('[createOrder] Unexpected error:', error)
       return null
     }
   }
@@ -432,6 +515,7 @@ export class OrderService {
             stripeChargeId: order.stripe_charge_id,
             paymentCompletedAt: order.payment_completed_at,
             trackingNumber: order.tracking_number,
+            shippedBy: order.shipped_by,
             trackingUrl: order.tracking_url,
             estimatedDelivery: order.estimated_delivery,
             deliveredAt: order.delivered_at,
@@ -454,6 +538,11 @@ export class OrderService {
             lastNotificationSentAt: order.last_notification_sent_at,
             notes: order.notes,
             adminNotes: order.admin_notes,
+            feeCollected: order.fee_collected,
+            amountEarned: order.amount_earned,
+            payoutDate: order.payout_date,
+            payoutMethod: order.payout_method,
+            payoutTransactionId: order.payout_transaction_id,
             createdAt: order.created_at,
             updatedAt: order.updated_at
           }

@@ -8,6 +8,7 @@ import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as Image
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { SwipeCard } from "./swipe-card"
+import type { MatchProfile } from "@/lib/matching"
 import { loadProfile, isProfileComplete } from "@/utils/profile-storage"
 import { supabase } from "@/lib/supabase"
 
@@ -29,11 +30,33 @@ export function MobileHero() {
   const [availableLeads, setAvailableLeads] = useState(0)
   const [isLoadingCredits, setIsLoadingCredits] = useState(false)
   const [mediaType, setMediaType] = useState<'photos' | 'videos'>('photos')
+  const [matchProfiles, setMatchProfiles] = useState<MatchProfile[]>([])
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false)
   const [referralCode, setReferralCode] = useState('')
   const [showMobileModal, setShowMobileModal] = useState(false)
   const [isMobile, setIsMobile] = useState(true)
 
   const { isAuthenticated, userId } = useAuth()
+
+  // Load matches when authenticated
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return
+    const fetchMatches = async () => {
+      setIsLoadingMatches(true)
+      try {
+        const res = await fetch('/api/matches?limit=20&offset=0')
+        if (res.ok) {
+          const data = await res.json()
+          setMatchProfiles(data)
+        }
+      } catch (err) {
+        console.error('Error fetching matches:', err)
+      } finally {
+        setIsLoadingMatches(false)
+      }
+    }
+    fetchMatches()
+  }, [isAuthenticated, userId])
 
   // Detect if user is on mobile
   useEffect(() => {
@@ -280,6 +303,7 @@ export function MobileHero() {
                   >
                     {/* Swipe Card Interface */}
                     <SwipeCard 
+                      profiles={matchProfiles}
                       availableLeads={availableLeads}
                       availableViews={availableViews}
                       onBuyLeads={() => router.push('/wallet')}
@@ -287,7 +311,7 @@ export function MobileHero() {
                     />
 
                     {/* Media Type Toggle */}
-                    <div className="flex justify-center gap-2">
+                    {matchProfiles.length > 0 && <div className="flex justify-center gap-2">
                       <button
                         onClick={() => setMediaType('photos')}
                         className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-queensides font-medium transition-all ${
@@ -310,7 +334,7 @@ export function MobileHero() {
                         <Video className="w-4 h-4" />
                         Videos
                       </button>
-                    </div>
+                    </div>}
                   </motion.div>
 
                   <motion.div

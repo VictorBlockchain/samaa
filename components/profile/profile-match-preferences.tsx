@@ -413,11 +413,20 @@ export function ProfileMatchPreferences({ onBack }: { onBack?: () => void }) {
       if ('prayerFrequency' in data) dbData.prayer_frequency_preference = data.prayerFrequency
       if ('sect' in data) dbData.sect_preference = data.sect
       if ('isRevert' in data) dbData.is_revert_preference = data.isRevert
-      if ('education' in data) dbData.education_preference = data.education
-      if ('occupation' in data) dbData.occupation_preference = data.occupation
+      if ('alcohol' in data) dbData.alcohol_preference = data.alcohol
+      if ('psychedelics' in data) dbData.psychedelics_preference = data.psychedelics
+      if ('halalFood' in data) dbData.halal_food_preference = data.halalFood
+      if ('preferredEducation' in data) dbData.preferred_education = data.preferredEducation
+      if ('preferredOccupation' in data) dbData.occupation_preference = data.preferredOccupation
       if ('preferredEthnicity' in data) dbData.preferred_ethnicity = data.preferredEthnicity
       if ('preferredSkinTone' in data) dbData.preferred_skin_tone = data.preferredSkinTone
       if ('smoking' in data) dbData.smoking_preference = data.smoking
+      if ('financeStyle' in data) dbData.finance_style_preference = data.financeStyle
+      if ('diningFrequency' in data) dbData.dining_frequency_preference = data.diningFrequency
+      if ('travelFrequency' in data) dbData.travel_frequency_preference = data.travelFrequency
+      if ('shoppingFrequency' in data) dbData.shopping_frequency_preference = data.shoppingFrequency
+      if ('selfCareFrequency' in data) dbData.self_care_frequency_preference = data.selfCareFrequency
+      if ('selfCareBudget' in data) dbData.self_care_budget_preference = data.selfCareBudget
       
       const { error } = await supabase
         .from("user_settings")

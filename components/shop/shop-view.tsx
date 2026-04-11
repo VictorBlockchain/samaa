@@ -17,10 +17,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { ShopService, Shop, CreateShopData, ProductService, WishlistService } from "@/lib/database"
+import { ShopService, Shop, CreateShopData, ProductService, WishlistService, ProfileService } from "@/lib/database"
 import { CartService, CartItem, OrderService } from "@/lib/cart"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
+import { getMediaUrl, STORAGE_CONFIG } from "@/lib/storage"
 import { Toaster } from "@/components/ui/toaster"
 import { AddToCartSheet } from "@/components/shop/add-to-cart-sheet"
 
@@ -124,6 +125,7 @@ interface Order {
   user_id: string
   shop_id?: string
   tracking_number?: string
+  shipped_by?: string
   shop_message?: string
 }
 
@@ -249,23 +251,126 @@ export function ShopView() {
     setOrdersLoading(true)
     try {
       // Load orders placed by this user (as customer)
-      const { data: userOrders } = await supabase
+      const { data: userOrders, error: ordersError } = await supabase
         .from('orders')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
-      setPlacedOrders((userOrders || []) as Order[])
+      if (ordersError) {
+        console.error('Error loading user orders:', ordersError)
+      }
+      
+      // Fetch order items separately for each order
+      const ordersWithItems = await Promise.all(
+        (userOrders || []).map(async (order) => {
+          try {
+            console.log(`[loadOrders] Fetching items for order ${order.order_number} (${order.id})`)
+            const { data: items, error: itemsError } = await supabase
+              .from('order_items')
+              .select('*')
+              .eq('order_id', order.id)
+            
+            if (itemsError) {
+              console.error(`Error loading items for order ${order.id}:`, itemsError)
+              return { ...order, items: [] }  // Return order with empty items
+            }
+            
+            // Fetch product images for each item
+            if (items && items.length > 0) {
+              const productIds = items.map(item => item.product_id).filter(Boolean)
+              if (productIds.length > 0) {
+                const { data: products } = await supabase
+                  .from('products')
+                  .select('id, name, images, shop_id')
+                  .in('id', productIds)
+                
+                const productMap = new Map(products?.map(p => [p.id, p]) || [])
+                
+                // Enrich items with product data
+                items.forEach(item => {
+                  const product = productMap.get(item.product_id)
+                  if (product) {
+                    item.product_image = product.images?.[0] || null
+                    item.shop_id = product.shop_id
+                  }
+                })
+              }
+            }
+            
+            console.log(`[loadOrders] Found ${items?.length || 0} items for order ${order.order_number}`)
+            return { ...order, items: items || [] }
+          } catch (err) {
+            console.error(`Failed to load items for order ${order.id}:`, err)
+            return { ...order, items: [] }  // Return order with empty items
+          }
+        })
+      )
+      
+      console.log('[loadOrders] Final orders with items:', ordersWithItems.map((o: any) => ({ 
+        order_number: o.order_number, 
+        itemsCount: o.items?.length || 0 
+      })))
+      
+      setPlacedOrders(ordersWithItems as Order[])
 
       // Load orders received by this user's shop (as seller)
       if (userShop) {
-        const { data: shopOrders } = await supabase
+        const { data: shopOrders, error: shopOrdersError } = await supabase
           .from('orders')
           .select('*')
           .eq('shop_id', userShop.id)
           .order('created_at', { ascending: false })
         
-        setReceivedOrders((shopOrders || []) as Order[])
+        if (shopOrdersError) {
+          console.error('Error loading shop orders:', shopOrdersError)
+        }
+        
+        // Fetch order items separately for each shop order
+        const shopOrdersWithItems = await Promise.all(
+          (shopOrders || []).map(async (order) => {
+            try {
+              const { data: items, error: itemsError } = await supabase
+                .from('order_items')
+                .select('*')
+                .eq('order_id', order.id)
+              
+              if (itemsError) {
+                console.error(`Error loading items for shop order ${order.id}:`, itemsError)
+                return { ...order, items: [] }
+              }
+              
+              // Fetch product images for each item
+              if (items && items.length > 0) {
+                const productIds = items.map(item => item.product_id).filter(Boolean)
+                if (productIds.length > 0) {
+                  const { data: products } = await supabase
+                    .from('products')
+                    .select('id, name, images, shop_id')
+                    .in('id', productIds)
+                  
+                  const productMap = new Map(products?.map(p => [p.id, p]) || [])
+                  
+                  // Enrich items with product data
+                  items.forEach(item => {
+                    const product = productMap.get(item.product_id)
+                    if (product) {
+                      item.product_image = product.images?.[0] || null
+                      item.shop_id = product.shop_id
+                    }
+                  })
+                }
+              }
+              
+              return { ...order, items: items || [] }
+            } catch (err) {
+              console.error(`Failed to load items for shop order ${order.id}:`, err)
+              return { ...order, items: [] }
+            }
+          })
+        )
+        
+        setReceivedOrders(shopOrdersWithItems as Order[])
       }
     } catch (error) {
       console.error('Error loading orders:', error)
@@ -288,6 +393,76 @@ export function ShopView() {
       setCartLoading(false)
     }
   }
+
+  // Load user's profile for pre-populating checkout form
+  useEffect(() => {
+    const loadUserProfile = async () => {
+      if (!userId) return
+      
+      try {
+        const profile = await ProfileService.getProfileByUserId(userId)
+        if (profile) {
+          // Pre-populate shipping address from profile
+          setShippingAddress({
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
+            street: (profile as any).address || '',
+            city: (profile as any).city || '',
+            state: (profile as any).state || '',
+            postalCode: (profile as any).postal_code || '',
+            country: (profile as any).country || 'US',
+            phone: (profile as any).phone || ''
+          })
+        }
+      } catch (error) {
+        console.error('Error loading profile:', error)
+      }
+    }
+    
+    if (isAuthenticated && userId) {
+      loadUserProfile()
+    }
+  }, [userId, isAuthenticated])
+
+  // Handle payment success/cancelled from Stripe redirect
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment')
+    const sessionId = searchParams.get('session_id')
+    const orderId = searchParams.get('order_id')
+    
+    if (paymentStatus === 'success' && sessionId) {
+      console.log('[shop-view] Payment successful!', { sessionId, orderId })
+      toast({
+        title: "Payment Successful! 🎉",
+        description: "Your order has been placed successfully. Check your email for confirmation.",
+        variant: "default",
+      })
+      
+      // Clear cart after successful payment
+      if (userId) {
+        CartService.clearCart(userId).then(() => {
+          loadCart() // Reload cart state
+        })
+      }
+      
+      // Reload orders to show the new order
+      if (userId) {
+        loadOrders()
+      }
+      
+      // Switch to orders tab to show the new order
+      setTimeout(() => {
+        setActiveTab('orders')
+        setOrdersView('placed')
+      }, 1000)
+    } else if (paymentStatus === 'cancelled') {
+      console.log('[shop-view] Payment cancelled')
+      toast({
+        title: "Payment Cancelled",
+        description: "Your payment was cancelled. Your cart items are still saved.",
+        variant: "destructive",
+      })
+    }
+  }, [searchParams, userId])
 
   // Remove item from cart
   const removeFromCart = async (itemId: string) => {
@@ -315,10 +490,19 @@ export function ShopView() {
 
   // Proceed to checkout
   const proceedToCheckout = async () => {
-    if (!userId || cartItems.length === 0) return
+    if (!userId || cartItems.length === 0) {
+      console.error('Checkout failed: Missing userId or cart items', { userId, cartItemsCount: cartItems.length })
+      return
+    }
     
     setCheckoutLoading(true)
     try {
+      console.log('Creating order from cart...', { 
+        userId, 
+        itemsCount: cartItems.length,
+        shippingAddress 
+      })
+      
       // Create order from cart
       const order = await OrderService.createOrder(
         userId,
@@ -326,9 +510,13 @@ export function ShopView() {
         shippingAddress
       )
       
+      console.log('Order creation result:', order)
+      
       if (!order) {
-        throw new Error('Failed to create order')
+        throw new Error('Failed to create order - order is null')
       }
+
+      console.log('Creating Stripe checkout session for order:', order.id)
 
       // Create Stripe checkout session
       const response = await fetch('/api/stripe/create-checkout-session', {
@@ -341,14 +529,19 @@ export function ShopView() {
             price: item.price,
             quantity: item.quantity,
             image: item.productImage,
-            productId: item.productId
+            productId: item.productId,
+            shopId: item.shopId
           })),
           totalAmount: order.totalAmount,
           shippingAddress
         })
       })
 
-      const { checkoutUrl, error } = await response.json()
+      console.log('Stripe API response status:', response.status)
+      const responseData = await response.json()
+      console.log('Stripe API response:', responseData)
+
+      const { checkoutUrl, error } = responseData
       
       if (error) {
         throw new Error(error)
@@ -356,10 +549,15 @@ export function ShopView() {
 
       // Redirect to Stripe checkout
       if (checkoutUrl) {
+        console.log('Redirecting to Stripe checkout:', checkoutUrl)
         window.location.href = checkoutUrl
+      } else {
+        throw new Error('No checkout URL received from Stripe')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error during checkout:', error)
+      // You could add a toast notification here
+      alert(`Checkout failed: ${error.message}`)
     } finally {
       setCheckoutLoading(false)
     }
@@ -483,7 +681,7 @@ export function ShopView() {
           id: p.uuid || p.id,
           name: p.name,
           description: p.description || '',
-          images: p.images || ['/placeholder.svg'],
+          images: (p.images || []).map((img: string) => getMediaUrl(STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, img) || img),
           price: p.base_price,
           currency: 'USD',
           category: p.category_name || 'Other',
@@ -1131,7 +1329,7 @@ export function ShopView() {
             onClick={() => handleViewProduct(product.id)}
           >
             <img
-              src={product.images[0] || `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`}
+              src={product.images[0] ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}` : `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`}
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               onError={(e) => {
@@ -1251,16 +1449,32 @@ export function ShopView() {
   }
 
   // Order Card Component
-  const OrderCard = ({ order, index, isReceived, onUpdateStatus }: { 
+  const OrderCard = ({ order, index, isReceived, onUpdateStatus }: {
     order: Order; 
-    index: number; 
+    index: number;
     isReceived: boolean;
-    onUpdateStatus?: (orderId: string, status: OrderStatus, trackingNumber?: string, message?: string) => void;
+    onUpdateStatus?: (orderId: string, status: OrderStatus, trackingNumber?: string, message?: string, shippedBy?: string) => void;
   }) => {
     const [showDetails, setShowDetails] = useState(false)
     const [trackingInput, setTrackingInput] = useState(order.tracking_number || "")
     const [messageInput, setMessageInput] = useState("")
-
+      
+    // Ensure items is always an array (defensive coding)
+    const orderItems = Array.isArray(order.items) ? order.items : []
+    
+    // Debug logging
+    useEffect(() => {
+      if (showDetails) {
+        console.log(`[OrderCard] Expanding order ${order.order_number}:`, {
+          orderId: order.id,
+          hasItems: !!order.items,
+          itemsType: typeof order.items,
+          itemsIsArray: Array.isArray(order.items),
+          itemsCount: orderItems.length,
+          items: order.items
+        })
+      }
+    }, [showDetails, order.id, order.order_number, order.items, orderItems.length])
     const statusColors: Record<OrderStatus, string> = {
       pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
       confirmed: "bg-blue-100 text-blue-800 border-blue-200",
@@ -1331,19 +1545,111 @@ export function ShopView() {
                   {/* Items */}
                   <div className="space-y-2">
                     <h5 className="font-semibold text-slate-700 font-display text-sm">Items</h5>
-                    {order.items.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-2 bg-pink-50/50 rounded-lg">
-                        <img 
-                          src={item.product_image || "/placeholder.svg"} 
-                          alt={item.product_name}
-                          className="w-10 h-10 rounded-lg object-cover"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-700">{item.product_name}</p>
-                          <p className="text-xs text-slate-500">Qty: {item.quantity} × ${item.price}</p>
-                        </div>
-                      </div>
-                    ))}
+                    {(() => {
+                      try {
+                        // Extra safety - ensure orderItems exists and is array
+                        const safeItems = Array.isArray(orderItems) ? orderItems : []
+                        console.log('[OrderCard] Rendering items, count:', safeItems.length)
+                        
+                        if (safeItems.length > 0) {
+                          return safeItems.map((item: any, idx: number) => {
+                            // Use product_name as primary, variant_title as fallback
+                            const displayName = item?.product_name || item?.variant_title || 'Unknown Item'
+                            const displayPrice = parseFloat(item?.unit_price || 0)
+                            const orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            }) : 'N/A'
+                            
+                            return (
+                              <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className="flex items-start gap-3 p-3 bg-white rounded-xl border border-pink-100 hover:border-pink-200 hover:shadow-sm transition-all cursor-pointer"
+                                onClick={() => item?.product_id && router.push(`/shop/item?id=${item.product_id}`)}
+                              >
+                                {/* Product Image */}
+                                <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                  {item?.product_image ? (
+                                    <img 
+                                      src={item.product_image.startsWith('http') ? item.product_image : `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${item.product_image}`}
+                                      alt={displayName}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Package className="w-8 h-8 text-pink-300" />
+                                  )}
+                                </div>
+                                
+                                {/* Item Details */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <h6 className="text-sm font-semibold text-slate-800 truncate">{displayName}</h6>
+                                    <span className="text-sm font-bold text-pink-600 whitespace-nowrap">${displayPrice.toFixed(2)}</span>
+                                  </div>
+                                  
+                                  {/* Variant Info */}
+                                  {item?.variant_title && item.variant_title !== 'Standard' && (
+                                    <p className="text-xs text-slate-500 mb-1">{item.variant_title}</p>
+                                  )}
+                                  
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                    <span className="flex items-center gap-1">
+                                      <ShoppingBag className="w-3 h-3" />
+                                      Qty: {item?.quantity || 1}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Calendar className="w-3 h-3" />
+                                      {orderDate}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Tracking & Delivery Info */}
+                                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-2 pt-2 border-t border-slate-100">
+                                    {order.tracking_number ? (
+                                      <span className="flex items-center gap-1 text-blue-600">
+                                        <Truck className="w-3 h-3" />
+                                        {order.shipped_by && (
+                                          <span className="font-semibold uppercase">{order.shipped_by}:</span>
+                                        )}
+                                        Tracking: {order.tracking_number}
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1 text-slate-400">
+                                        <Truck className="w-3 h-3" />
+                                        Tracking: Pending
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1 text-slate-400">
+                                      <Calendar className="w-3 h-3" />
+                                      Delivery: TBD
+                                    </span>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )
+                          })
+                        } else {
+                          return (
+                            <div className="p-4 text-center text-sm text-slate-500 bg-slate-50 rounded-lg">
+                              <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                              <p>Order items will appear here once payment is confirmed</p>
+                            </div>
+                          )
+                        }
+                      } catch (err) {
+                        console.error('[OrderCard] Error rendering items:', err)
+                        return (
+                          <div className="p-4 text-center text-sm text-red-500 bg-red-50 rounded-lg">
+                            <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                            <p>Error loading items</p>
+                          </div>
+                        )
+                      }
+                    })()}
                   </div>
 
                   {/* Tracking Info */}
@@ -1374,9 +1680,28 @@ export function ShopView() {
                     <div className="space-y-3 pt-3 border-t border-pink-100">
                       <h5 className="font-semibold text-slate-700 font-display text-sm">Update Order</h5>
                       
+                      {/* Shipping Carrier Selection */}
+                      {(order.status === 'pending' || order.status === 'confirmed' || order.status === 'processing') && (
+                        <div>
+                          <Label className="text-xs text-slate-600 font-queensides">Shipping Carrier</Label>
+                          <select
+                            id={`shipped_by_${order.id}`}
+                            className="mt-1 w-full px-3 py-2 border border-pink-200/50 rounded-lg bg-white text-sm"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Select carrier</option>
+                            <option value="ups">UPS</option>
+                            <option value="usps">USPS</option>
+                            <option value="fedex">FedEx</option>
+                            <option value="dhl">DHL</option>
+                            <option value="other">Other (manual entry)</option>
+                          </select>
+                        </div>
+                      )}
+                      
                       {/* Tracking Number Input */}
                       <div>
-                        <Label className="text-xs text-slate-600 font-queensides">Tracking Number (optional)</Label>
+                        <Label className="text-xs text-slate-600 font-queensides">Tracking Number {canUpdateStatus ? '(required for shipping)' : ''}</Label>
                         <Input
                           value={trackingInput}
                           onChange={(e) => setTrackingInput(e.target.value)}
@@ -1400,7 +1725,10 @@ export function ShopView() {
                       <div className="flex flex-wrap gap-2">
                         {order.status === "pending" && (
                           <Button
-                            onClick={() => onUpdateStatus(order.id, "confirmed", trackingInput, messageInput)}
+                            onClick={() => {
+                              const shippedByEl = document.getElementById(`shipped_by_${order.id}`) as HTMLSelectElement
+                              onUpdateStatus(order.id, "processing", trackingInput, messageInput, shippedByEl?.value || undefined)
+                            }}
                             className="bg-blue-500 hover:bg-blue-600 text-white text-sm"
                           >
                             <CheckCircle className="w-4 h-4 mr-1" />
@@ -1409,7 +1737,10 @@ export function ShopView() {
                         )}
                         {order.status === "confirmed" && (
                           <Button
-                            onClick={() => onUpdateStatus(order.id, "processing", trackingInput, messageInput)}
+                            onClick={() => {
+                              const shippedByEl = document.getElementById(`shipped_by_${order.id}`) as HTMLSelectElement
+                              onUpdateStatus(order.id, "processing", trackingInput, messageInput, shippedByEl?.value || undefined)
+                            }}
                             className="bg-purple-500 hover:bg-purple-600 text-white text-sm"
                           >
                             <Package className="w-4 h-4 mr-1" />
@@ -1418,7 +1749,10 @@ export function ShopView() {
                         )}
                         {order.status === "processing" && (
                           <Button
-                            onClick={() => onUpdateStatus(order.id, "shipped", trackingInput, messageInput)}
+                            onClick={() => {
+                              const shippedByEl = document.getElementById(`shipped_by_${order.id}`) as HTMLSelectElement
+                              onUpdateStatus(order.id, "shipped", trackingInput, messageInput, shippedByEl?.value || undefined)
+                            }}
                             className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm"
                           >
                             <Truck className="w-4 h-4 mr-1" />
@@ -1436,6 +1770,11 @@ export function ShopView() {
                           </Button>
                         )}
                       </div>
+                      
+                      {/* Help text */}
+                      <p className="text-xs text-slate-500 italic">
+                        💡 Tip: Adding a tracking number will automatically mark the order as shipped.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1461,23 +1800,58 @@ export function ShopView() {
   }
 
   // Handle order status update
-  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, trackingNumber?: string, message?: string) => {
+  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, trackingNumber?: string, message?: string, shippedBy?: string) => {
     try {
+      console.log('[handleUpdateOrderStatus] Updating order:', { orderId, status, trackingNumber, shippedBy })
+      
       const updates: any = { status }
       if (trackingNumber) updates.tracking_number = trackingNumber
       if (message) updates.shop_message = message
+      if (shippedBy) updates.shipped_by = shippedBy
+      
+      // If status is 'shipped' and no tracking number, show error
+      if (status === 'shipped' && !trackingNumber) {
+        toast({
+          title: "Tracking Number Required",
+          description: "Please provide a tracking number before marking as shipped.",
+          variant: "destructive",
+        })
+        return
+      }
+      
+      // If tracking number is provided, auto-update to 'shipped'
+      if (trackingNumber && !['cancelled', 'delivered'].includes(status)) {
+        updates.status = 'shipped'
+      }
+      
+      console.log('[handleUpdateOrderStatus] Applying updates:', updates)
       
       const { error } = await supabase
         .from('orders')
         .update(updates)
         .eq('id', orderId)
 
-      if (error) throw error
+      if (error) {
+        console.error('[handleUpdateOrderStatus] Error:', error)
+        throw error
+      }
+
+      console.log('[handleUpdateOrderStatus] Order updated successfully')
+      
+      toast({
+        title: "Order Updated",
+        description: `Order status changed to ${status}.`,
+      })
 
       // Refresh orders
       loadOrders()
     } catch (error) {
       console.error('Error updating order:', error)
+      toast({
+        title: "Update Failed",
+        description: "Failed to update order. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -2154,7 +2528,7 @@ export function ShopView() {
                   <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-pink-200/50 hover:border-pink-300/60">
                     <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100">
                       <img
-                        src={product.images?.[0] || "/placeholder.svg"}
+                        src={product.images?.[0] ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}` : "/placeholder.svg"}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
