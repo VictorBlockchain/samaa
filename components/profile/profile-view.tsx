@@ -1238,13 +1238,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
               <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Travel</p>
               <p className="text-slate-800 font-queensides font-medium capitalize">{profile.travelFrequency ? profile.travelFrequency.replace('_', ' ') : 'Rarely'}</p>
             </div>
-            {profile.gender === 'female' && (
-              <div className="p-1 rounded-xl text-center">
-                <Palette className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Hair Style</p>
-                <p className="text-slate-800 font-queensides font-medium capitalize">{profile.hairStyle ? profile.hairStyle.replace('_', ' ') : 'N/A'}</p>
-              </div>
-            )}
+
             <div className="p-1 rounded-xl text-center">
               <svg className="w-8 h-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2.293 2.293c-.63.63-.184 1.707.707 1.707H18a2 2 0 002-2v-6a2 2 0 00-2-2h-5.293c-.495 0-.964.14-1.38.415l-2.293 2.293a1 1 0 101.414 1.414l2.293-2.293a1 1 0 00-1.414-1.414z" />
@@ -1321,39 +1315,42 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           </div>
         )}
 
-        {profile.gender === 'male' && (
+        {profile.gender === 'female' && (
             <>
-            <div className="px-6 py-8 max-w-4xl mx-auto bg-white mt-10">
-                <div className="flex items-center justify-center">
-                <div className="flex items-center space-x-4">
-                    <Star className="w-4 h-4 text-pink-300" />
-                    <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
-                    <Moon className="w-4 h-4 text-purple-300" />
-                    <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
-                    <Sparkles className="w-4 h-4 text-blue-300" />
-                </div>
-                </div>
-                <h3 className="text-lg font-bold text-slate-800 font-queensides mt-5 mb-6 text-center">Beauty</h3>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-                    <div className="p-1 rounded-xl text-center">
-                        <svg className="w-8 h-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Hair</p>
-                        <p className="text-slate-800 font-queensides font-medium capitalize">{profile.hairStyle ? profile.hairStyle.replace('_', ' ') : 'N/A'}</p>
-                    </div>
-                    <div className="p-1 rounded-xl text-center">
-                        <svg className="w-8 h-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                        </svg>
-                        <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Make Up</p>
-                        <p className="text-slate-800 font-queensides font-medium capitalize">{profile.makeUpStyle ? profile.makeUpStyle : 'N/A'}</p>
-                    </div>
-                </div>
+        <div className="px-6 py-8 max-w-4xl mx-auto bg-white">
+          <div className="flex items-center justify-center mt-10">
+            <div className="flex items-center space-x-4">
+              <Star className="w-4 h-4 text-pink-300" />
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+              <Moon className="w-4 h-4 text-purple-300" />
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+              <Sparkles className="w-4 h-4 text-blue-300" />
             </div>
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 font-queensides mt-5 mb-6 text-center">Beauty</h3>
+          <div className="grid grid-cols-2 gap-6 mt-8">
+            <div className="p-1 rounded-xl text-center">
+              <p className="text-xs font-semibold text-pink-700 font-queensides mb-2 uppercase tracking-wider">Hair</p>
+              <p className="text-slate-800 font-queensides font-medium capitalize text-lg">{profile.hairStyle ? profile.hairStyle : 'N/A'}</p>
+            </div>
+            <div className="p-1 rounded-xl text-center">
+              <p className="text-xs font-semibold text-purple-700 font-queensides mb-2 uppercase tracking-wider">Make Up</p>
+              <p className="text-slate-800 font-queensides font-medium capitalize text-lg">{profile.makeUpStyle ? profile.makeUpStyle : 'N/A'}</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-center mt-10">
+            <div className="flex items-center space-x-4">
+              <Star className="w-4 h-4 text-pink-300" />
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+              <Moon className="w-4 h-4 text-purple-300" />
+              <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+              <Sparkles className="w-4 h-4 text-blue-300" />
+            </div>
+          </div>
+        </div>
             </>
         )}
+
 
         {/* Interests */}
         {profile.interests && profile.interests.length > 0 && (
