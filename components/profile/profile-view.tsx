@@ -78,6 +78,8 @@ interface ProfileData {
   selfCareFrequency?: string
   selfCareBudget?: string
   shoppingFrequency?: string
+  shoppingBudgetType?: string
+  shoppingBudgetAmount?: number
   livingArrangements?: string
   willingToRelocate?: string
   mahrMaxAmount?: string
@@ -588,6 +590,8 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           selfCareFrequency: (supabaseProfile as any).self_care_frequency || "",
           selfCareBudget: (supabaseProfile as any).self_care_budget || "",
           shoppingFrequency: (supabaseProfile as any).shopping_frequency || "",
+          shoppingBudgetType: (supabaseProfile as any).shopping_budget_preference_type || "",
+          shoppingBudgetAmount: (supabaseProfile as any).shopping_budget_preference_amount || null,
           livingArrangements: (supabaseProfile as any).living_arrangements || "",
           willingToRelocate: (supabaseProfile as any).willing_to_relocate === true ? "yes" : "no",
           mahrMaxAmount: (supabaseProfile as any).mahr_max_amount || "",
@@ -1247,6 +1251,23 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
               </svg>
               <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Shopping</p>
               <p className="text-slate-800 font-queensides font-medium capitalize">{profile.shoppingFrequency ? profile.shoppingFrequency : 'N/A'}</p>
+            </div>
+            <div className="p-1 rounded-xl text-center">
+              <svg className="w-8 h-8 text-amber-500 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2.293 2.293c-.63.63-.184 1.707.707 1.707H18a2 2 0 002-2v-6a2 2 0 00-2-2h-5.293c-.495 0-.964.14-1.38.415l-2.293 2.293a1 1 0 101.414 1.414l2.293-2.293a1 1 0 00-1.414-1.414z" />
+              </svg>
+              <p className="text-xs font-semibold text-amber-700 font-queensides mb-2 uppercase tracking-wider">Shopping Budget</p>
+              <p className="text-slate-800 font-queensides font-medium">
+                {profile.shoppingBudgetType && profile.shoppingBudgetAmount ? (
+                  profile.shoppingBudgetType === 'less_than' ? (
+                    `< $${profile.shoppingBudgetAmount.toLocaleString()}`
+                  ) : (
+                    `> $${profile.shoppingBudgetAmount.toLocaleString()}`
+                  )
+                ) : (
+                  'N/A'
+                )}
+              </p>
             </div>
           </div>
         </div>
