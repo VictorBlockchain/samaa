@@ -854,7 +854,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           <div className="px-4 max-w-4xl mx-auto mt-10 mb-10 relative">
             <ArabicCard>
               <ArabicCardContent>
-                <ArabicCardDescription className="whitespace-pre-line text-left">
+                <ArabicCardDescription className="whitespace-pre-line text-left break-words overflow-wrap-anywhere">
                   {profile.bio}
                 </ArabicCardDescription>
               </ArabicCardContent>
