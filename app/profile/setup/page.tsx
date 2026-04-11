@@ -407,6 +407,7 @@ export default function ProfileSetupPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [hasHydratedFromDb, setHasHydratedFromDb] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [showValidationErrors, setShowValidationErrors] = useState(false)
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false)
   const [isResolvingLocation, setIsResolvingLocation] = useState(false)
   const [locationCoords, setLocationCoords] = useState<[number, number] | null>(null)
@@ -853,6 +854,9 @@ export default function ProfileSetupPage() {
       workPreference: (profile as any).work_preference || prev.workPreference,
       stylePreference: (profile as any).style_preference || prev.stylePreference,
       familyInvolvement: (profile as any).family_involvement || prev.familyInvolvement,
+      dob: (profile as any).date_of_birth || prev.dob,
+      height: (profile as any).height || prev.height,
+      nationality: (profile as any).nationality || prev.nationality,
       bio: profile.bio || prev.bio,
       interests: Array.isArray(profile.interests) ? profile.interests : prev.interests,
       customInterests: Array.isArray((profile as any).custom_interests) ? (profile as any).custom_interests : prev.customInterests,
@@ -1323,6 +1327,17 @@ export default function ProfileSetupPage() {
   const handleNext = async () => {
     if (isSaving || isUploadingPhotos) return
 
+    // Check validation and show errors if form is incomplete
+    const missingFields = getMissingFields()
+    if (missingFields.length > 0) {
+      setShowValidationErrors(true)
+      // Scroll to top to show error message
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    setShowValidationErrors(false)
+
     if (currentStep < steps.length) {
       if (!isAuthenticated || !userId) {
         setSectionSaveError("Please sign in to save your progress.")
@@ -1615,6 +1630,45 @@ export default function ProfileSetupPage() {
     return "Save Profile"
   }
 
+  // Get missing required fields for current step
+  const getMissingFields = () => {
+    const missing: string[] = []
+    
+    if (currentStep === 1) {
+      if (!profileData.firstName) missing.push("First Name")
+      if (!profileData.age) missing.push("Age")
+      if (!profileData.location) missing.push("Location")
+      if (!profileData.education) missing.push("Education")
+      if (!profileData.profession) missing.push("Profession")
+      if (!profileData.maritalStatus) missing.push("Marital Status")
+      if (!profileData.willingToRelocate) missing.push("Willingness to Relocate")
+      if (!profileData.livingArrangements) missing.push("Living Arrangements")
+      if (profileData.gender === "male" && !profileData.mahrMaxAmount) missing.push("Mahr Budget")
+      if (profileData.gender === "female") {
+        if (!profileData.mahrRequirement) missing.push("Mahr Requirement")
+        if (!profileData.workPreference) missing.push("Work Preference")
+        if (!profileData.stylePreference) missing.push("Style Preference")
+      }
+    } else if (currentStep === 2) {
+      if (!profileData.religiosity) missing.push("Religiosity")
+      if (!profileData.prayerFrequency) missing.push("Prayer Frequency")
+      if (profileData.gender === "female" && !profileData.hijabPreference) missing.push("Hijab Preference")
+      if (!profileData.marriageIntention) missing.push("Marriage Intention")
+      if (!profileData.isRevert) missing.push("Revert Status")
+      if (!profileData.sect) missing.push("Sect")
+      if (!profileData.islamicValues) missing.push("Islamic Values")
+      if (!profileData.familyInvolvement) missing.push("Family Involvement")
+      if (!profileData.alcohol) missing.push("Alcohol Preference")
+      if (!profileData.smoking) missing.push("Smoking Preference")
+    } else if (currentStep === 3) {
+      if (profileData.interests.length === 0) missing.push("At least one interest")
+    } else if (currentStep === 4) {
+      if (profileData.photos.length === 0) missing.push("At least one photo")
+    }
+    
+    return missing
+  }
+
   const isIslamicValuesSectionDisabled = () => {
     return (
       isSaving ||
@@ -1716,6 +1770,34 @@ export default function ProfileSetupPage() {
                     </h2>
                     <p className="text-slate-600 font-queensides">Tell us about yourself</p>
                   </div>
+
+                  {/* Validation Error Message */}
+                  {showValidationErrors && currentStep === 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-2xl p-5"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-queensides font-bold text-red-800 mb-2">Please complete these required fields:</h4>
+                          <ul className="space-y-1">
+                            {getMissingFields().map((field, idx) => (
+                              <li key={idx} className="text-sm text-red-700 font-queensides flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0"></span>
+                                {field}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
                   {/* Single Column Form */}
                   <div className="space-y-4">
@@ -2437,9 +2519,6 @@ export default function ProfileSetupPage() {
                     )}
 
                     {/* Male Only - Polygamy Reason */}
-                    {profileData.gender === 'male' && (
-                      <>
-                        {/* UI Kit Styled Section Divider */}
                         <div className="relative">
                           <div className="absolute inset-0 flex items-center">
                             <div className="w-full h-px bg-gradient-to-r from-transparent via-indigo-300 to-transparent" />
@@ -2457,12 +2536,12 @@ export default function ProfileSetupPage() {
                         </div>
 
                         <div>
-                          {profile.gender === "male" && (
+                          {profileData.gender === "male" && (
                           <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
                             If you want more than 1 wife, why?
                           </label>
                           )}
-                          {profile.gender === "female" && (
+                          {profileData.gender === "female" && (
                           <label className="block text-sm font-semibold text-slate-700 font-queensides mb-3">
                             Why or why not polygamy?
                           </label>
@@ -2476,8 +2555,6 @@ export default function ProfileSetupPage() {
                             placeholder="Share your thoughts on polygamy (optional)..."
                           />
                         </div>
-                      </>
-                    )}
 
                     {/* UI Kit Styled Section Divider - Bio */}
                     <div className="relative">
@@ -2576,6 +2653,33 @@ export default function ProfileSetupPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Validation Error Message */}
+                    {showValidationErrors && currentStep === 2 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-2xl p-5"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-queensides font-bold text-red-800 mb-2">Please complete these required fields:</h4>
+                            <ul className="space-y-1">
+                              {getMissingFields().map((field, idx) => (
+                                <li key={idx} className="text-sm text-red-700 font-queensides flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0"></span>
+                                  {field}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
                     <div>
                       <Label className="font-queensides text-black">Level of Religiosity</Label>
                       <RadioGroup
@@ -3016,6 +3120,33 @@ export default function ProfileSetupPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {/* Validation Error Message */}
+                    {showValidationErrors && currentStep === 3 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mb-6 bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-2xl p-5"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-red-400 to-rose-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-queensides font-bold text-red-800 mb-2">Please complete these required fields:</h4>
+                            <ul className="space-y-1">
+                              {getMissingFields().map((field, idx) => (
+                                <li key={idx} className="text-sm text-red-700 font-queensides flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0"></span>
+                                  {field}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
                     <div>
                       <Label className="font-queensides text-black text-lg mb-4 block">
                         Select Your Interests & Hobbies

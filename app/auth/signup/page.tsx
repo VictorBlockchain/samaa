@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
 
   const passwordRequirements = [
     { label: 'At least 8 characters', met: password.length >= 8 },
@@ -31,6 +32,11 @@ export default function SignupPage() {
     setError(null)
 
     // Validation
+    if (!acceptTerms) {
+      setError('Please accept the user agreement to continue')
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return
@@ -111,14 +117,14 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative mt-10">
       <CelestialBackground />
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+      <div className="relative z-10 min-h-screen py-6 md:py-20 pb-32 md:pb-36 px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md mx-auto"
         >
           {/* Card */}
           <div className="glass-card rounded-3xl shadow-2xl border border-pink-100/50 overflow-hidden">
@@ -264,6 +270,37 @@ export default function SignupPage() {
                     className="w-full pl-12 pr-4 py-3 rounded-2xl border border-pink-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 transition-all duration-300 bg-white/80 backdrop-blur-sm font-queensides"
                   />
                 </div>
+              </div>
+
+              {/* User Agreement Checkbox */}
+              <div className="space-y-2 pt-2">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex-shrink-0 mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={acceptTerms}
+                      onChange={(e) => setAcceptTerms(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-5 h-5 border-2 border-pink-300 rounded-md peer-checked:bg-gradient-to-r peer-checked:from-pink-400 peer-checked:to-rose-500 peer-checked:border-pink-500 transition-all duration-300 flex items-center justify-center group-hover:border-pink-400">
+                      {acceptTerms && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700 font-queensides leading-relaxed">
+                    I accept the{' '}
+                    <Link href="/terms" className="text-pink-600 hover:text-pink-700 font-semibold underline decoration-pink-300 hover:decoration-pink-500 transition-colors">
+                      User Agreement
+                    </Link>
+                    {' '}and{' '}
+                    <Link href="/privacy" className="text-pink-600 hover:text-pink-700 font-semibold underline decoration-pink-300 hover:decoration-pink-500 transition-colors">
+                      Privacy Policy
+                    </Link>
+                  </span>
+                </label>
               </div>
 
               {/* Submit Button */}

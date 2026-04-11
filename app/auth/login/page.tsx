@@ -74,14 +74,26 @@ export default function LoginPage() {
         // Login successful - check if profile is complete
         console.log('[Login] Sign in successful, checking profile completion...')
         
+        // Get the user ID from the auth session directly
+        const { data: { session } } = await import('@/lib/supabase').then(mod => mod.supabase.auth.getSession())
+        
+        if (!session?.user?.id) {
+          console.error('[Login] No session found after sign in')
+          router.push('/')
+          return
+        }
+        
+        const currentUserId = session.user.id
+        console.log('[Login] User ID from session:', currentUserId)
+        
         // Wait a moment for the user context to update
         setTimeout(async () => {
           try {
             // Import ProfileService dynamically
             const { ProfileService } = await import('@/lib/database')
             
-            // Get user profile
-            const userProfile = await ProfileService.getProfileByUserId(userId!)
+            // Get user profile using the session user ID
+            const userProfile = await ProfileService.getProfileByUserId(currentUserId)
             
             if (!userProfile) {
               console.log('[Login] No profile found, redirecting to profile setup')

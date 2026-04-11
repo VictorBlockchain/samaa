@@ -54,11 +54,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update the users table to mark as verified
+    // Update the users table to mark as verified and credit leads/views
     const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ 
         is_verified: true,
+        available_leads: 3, // Credit 3 leads after email verification
+        available_views: 10, // Credit 10 views after email verification
         updated_at: new Date().toISOString(),
       })
       .eq('id', token)

@@ -329,28 +329,30 @@ function convertSupabaseToProfileData(user: any): ProfileData {
   }
 }
 
-export async function saveProfile(walletAddress: string, profileData: Partial<ProfileData>): Promise<boolean> {
+export async function saveProfile(userId: string, profileData: Partial<ProfileData>): Promise<boolean> {
   try {
     // First try to save to Supabase
     try {
       const { ProfileService } = await import('@/lib/database')
 
       // Convert ProfileData to Supabase format
-      const supabaseData = convertProfileDataToSupabase(walletAddress, profileData)
+      const supabaseData = convertProfileDataToSupabase(userId, profileData)
 
-      const savedProfile = await ProfileService.upsertProfile(supabaseData)
+      // Use updateProfileByUserId which properly upserts based on user ID
+      const savedProfile = await ProfileService.updateProfileByUserId(userId, supabaseData as any)
+      
       if (savedProfile) {
-        console.log("Profile saved to Supabase successfully for:", walletAddress)
+        console.log("Profile saved to Supabase successfully for userId:", userId)
 
         // Also save to localStorage as backup
-        const existingProfile = await loadProfile(walletAddress)
+        const existingProfile = await loadProfile(userId)
         const updatedProfile = {
           ...existingProfile,
           ...profileData,
-          walletAddress,
+          walletAddress: userId,
           updatedAt: new Date().toISOString(),
         }
-        localStorage.setItem(`profile_${walletAddress}`, JSON.stringify(updatedProfile))
+        localStorage.setItem(`profile_${userId}`, JSON.stringify(updatedProfile))
 
         return true
       }
@@ -359,23 +361,23 @@ export async function saveProfile(walletAddress: string, profileData: Partial<Pr
     }
 
     // Fallback to localStorage only
-    const existingProfile = await loadProfile(walletAddress)
+    const existingProfile = await loadProfile(userId)
     const updatedProfile = {
       ...existingProfile,
       ...profileData,
-      walletAddress,
+      walletAddress: userId,
       updatedAt: new Date().toISOString(),
     }
 
-    localStorage.setItem(`profile_${walletAddress}`, JSON.stringify(updatedProfile))
+    localStorage.setItem(`profile_${userId}`, JSON.stringify(updatedProfile))
 
     // Also save to allProfiles for matching
     const existingProfiles = JSON.parse(localStorage.getItem('allProfiles') || '[]')
-    const updatedProfiles = existingProfiles.filter((p: any) => p.walletAddress !== walletAddress)
+    const updatedProfiles = existingProfiles.filter((p: any) => p.walletAddress !== userId)
     updatedProfiles.push(updatedProfile)
     localStorage.setItem('allProfiles', JSON.stringify(updatedProfiles))
 
-    console.log("Profile saved to localStorage successfully for:", walletAddress)
+    console.log("Profile saved to localStorage successfully for userId:", userId)
     return true
   } catch (error) {
     console.error("Error saving profile:", error)

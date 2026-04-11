@@ -14,6 +14,12 @@ export class ProfileService {
   // Get profile by user ID (Supabase Auth user ID)
   static async getProfileByUserId(userId: string): Promise<User | null> {
     try {
+      // Guard against null/undefined userId
+      if (!userId || userId === 'null' || userId === 'undefined') {
+        console.warn('[ProfileService] getProfileByUserId called with invalid userId:', userId)
+        return null
+      }
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -170,9 +176,46 @@ export class ProfileService {
       if (!principal) {
         throw new Error('upsertProfile requires a principal')
       }
-      const created = await this.createProfile({ ...profileData, principal } as any)
-      const updated = await this.updateProfile(principal, profileData as any)
-      return updated || created
+
+      // Check if profile exists
+      const existing = await this.getProfileByAddress(principal)
+      
+      if (existing) {
+        // Update existing profile
+        const updatedAt = new Date().toISOString()
+        const cleaned = Object.fromEntries(
+          Object.entries(profileData).filter(([, v]) => v !== undefined),
+        ) as Record<string, unknown>
+
+        const { data, error } = await supabase
+          .from('users')
+          .update({ ...cleaned, updated_at: updatedAt } as any)
+          .eq('principal', principal)
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+        return data
+      } else {
+        // Create new profile
+        const now = new Date().toISOString()
+        const { data, error } = await supabase
+          .from('users')
+          .insert({ ...profileData, created_at: now, updated_at: now } as any)
+          .select()
+          .single()
+
+        if (error) {
+          // If duplicate key error, fetch and return existing
+          if ((error as any).code === '23505') {
+            return await this.getProfileByAddress(principal)
+          }
+          throw error
+        }
+        return data
+      }
     } catch (error) {
       console.error('Error upserting profile:', error)
       return null

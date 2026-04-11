@@ -34,6 +34,7 @@ import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
 import { ProfileService } from "@/lib/database"
 import { getSignedUrlForPath, storagePathFromUrlOrPath, STORAGE_CONFIG } from "@/lib/storage"
+import { ArabicCard, ArabicCardContent, ArabicCardTitle, ArabicCardDescription } from "@/components/ui/arabic-card"
 
 interface ProfileData {
   firstName: string
@@ -91,6 +92,8 @@ interface ProfileData {
   createdAt?: string
   nationality?: string
   height?: string
+  availableLeads?: number
+  availableViews?: number
 }
 
 // UI Kit Section Divider
@@ -246,6 +249,8 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
           createdAt: supabaseProfile.created_at || new Date().toISOString(),
           nationality: (supabaseProfile as any).nationality || "",
           height: (supabaseProfile as any).height || "",
+          availableLeads: (supabaseProfile as any).available_leads || 0,
+          availableViews: (supabaseProfile as any).available_views || 0,
         })
       }
     } catch (error) {
@@ -429,8 +434,8 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
                         <Heart className="w-4.5 h-4.5 text-white" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-rose-600 font-queensides uppercase tracking-wider">Likes</p>
-                        <p className="text-xl font-bold text-rose-700 font-queensides">24</p>
+                        <p className="text-[10px] font-semibold text-rose-600 font-queensides uppercase tracking-wider">Leads</p>
+                        <p className="text-xl font-bold text-rose-700 font-queensides">{profile.availableLeads ?? 0}</p>
                       </div>
                     </div>
                   </div>
@@ -441,8 +446,8 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
                         <Sparkles className="w-4.5 h-4.5 text-white" />
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-purple-600 font-queensides uppercase tracking-wider">Compliments</p>
-                        <p className="text-xl font-bold text-purple-700 font-queensides">12</p>
+                        <p className="text-[10px] font-semibold text-purple-600 font-queensides uppercase tracking-wider">Views</p>
+                        <p className="text-xl font-bold text-purple-700 font-queensides">{profile.availableViews ?? 0}</p>
                       </div>
                     </div>
                   </div>
@@ -478,11 +483,17 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
 
         {/* Bio */}
         {profile.bio && (
-          <div className="px-6 max-w-4xl mx-auto bg-white mt-8 relative">
-            <p className="font-16 font-queensides leading-relaxed pb-8 text-left pt-8">
-              {profile.bio}
-            </p>
+          <>
+          <div className="px-4 max-w-4xl mx-auto mt-10 mb-10 relative">
+            <ArabicCard>
+              <ArabicCardContent>
+                <ArabicCardDescription className="whitespace-pre-line text-left">
+                  {profile.bio}
+                </ArabicCardDescription>
+              </ArabicCardContent>
+            </ArabicCard>
           </div>
+          </>
         )}
 
         {/* Basic Information Details */}
@@ -499,12 +510,7 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
               </div>
             </div>
             <div className="grid grid-cols-2 gap-6 mt-8">
-              {profile.bioTagline && (
-                <div className="col-span-2 p-4 rounded-xl">
-                  <p className="text-xs font-semibold text-black-600 font-queensides mb-2 uppercase tracking-wide">Tagline</p>
-                  <p className="text-slate-800 font-queensides text-lg italic">{profile.bioTagline}</p>
-                </div>
-              )}
+
               {profile.maritalStatus && (
                 <div className="p-1 rounded-xl">
                   <p className="text-xs font-semibold text-black-600 font-queensides mb-2 uppercase tracking-wide">Marital Status</p>
@@ -661,8 +667,14 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
                  className="p-6 rounded-2xl flextext-centert gap-8"
               >
                 <div className="flex-1 text-center">
-                  <h4 className="text-sm font-semibold font-queensides mb-1 uppercase tracking-wide">Marriage Timeline</h4>
-                  <p className="text-lg font-bold font-queensides">{profile.marriageIntention.replace('_', ' ')}</p>
+                  <ArabicCard>
+                    <ArabicCardContent>
+                      <ArabicCardTitle>Marriage Timeline</ArabicCardTitle>
+                      <ArabicCardDescription>
+                        {profile.marriageIntention.replace('_', ' ')}
+                      </ArabicCardDescription>
+                    </ArabicCardContent>
+                  </ArabicCard>
                 </div>
               </motion.div>
             )}
@@ -899,19 +911,17 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
             </div>
           </div>
         </div>
-        <div className="mt-10">
-            <div className="flex items-center justify-center">
-              <div className="flex items-center space-x-4">
-                <Star className="w-4 h-4 text-pink-300" />
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
-                <Moon className="w-4 h-4 text-purple-300" />
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
-                <Sparkles className="w-4 h-4 text-blue-300" />
-              </div>
-            </div>
+        <div className="mt-10 mb-10 p-3">
+
             <>
-            <h3 className="text-lg font-bold text-slate-800 font-queensides mt-5 mb-6 text-center">Polygamy Perspective</h3>
-            <h1 className="text-2xl font-bold text-slate-800 font-queensides text-center">{profile.polygamyReason ? profile.polygamyReason : 'n/a'}</h1>
+                  <ArabicCard>
+                    <ArabicCardContent>
+                      <ArabicCardTitle>Polygamy Perspective</ArabicCardTitle>
+                      <ArabicCardDescription className="whitespace-pre-line">
+                        {profile.polygamyReason ? profile.polygamyReason.replace('_', ' ') : 'N/A'}
+                      </ArabicCardDescription>
+                    </ArabicCardContent>
+                  </ArabicCard>
             </>
         </div>
 
@@ -1004,16 +1014,13 @@ export function ProfileViewElegant({ userId: profileUserId, onShowPreferences }:
 
         {/* Remaining Photos Grid */}
         {profile.profile_photos && profile.profile_photos.length > 5 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 px-6 py-8 max-w-6xl mx-auto">
-            {profile.profile_photos.slice(5).map((photo, index) => (
-              <div key={index} className="relative overflow-hidden rounded-2xl shadow-lg">
-                <img
-                  src={photo}
-                  alt={`${profile.firstName}'s photo ${index + 6}`}
-                  className="w-full h-72 object-cover hover:scale-105 transition-transform duration-500"
-                />
-              </div>
-            ))}
+          <div className="relative w-full overflow-hidden">
+            <img
+              src={profile.profile_photos[5]}
+              alt={`${profile.firstName}'s photo`}
+              className="w-full h-auto object-cover"
+              style={{ maxHeight: '500px' }}
+            />
           </div>
         )}
 
