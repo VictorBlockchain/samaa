@@ -32,6 +32,7 @@ import {
   FileText,
   Volume2,
   Users,
+  Send,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { useRouter } from "next/navigation"
@@ -510,6 +511,9 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [viewMode, setViewMode] = useState<'my-profile' | 'my-match'>('my-profile')
   const [showScoreModal, setShowScoreModal] = useState(false)
+  const [showLeadCard, setShowLeadCard] = useState(false)
+  const [leadMessage, setLeadMessage] = useState('')
+  const [isSendingLead, setIsSendingLead] = useState(false)
 
   // Helper function to format date
   const formatDate = (dateString: string) => {
@@ -621,6 +625,37 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
       console.error("Error loading profile:", error)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleSendLead = async () => {
+    if (!leadMessage.trim() || !profile) return
+    
+    setIsSendingLead(true)
+    try {
+      // Send message via API
+      const response = await fetch('/api/messages/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiverId: profileUserId,
+          message: leadMessage.trim(),
+        }),
+      })
+
+      if (response.ok) {
+        setLeadMessage('')
+        setShowLeadCard(false)
+        // You could add a toast notification here
+        alert('Message sent successfully!')
+      } else {
+        alert('Failed to send message. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error sending lead:', error)
+      alert('Failed to send message. Please try again.')
+    } finally {
+      setIsSendingLead(false)
     }
   }
 
@@ -859,6 +894,20 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                 </ArabicCardDescription>
               </ArabicCardContent>
             </ArabicCard>
+            <div className="flex items-center justify-center mt-4">
+              {!isOwnProfile && profile.gender && userId && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowLeadCard(true)}
+                  className="px-8 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-queensides font-medium rounded-2xl flex items-center gap-3 transition-all shadow-lg hover:shadow-xl"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Take The Lead</span>
+                  <Send className="w-4 h-4" />
+                </motion.button>
+              )}
+            </div>
           </div>
           </>
         )}
@@ -1453,6 +1502,86 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           }}
         />
       )}
+
+      {/* Lead Card Slide Up */}
+      <AnimatePresence>
+        {showLeadCard && profile && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLeadCard(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            />
+            
+            {/* Card */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-50 p-6 max-w-lg mx-auto"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <h3 className="text-lg font-bold text-slate-800 font-qurova">Take The Lead</h3>
+                </div>
+                <button
+                  onClick={() => setShowLeadCard(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+
+              {/* Profile Preview */}
+              <div className="flex items-center gap-3 mb-4 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl">
+                <img
+                  src={profile.profile_photos?.[0] || '/placeholder-user.jpg'}
+                  alt={profile.firstName}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-md"
+                />
+                <div>
+                  <p className="font-semibold text-slate-800 font-queensides">{profile.firstName}{profile.lastName ? ` ${profile.lastName}` : ''}, {profile.age}</p>
+                  <p className="text-xs text-slate-500 font-queensides">{profile.location || 'Location not set'}</p>
+                </div>
+              </div>
+
+              {/* Message Input */}
+              <textarea
+                value={leadMessage}
+                onChange={(e) => setLeadMessage(e.target.value)}
+                placeholder="Write a heartfelt message..."
+                className="w-full h-24 p-3 border border-slate-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent font-queensides text-sm"
+                maxLength={280}
+              />
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-xs text-slate-400 font-queensides">{leadMessage.length}/280</span>
+              </div>
+
+              {/* Send Button */}
+              <button
+                onClick={handleSendLead}
+                disabled={!leadMessage.trim() || isSendingLead}
+                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 disabled:from-slate-300 disabled:to-slate-400 text-white font-queensides font-medium rounded-xl flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg disabled:shadow-none"
+              >
+                {isSendingLead ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    Send Message
+                  </>
+                )}
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
