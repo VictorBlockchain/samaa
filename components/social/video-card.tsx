@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
   Dialog,
@@ -489,11 +490,10 @@ export function VideoCard({ video, onLike, onFlag, onDelete, isOwner = false }: 
                 {/* Comments List */}
                 <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 bg-white">
                   {comments.length === 0 ? (
-                    <div className="text-center py-12">
-                      <MessageCircle className="w-16 h-16 text-pink-200 mx-auto mb-4" />
-                      <p className="text-slate-500 font-queensides text-lg">No comments yet</p>
-                      <p className="text-slate-400 font-queensides text-sm mt-1">Be the first to share your thoughts!</p>
-                    </div>
+                    <ArabicEmptyStateCard icon={<MessageCircle className="w-12 h-12" />}>
+                      <ArabicEmptyStateCardTitle>No comments yet</ArabicEmptyStateCardTitle>
+                      <ArabicEmptyStateCardDescription>Be the first to share your thoughts!</ArabicEmptyStateCardDescription>
+                    </ArabicEmptyStateCard>
                   ) : (
                     comments.map((comment, index) => (
                       <motion.div

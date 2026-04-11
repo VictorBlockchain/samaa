@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { supabase } from "@/lib/supabase"
 import { CelestialBackground } from "@/components/ui/celestial-background"
+import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
 import {
   ArrowLeft,
   Heart,
@@ -327,15 +328,10 @@ export default function CommunityPage() {
                 </div>
 
                 {masjids.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <Building className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-600 font-queensides">No masjids yet</p>
-                      <p className="text-sm text-slate-400 font-queensides mt-1">
-                        Be the first to apply!
-                      </p>
-                    </CardContent>
-                  </Card>
+                  <ArabicEmptyStateCard icon={<Building className="w-12 h-12" />}>
+                    <ArabicEmptyStateCardTitle>No masjids yet</ArabicEmptyStateCardTitle>
+                    <ArabicEmptyStateCardDescription>Be the first to apply!</ArabicEmptyStateCardDescription>
+                  </ArabicEmptyStateCard>
                 ) : (
                   <div className="space-y-4">
                     {masjids.map((masjid, index) => (

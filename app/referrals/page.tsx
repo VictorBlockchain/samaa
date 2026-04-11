@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
 import { supabase } from "@/lib/supabase"
 import { CelestialBackground } from "@/components/ui/celestial-background"
+import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
 
 interface Referral {
   id: string
@@ -330,11 +331,10 @@ export default function ReferralsPage() {
         {activeTab === 'referrals' && (
           <div className="space-y-3">
             {referrals.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500 font-queensides">No referrals yet</p>
-                <p className="text-sm text-slate-400 font-queensides mt-1">Share your code to get started!</p>
-              </div>
+              <ArabicEmptyStateCard icon={<Users className="w-12 h-12" />}>
+                <ArabicEmptyStateCardTitle>No referrals yet</ArabicEmptyStateCardTitle>
+                <ArabicEmptyStateCardDescription>Share your code to get started!</ArabicEmptyStateCardDescription>
+              </ArabicEmptyStateCard>
             ) : (
               referrals.map((referral) => (
                 <div

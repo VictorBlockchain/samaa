@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import type { MatchProfile } from "@/lib/matching"
 import { ArabicCard, ArabicCardContent, ArabicCardTitle, ArabicCardDescription } from "@/components/ui/arabic-card"
+import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
 
 interface SwipeCardProps {
   profiles: MatchProfile[]
@@ -36,13 +37,10 @@ export function SwipeCard({
   
   if (!profiles || profiles.length === 0) {
     return (
-      <ArabicCard>
-        <ArabicCardContent>
-          <Heart className="w-12 h-12 text-pink-300 mx-auto mb-3" />
-          <ArabicCardTitle>No matches found yet</ArabicCardTitle>
-          <ArabicCardDescription>Try adjusting your preferences</ArabicCardDescription>
-        </ArabicCardContent>
-      </ArabicCard>
+      <ArabicEmptyStateCard icon={<Heart className="w-12 h-12" />}>
+        <ArabicEmptyStateCardTitle>No matches found yet</ArabicEmptyStateCardTitle>
+        <ArabicEmptyStateCardDescription>Try adjusting your preferences</ArabicEmptyStateCardDescription>
+      </ArabicEmptyStateCard>
     )
   }
   const currentProfile = profiles[currentIndex]

@@ -16,6 +16,7 @@ import {
   Calendar,
   CreditCard
 } from "lucide-react"
+import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -170,19 +171,18 @@ export default function OrdersPage() {
               animate={{ opacity: 1, y: 0 }}
               className="text-center py-16"
             >
-              <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Package className="w-12 h-12 text-slate-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-800 font-qurova mb-4">No orders yet</h2>
-              <p className="text-slate-600 font-queensides mb-8 max-w-md mx-auto">
-                You haven't placed any orders yet. Start shopping to see your order history here!
-              </p>
-              <Button
-                onClick={() => router.push('/shop')}
-                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 font-queensides"
-              >
-                Start Shopping
-              </Button>
+              <ArabicEmptyStateCard icon={<Package className="w-16 h-16" />}>
+                <ArabicEmptyStateCardTitle>No orders yet</ArabicEmptyStateCardTitle>
+                <ArabicEmptyStateCardDescription>You haven't placed any orders yet. Start shopping to see your order history here!</ArabicEmptyStateCardDescription>
+                <div className="mt-6">
+                  <Button
+                    onClick={() => router.push('/shop')}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 font-queensides"
+                  >
+                    Start Shopping
+                  </Button>
+                </div>
+              </ArabicEmptyStateCard>
             </motion.div>
           ) : (
             // Orders List

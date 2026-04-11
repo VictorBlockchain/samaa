@@ -1860,21 +1860,40 @@ export function ShopView() {
     if (!isAuthenticated) {
       return (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-12"
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative group mb-8"
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Truck className="w-8 h-8 text-pink-400" />
+          <div className="relative rounded-2xl p-8 border-2 border-pink-300/20 hover:border-pink-400/40 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-gradient-to-br from-pink-50/50 to-rose-50/30">
+            {/* Elegant corner decorations */}
+            <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-pink-400/60 rounded-tl-xl"></div>
+            <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-rose-400/60 rounded-tr-xl"></div>
+            <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-rose-400/60 rounded-bl-xl"></div>
+            <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-pink-400/60 rounded-br-xl"></div>
+
+            <div className="relative z-10 text-center">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="w-20 h-20 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 border border-pink-200/50"
+              >
+                <Store className="w-10 h-10 text-pink-600" />
+              </motion.div>
+              <h3 className="text-2xl font-bold text-pink-800 font-display mb-4">Sign In Required</h3>
+              <p className="text-pink-700 font-queensides leading-relaxed">Please sign in to review your orders</p>
+              
+              <motion.button
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => router.push('/auth/login')}
+                className="mt-6 relative overflow-hidden bg-gradient-to-r from-pink-400 via-rose-400 to-pink-500 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <span className="relative z-10">Sign In</span>
+              </motion.button>
+            </div>
           </div>
-          <h3 className="text-lg font-bold text-slate-700 font-display mb-2">Sign In Required</h3>
-          <p className="text-slate-600 font-queensides mb-4">Please sign in to view your orders</p>
-          <Button
-            onClick={() => router.push("/auth/login")}
-            className="font-queensides bg-gradient-to-r from-pink-400 to-rose-500 text-white"
-          >
-            Sign In
-          </Button>
         </motion.div>
       )
     }
