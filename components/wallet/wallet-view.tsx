@@ -24,7 +24,9 @@ import {
   DollarSign,
   CheckCircle,
   MessageCircle,
-  Heart
+  Heart,
+  Tag,
+  Gift
 } from "lucide-react"
 
 interface PaymentRecord {
@@ -94,6 +96,10 @@ export default function WalletView() {
   const [leadsProducts, setLeadsProducts] = useState<LeadsProduct[]>([])
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([])
   const [communitySplit, setCommunitySplit] = useState<number>(10)
+  
+  // Promo code state
+  const [promoCode, setPromoCode] = useState("")
+  const [isRedeemingPromo, setIsRedeemingPromo] = useState(false)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -296,6 +302,52 @@ export default function WalletView() {
   const handleSignOut = async () => {
     await signOut()
     router.push("/")
+  }
+
+  const handleRedeemPromo = async () => {
+    if (!promoCode.trim() || !userId) {
+      alert('Please enter a promo code')
+      return
+    }
+
+    setIsRedeemingPromo(true)
+    
+    try {
+      const response = await fetch('/api/promo/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim(), userId }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Success - show appropriate message based on type
+        if (data.type === 'subscription') {
+          alert(`\u2728 Success! You received ${data.months} month(s) free subscription with ${data.views} views and ${data.leads} leads!`)
+        } else if (data.type === 'views') {
+          alert(`\u2728 Success! You received ${data.amount} free views!`)
+        } else if (data.type === 'leads') {
+          alert(`\u2728 Success! You received ${data.amount} free leads!`)
+        }
+        
+        setPromoCode('')
+        
+        // Refresh data
+        await Promise.all([
+          fetchPaymentHistory(),
+          fetchSubscription(),
+          fetchProfile(),
+        ])
+      } else {
+        alert(data.error || 'Failed to redeem promo code')
+      }
+    } catch (error) {
+      console.error('[promo] Error redeeming promo:', error)
+      alert('Failed to redeem promo code')
+    }
+    
+    setIsRedeemingPromo(false)
   }
 
   const formatDate = (dateStr: string) => {
@@ -545,10 +597,39 @@ export default function WalletView() {
                     ))}
                   </>
                 )}
+                
+                {/* Promo Code Section */}
+                <Card className="border-2 border-dashed border-slate-300 bg-gradient-to-br from-amber-50 to-orange-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Gift className="w-5 h-5 text-amber-600" />
+                      <h3 className="font-bold text-slate-800 font-queensides">Have a Promo Code?</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        placeholder="Enter promo code"
+                        className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg font-mono text-sm uppercase"
+                        onKeyDown={(e) => e.key === 'Enter' && handleRedeemPromo()}
+                      />
+                      <Button
+                        onClick={handleRedeemPromo}
+                        disabled={isRedeemingPromo || !promoCode.trim()}
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                      >
+                        {isRedeemingPromo ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Tag className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </motion.div>
             </TabsContent>
-
-            {/* Buy Views Tab */}
             <TabsContent value="views">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -604,6 +685,37 @@ export default function WalletView() {
                     </CardFooter>
                   </Card>
                 ))}
+                
+                {/* Promo Code Section */}
+                <Card className="border-2 border-dashed border-slate-300 bg-gradient-to-br from-amber-50 to-orange-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Gift className="w-5 h-5 text-amber-600" />
+                      <h3 className="font-bold text-slate-800 font-queensides">Have a Promo Code?</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        placeholder="Enter promo code"
+                        className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg font-mono text-sm uppercase"
+                        onKeyDown={(e) => e.key === 'Enter' && handleRedeemPromo()}
+                      />
+                      <Button
+                        onClick={handleRedeemPromo}
+                        disabled={isRedeemingPromo || !promoCode.trim()}
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                      >
+                        {isRedeemingPromo ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Tag className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </motion.div>
             </TabsContent>
 
@@ -663,6 +775,37 @@ export default function WalletView() {
                     </CardFooter>
                   </Card>
                 ))}
+                
+                {/* Promo Code Section */}
+                <Card className="border-2 border-dashed border-slate-300 bg-gradient-to-br from-amber-50 to-orange-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Gift className="w-5 h-5 text-amber-600" />
+                      <h3 className="font-bold text-slate-800 font-queensides">Have a Promo Code?</h3>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        placeholder="Enter promo code"
+                        className="flex-1 px-3 py-2 border-2 border-slate-200 rounded-lg font-mono text-sm uppercase"
+                        onKeyDown={(e) => e.key === 'Enter' && handleRedeemPromo()}
+                      />
+                      <Button
+                        onClick={handleRedeemPromo}
+                        disabled={isRedeemingPromo || !promoCode.trim()}
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                      >
+                        {isRedeemingPromo ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Tag className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </motion.div>
             </TabsContent>
 

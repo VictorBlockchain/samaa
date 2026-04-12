@@ -25,7 +25,11 @@ import {
   ExternalLink,
   Loader2,
   Check,
-  X
+  X,
+  Tag,
+  Plus,
+  Copy,
+  Gift
 } from "lucide-react"
 
 interface User {
@@ -77,6 +81,20 @@ interface Shop {
   created_at: string
 }
 
+interface PromoCode {
+  id: string
+  code: string
+  type: string
+  subscription_months?: number
+  amount?: number
+  max_uses: number
+  used_count: number
+  is_active: boolean
+  notes?: string
+  created_at: string
+  expires_at?: string
+}
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("users")
   const [isLoading, setIsLoading] = useState(false)
@@ -84,7 +102,15 @@ export default function AdminPage() {
   const [payments, setPayments] = useState<PaymentRecord[]>([])
   const [socialVideos, setSocialVideos] = useState<SocialVideo[]>([])
   const [shops, setShops] = useState<Shop[]>([])
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // Promo code form state
+  const [promoType, setPromoType] = useState("subscription_monthly_free")
+  const [promoQuantity, setPromoQuantity] = useState(100)
+  const [promoViewsAmount, setPromoViewsAmount] = useState(25)
+  const [promoLeadsAmount, setPromoLeadsAmount] = useState(25)
+  const [promoNotes, setPromoNotes] = useState("")
   
   const router = useRouter()
   const { userId, isAuthenticated } = useAuth()
@@ -109,6 +135,7 @@ export default function AdminPage() {
       fetchPayments(),
       fetchSocialVideos(),
       fetchShops(),
+      fetchPromoCodes(),
     ])
   }
 
@@ -173,6 +200,102 @@ export default function AdminPage() {
     if (!error && data) {
       setShops(data)
     }
+  }
+
+  const fetchPromoCodes = async () => {
+    const { data, error } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (!error && data) {
+      setPromoCodes(data)
+    }
+  }
+
+  const handleCreatePromoCode = async () => {
+    setIsLoading(true)
+    
+    try {
+      // Generate promo code
+      const prefix = promoType.includes('subscription') ? 'SUB' : promoType === 'views' ? 'VIEW' : 'LEAD'
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+      let code = prefix + '-'
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+
+      const promoData: any = {
+        code,
+        type: promoType,
+        max_uses: promoQuantity,
+        used_count: 0,
+        is_active: true,
+        notes: promoNotes || null,
+      }
+
+      // Add amount for views/leads
+      if (promoType === 'views') {
+        promoData.amount = promoViewsAmount
+      } else if (promoType === 'leads') {
+        promoData.amount = promoLeadsAmount
+      }
+
+      const { error } = await supabase
+        .from('promo_codes')
+        .insert(promoData)
+
+      if (error) {
+        alert('Error creating promo code: ' + error.message)
+      } else {
+        alert(`Promo code created: ${code}`)
+        setPromoNotes('')
+        fetchPromoCodes()
+      }
+    } catch (error) {
+      alert('Error creating promo code')
+    }
+    
+    setIsLoading(false)
+  }
+
+  const handleTogglePromoActive = async (promoId: string, currentStatus: boolean) => {
+    setIsLoading(true)
+    const { error } = await supabase
+      .from('promo_codes')
+      .update({ is_active: !currentStatus })
+      .eq('id', promoId)
+
+    if (error) {
+      alert('Error updating promo code')
+    } else {
+      fetchPromoCodes()
+    }
+    setIsLoading(false)
+  }
+
+  const handleDeletePromoCode = async (promoId: string) => {
+    if (!confirm('Are you sure you want to delete this promo code?')) return
+
+    setIsLoading(true)
+    const { error } = await supabase
+      .from('promo_codes')
+      .delete()
+      .eq('id', promoId)
+
+    if (error) {
+      alert('Error deleting promo code')
+    } else {
+      alert('Promo code deleted')
+      fetchPromoCodes()
+    }
+    setIsLoading(false)
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    alert('Copied to clipboard!')
   }
 
   const handleEditViews = async (userId: string, currentViews: number) => {
@@ -311,7 +434,7 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
               <TabsTrigger value="users" className="font-queensides text-xs sm:text-sm">
                 <Users className="w-4 h-4 mr-1 sm:mr-2" />
                 Users
@@ -319,6 +442,10 @@ export default function AdminPage() {
               <TabsTrigger value="payments" className="font-queensides text-xs sm:text-sm">
                 <Eye className="w-4 h-4 mr-1 sm:mr-2" />
                 Payments
+              </TabsTrigger>
+              <TabsTrigger value="promos" className="font-queensides text-xs sm:text-sm">
+                <Tag className="w-4 h-4 mr-1 sm:mr-2" />
+                Promos
               </TabsTrigger>
               <TabsTrigger value="social" className="font-queensides text-xs sm:text-sm">
                 <Video className="w-4 h-4 mr-1 sm:mr-2" />
@@ -482,6 +609,208 @@ export default function AdminPage() {
                     </CardContent>
                   </Card>
                 ))}
+              </motion.div>
+            </TabsContent>
+
+            {/* Promos Tab */}
+            <TabsContent value="promos">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                {/* Create Promo Form */}
+                <Card className="border-2 border-slate-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Gift className="w-5 h-5 text-slate-700" />
+                      Create Promo Code
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2 font-queensides">
+                        Promo Type
+                      </label>
+                      <select
+                        value={promoType}
+                        onChange={(e) => setPromoType(e.target.value)}
+                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl font-queensides"
+                      >
+                        <option value="subscription_monthly_free">1 Month Free Subscription</option>
+                        <option value="subscription_yearly_free">1 Year Free Subscription</option>
+                        <option value="views">Free Views</option>
+                        <option value="leads">Free Leads</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2 font-queensides">
+                        Max Uses (Quantity)
+                      </label>
+                      <input
+                        type="number"
+                        value={promoQuantity}
+                        onChange={(e) => setPromoQuantity(parseInt(e.target.value) || 0)}
+                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl font-queensides"
+                        min="1"
+                        max="10000"
+                      />
+                    </div>
+
+                    {promoType === 'views' && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2 font-queensides">
+                          Number of Views
+                        </label>
+                        <input
+                          type="number"
+                          value={promoViewsAmount}
+                          onChange={(e) => setPromoViewsAmount(parseInt(e.target.value) || 0)}
+                          className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl font-queensides"
+                          min="1"
+                        />
+                      </div>
+                    )}
+
+                    {promoType === 'leads' && (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2 font-queensides">
+                          Number of Leads
+                        </label>
+                        <input
+                          type="number"
+                          value={promoLeadsAmount}
+                          onChange={(e) => setPromoLeadsAmount(parseInt(e.target.value) || 0)}
+                          className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl font-queensides"
+                          min="1"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2 font-queensides">
+                        Notes (Optional)
+                      </label>
+                      <textarea
+                        value={promoNotes}
+                        onChange={(e) => setPromoNotes(e.target.value)}
+                        className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl font-queensides"
+                        rows={2}
+                        placeholder="Campaign name, notes, etc."
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleCreatePromoCode}
+                      disabled={isLoading}
+                      className="w-full font-queensides"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Plus className="w-4 h-4 mr-2" />
+                      )}
+                      Generate Promo Code
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Promo Codes List */}
+                <div className="space-y-3">
+                  <h3 className="text-lg font-bold text-slate-800 font-queensides">
+                    Promo Codes ({promoCodes.length})
+                  </h3>
+                  {promoCodes.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-12 text-center">
+                        <Tag className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                        <p className="text-slate-500 font-queensides">No promo codes created yet</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    promoCodes.map((promo) => (
+                      <Card key={promo.id} className="border-2 border-slate-200">
+                        <CardContent className="p-4">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => copyToClipboard(promo.code)}
+                                  className="px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg font-mono text-sm font-bold flex items-center gap-2"
+                                >
+                                  {promo.code}
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                                <Badge className={
+                                  promo.type.includes('subscription')
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : promo.type === 'views'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-orange-100 text-orange-700'
+                                }>
+                                  {promo.type.replace(/_/g, ' ')}
+                                </Badge>
+                              </div>
+                              <Badge className={
+                                promo.is_active
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }>
+                                {promo.is_active ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </div>
+
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="text-slate-600 font-queensides">
+                                <span className="font-medium">Used:</span> {promo.used_count} / {promo.max_uses}
+                                {promo.amount && ` • ${promo.amount} ${promo.type}`}
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleTogglePromoActive(promo.id, promo.is_active)}
+                                  disabled={isLoading}
+                                >
+                                  {promo.is_active ? 'Disable' : 'Enable'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDeletePromoCode(promo.id)}
+                                  disabled={isLoading}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  promo.used_count >= promo.max_uses
+                                    ? 'bg-red-500'
+                                    : promo.used_count > promo.max_uses * 0.8
+                                    ? 'bg-yellow-500'
+                                    : 'bg-green-500'
+                                }`}
+                                style={{ width: `${Math.min((promo.used_count / promo.max_uses) * 100, 100)}%` }}
+                              />
+                            </div>
+
+                            {promo.notes && (
+                              <p className="text-xs text-slate-500 font-queensides">
+                                {promo.notes}
+                              </p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
               </motion.div>
             </TabsContent>
 
