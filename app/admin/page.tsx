@@ -136,7 +136,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/auth/login')
+      // Don't redirect yet, wait for auth to load
       return
     }
 
@@ -157,8 +157,9 @@ export default function AdminPage() {
         }
         
         if (data.role !== 'admin') {
-          console.log('[admin] User is not admin, redirecting')
-          router.push('/')
+          console.log('[admin] User is not admin, showing access denied')
+          setIsAdmin(false)
+          setIsCheckingAdmin(false)
           return
         }
         
@@ -516,21 +517,41 @@ export default function AdminPage() {
       <div className="min-h-screen relative">
         <CelestialBackground />
         <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen flex items-center justify-center p-4">
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-indigo-100/50 p-8 text-center max-w-md">
-            <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <X className="w-8 h-8 text-white" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-indigo-100/50 p-8 text-center max-w-md w-full"
+          >
+            <div className="w-20 h-20 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-10 h-10 text-white" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">Access Denied</h2>
-            <p className="text-slate-600 font-queensides mb-6">
-              You don't have permission to access the admin panel.
+            <h2 className="text-3xl font-bold text-slate-800 font-queensides mb-3">
+              Admin Access Required
+            </h2>
+            <p className="text-slate-600 font-queensides mb-6 leading-relaxed">
+              This area is restricted to administrators only. If you believe you should have access, please contact support.
             </p>
-            <Button
-              onClick={() => router.push("/")}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-queensides"
-            >
-              Go Home
-            </Button>
-          </div>
+            <div className="bg-slate-50 rounded-xl p-4 mb-6">
+              <p className="text-sm text-slate-500 font-queensides">
+                Current user does not have admin privileges
+              </p>
+            </div>
+            <div className="space-y-3">
+              <Button
+                onClick={() => router.push("/")}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-queensides"
+              >
+                Go to Home
+              </Button>
+              <Button
+                onClick={() => router.push("/support")}
+                variant="outline"
+                className="w-full font-queensides"
+              >
+                Contact Support
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </div>
     )
