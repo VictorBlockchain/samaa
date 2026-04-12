@@ -9,7 +9,7 @@
 CREATE TABLE IF NOT EXISTS promo_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   code TEXT UNIQUE NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('subscription_monthly_free', 'subscription_yearly_free', 'views', 'leads')),
+  promo_type TEXT NOT NULL CHECK (promo_type IN ('subscription_monthly_free', 'subscription_yearly_free', 'views', 'leads')),
   
   -- For subscription promos
   subscription_months INTEGER DEFAULT 0, -- 1 for 1 month free, 2 for 2 months free
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS promo_codes (
 
 -- Index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_promo_codes_code ON promo_codes(code);
-CREATE INDEX IF NOT EXISTS idx_promo_codes_type ON promo_codes(type);
+CREATE INDEX IF NOT EXISTS idx_promo_codes_type ON promo_codes(promo_type);
 CREATE INDEX IF NOT EXISTS idx_promo_codes_active ON promo_codes(is_active);
 
 -- ============================================================================
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS promo_redemptions (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   
   -- What was redeemed
-  type TEXT NOT NULL CHECK (type IN ('subscription_monthly_free', 'subscription_yearly_free', 'views', 'leads')),
+  redemption_type TEXT NOT NULL CHECK (redemption_type IN ('subscription_monthly_free', 'subscription_yearly_free', 'views', 'leads')),
   amount INTEGER DEFAULT 0, -- For views/leads
   subscription_months INTEGER DEFAULT 0, -- For subscriptions
   
@@ -135,7 +135,7 @@ BEGIN
   FROM admin_settings LIMIT 1;
   
   -- Process based on type
-  IF v_promo.type = 'subscription_monthly_free' THEN
+  IF v_promo.promo_type = 'subscription_monthly_free' THEN
     v_subscription_start := NOW();
     v_subscription_end := NOW() + INTERVAL '1 month';
     
@@ -183,8 +183,8 @@ BEGIN
     WHERE id = p_user_id;
     
     -- Record redemption
-    INSERT INTO promo_redemptions (promo_code_id, user_id, type, subscription_months, subscription_start, subscription_end)
-    VALUES (v_promo.id, p_user_id, v_promo.type, 1, v_subscription_start, v_subscription_end)
+    INSERT INTO promo_redemptions (promo_code_id, user_id, redemption_type, subscription_months, subscription_start, subscription_end)
+    VALUES (v_promo.id, p_user_id, v_promo.promo_type, 1, v_subscription_start, v_subscription_end)
     RETURNING id INTO v_redemption_id;
     
     -- Increment usage count
@@ -198,7 +198,7 @@ BEGIN
       'leads', COALESCE(v_leads_included, 25)
     );
     
-  ELSIF v_promo.type = 'subscription_yearly_free' THEN
+  ELSIF v_promo.promo_type = 'subscription_yearly_free' THEN
     v_subscription_start := NOW();
     v_subscription_end := NOW() + INTERVAL '1 year';
     
@@ -246,8 +246,8 @@ BEGIN
     WHERE id = p_user_id;
     
     -- Record redemption
-    INSERT INTO promo_redemptions (promo_code_id, user_id, type, subscription_months, subscription_start, subscription_end)
-    VALUES (v_promo.id, p_user_id, v_promo.type, 12, v_subscription_start, v_subscription_end)
+    INSERT INTO promo_redemptions (promo_code_id, user_id, redemption_type, subscription_months, subscription_start, subscription_end)
+    VALUES (v_promo.id, p_user_id, v_promo.promo_type, 12, v_subscription_start, v_subscription_end)
     RETURNING id INTO v_redemption_id;
     
     -- Increment usage count
@@ -261,15 +261,15 @@ BEGIN
       'leads', COALESCE(v_leads_included, 25) * 12
     );
     
-  ELSIF v_promo.type = 'views' THEN
+  ELSIF v_promo.promo_type = 'views' THEN
     -- Add views to user
     UPDATE users 
     SET available_views = available_views + v_promo.amount
     WHERE id = p_user_id;
     
     -- Record redemption
-    INSERT INTO promo_redemptions (promo_code_id, user_id, type, amount)
-    VALUES (v_promo.id, p_user_id, v_promo.type, v_promo.amount)
+    INSERT INTO promo_redemptions (promo_code_id, user_id, redemption_type, amount)
+    VALUES (v_promo.id, p_user_id, v_promo.promo_type, v_promo.amount)
     RETURNING id INTO v_redemption_id;
     
     -- Increment usage count
@@ -281,15 +281,15 @@ BEGIN
       'amount', v_promo.amount
     );
     
-  ELSIF v_promo.type = 'leads' THEN
+  ELSIF v_promo.promo_type = 'leads' THEN
     -- Add leads to user
     UPDATE users 
     SET available_leads = available_leads + v_promo.amount
     WHERE id = p_user_id;
     
     -- Record redemption
-    INSERT INTO promo_redemptions (promo_code_id, user_id, type, amount)
-    VALUES (v_promo.id, p_user_id, v_promo.type, v_promo.amount)
+    INSERT INTO promo_redemptions (promo_code_id, user_id, redemption_type, amount)
+    VALUES (v_promo.id, p_user_id, v_promo.promo_type, v_promo.amount)
     RETURNING id INTO v_redemption_id;
     
     -- Increment usage count
