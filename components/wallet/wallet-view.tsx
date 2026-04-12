@@ -90,7 +90,6 @@ export default function WalletView() {
   const [payments, setPayments] = useState<PaymentRecord[]>([])
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [viewsProducts, setViewsProducts] = useState<ViewsProduct[]>([])
   const [leadsProducts, setLeadsProducts] = useState<LeadsProduct[]>([])
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([])
@@ -101,10 +100,10 @@ export default function WalletView() {
   const { user, userId, isAuthenticated, signOut } = useAuth()
 
   useEffect(() => {
-    if (searchParams.get('success') === 'true') {
-      setSuccessMessage('Payment successful! Your purchase has been processed.')
-    } else if (searchParams.get('cancelled') === 'true') {
-      setSuccessMessage(null)
+    // Remove success/cancelled handling - now using dedicated success page
+    if (searchParams.get('cancelled') === 'true') {
+      // Could show a toast here in the future
+      console.log('Payment cancelled')
     }
   }, [searchParams])
 
@@ -387,17 +386,6 @@ export default function WalletView() {
             )}
           </div>
         </div>
-
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mx-4 mt-4 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <p className="text-green-700 font-queensides">{successMessage}</p>
-            <button onClick={() => setSuccessMessage(null)} className="ml-auto">
-              <ArrowLeft className="w-4 h-4 text-green-600 rotate-45" />
-            </button>
-          </div>
-        )}
 
         {/* Community Contribution Banner */}
         <div className="mx-4 mt-4 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">

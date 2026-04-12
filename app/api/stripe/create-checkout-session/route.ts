@@ -173,7 +173,7 @@ async function handleWalletPurchase({ userId, userEmail, type, productId, planId
     payment_method_types: ['card'],
     line_items: lineItems,
     mode: type === 'subscription' ? 'subscription' : 'payment',
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?success=true&type=${type}`,
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet/success?type=${type}`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?cancelled=true`,
     customer_email: userEmail,
     metadata,
