@@ -30,7 +30,7 @@ export async function getAdminSettings(): Promise<AdminSettings | null> {
       .from('admin_settings')
       .select('*')
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Error fetching admin settings:', error)

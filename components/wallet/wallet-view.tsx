@@ -130,7 +130,8 @@ export default function WalletView() {
     const { data: settings } = await supabase
       .from('admin_settings')
       .select('community_split_percentage')
-      .single()
+      .limit(1)
+      .maybeSingle()
     
     if (settings) {
       setCommunitySplit(settings.community_split_percentage)
@@ -160,7 +161,7 @@ export default function WalletView() {
       .select('*')
       .eq('user_id', userId)
       .eq('status', 'active')
-      .single()
+      .maybeSingle()
 
     if (!error && data) {
       setSubscription(data)
@@ -557,7 +558,7 @@ export default function WalletView() {
                 className="space-y-4"
               >
                 <p className="text-center text-slate-600 font-queensides mb-4">
-                  Get more views to see who's interested in your profile
+                  Get more views
                 </p>
                 {viewsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
