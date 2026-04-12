@@ -119,8 +119,17 @@ export default function AdminPage() {
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (!error && data) {
-      setUsers(data)
+    if (error) {
+      console.error('[admin] Error fetching users:', error)
+    } else {
+      console.log('[admin] Fetched users:', data?.length || 0)
+      // Ensure views/leads default to 0 if null
+      const usersWithDefaults = (data || []).map(user => ({
+        ...user,
+        available_views: user.available_views || 0,
+        available_leads: user.available_leads || 0,
+      }))
+      setUsers(usersWithDefaults)
     }
   }
 
