@@ -206,18 +206,40 @@ export default function AdminPage() {
   }
 
   const fetchSocialVideos = async () => {
-    const { data, error } = await supabase
+    // Fetch videos without join first
+    const { data: videos, error: videosError } = await supabase
       .from('user_social_videos')
-      .select(`
-        *,
-        user:users(first_name, last_name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(50)
 
-    if (!error && data) {
-      setSocialVideos(data)
+    if (videosError) {
+      console.error('[admin] Error fetching social videos:', videosError)
+      return
     }
+
+    if (!videos || videos.length === 0) {
+      setSocialVideos([])
+      return
+    }
+
+    // Fetch user details separately
+    const userIds = videos.map(v => v.user_id).filter(Boolean)
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, first_name, last_name')
+      .in('id', userIds)
+
+    // Combine the data
+    const usersMap = new Map()
+    users?.forEach(u => usersMap.set(u.id, u))
+
+    const videosWithUsers = videos.map(video => ({
+      ...video,
+      user: usersMap.get(video.user_id) || null,
+    }))
+
+    setSocialVideos(videosWithUsers)
   }
 
   const fetchShops = async () => {
@@ -978,45 +1000,6 @@ export default function AdminPage() {
                           }>
                             {shop.status}
                           </Badge>
-                          {shop.verified && (
-                            <Badge className="bg-indigo-100 text-indigo-700">
-                              <Check className="w-3 h-3 mr-1" />
-                              Verified
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {shop.description && (
-                        <p className="text-sm text-slate-600 font-queensides mb-2">
-                          {shop.description}
-                        </p>
-                      )}
-                      <p className="text-xs text-slate-500 font-queensides">
-                        Created: {formatDate(shop.created_at)}
-                      </p>
-                    </CardContent>
-                    <CardFooter>
-                      <Button
-                        onClick={() => router.push(`/shop?id=${shop.id}`)}
-                        variant="outline"
-                        className="w-full font-queensides"
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        View Shop
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </motion.div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
-  )
-}
                           {shop.verified && (
                             <Badge className="bg-indigo-100 text-indigo-700">
                               <Check className="w-3 h-3 mr-1" />
