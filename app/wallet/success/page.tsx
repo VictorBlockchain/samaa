@@ -85,6 +85,11 @@ export default function WalletSuccess() {
           status: data.status,
         })
         
+        // Process subscription if it's a subscription type
+        if (data.type === 'subscription' && userId) {
+          await processSubscription(sessionId)
+        }
+        
         // Refresh profile to get updated balance
         if (userId) {
           await fetchProfile()
@@ -98,6 +103,31 @@ export default function WalletSuccess() {
     } finally {
       setIsVerifying(false)
       setIsLoading(false)
+    }
+  }
+
+  const processSubscription = async (sessionId: string) => {
+    try {
+      console.log('[success-page] Processing subscription for session:', sessionId)
+      
+      const response = await fetch('/api/stripe/process-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        console.log('[success-page] Subscription processed successfully:', data)
+        if (data.alreadyExists) {
+          console.log('[success-page] Subscription already existed, skipped')
+        }
+      } else {
+        console.error('[success-page] Error processing subscription:', data.error)
+      }
+    } catch (error) {
+      console.error('[success-page] Error calling process-subscription:', error)
     }
   }
 
