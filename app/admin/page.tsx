@@ -225,7 +225,7 @@ export default function AdminPage() {
   const fetchSocialVideos = async () => {
     // Fetch videos without join first
     const { data: videos, error: videosError } = await supabase
-      .from('user_social_videos')
+      .from('social_videos')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(50)
@@ -453,7 +453,7 @@ export default function AdminPage() {
 
     setIsLoading(true)
     const { error } = await supabase
-      .from('user_social_videos')
+      .from('social_videos')
       .delete()
       .eq('id', videoId)
 
@@ -469,7 +469,7 @@ export default function AdminPage() {
   const handleFlagVideo = async (videoId: string, currentFlagStatus: boolean) => {
     setIsLoading(true)
     const { error } = await supabase
-      .from('user_social_videos')
+      .from('social_videos')
       .update({ is_flagged: !currentFlagStatus })
       .eq('id', videoId)
 
