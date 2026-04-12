@@ -273,14 +273,17 @@ export default function AdminPage() {
   }
 
   const fetchPromoCodes = async () => {
-    const { data, error } = await supabase
-      .from('promo_codes')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100)
+    try {
+      const response = await fetch('/api/admin/promo')
+      const result = await response.json()
 
-    if (!error && data) {
-      setPromoCodes(data)
+      if (result.success) {
+        setPromoCodes(result.data)
+      } else {
+        console.error('[admin] Error fetching promos:', result.error)
+      }
+    } catch (error) {
+      console.error('[admin] Error fetching promos:', error)
     }
   }
 
@@ -296,13 +299,12 @@ export default function AdminPage() {
         code += chars.charAt(Math.floor(Math.random() * chars.length))
       }
 
-      const promoData: any = {
+      const promoData = {
         code,
         promo_type: promoType,
         max_uses: promoQuantity,
-        used_count: 0,
-        is_active: true,
         notes: promoNotes || null,
+        userId,
       }
 
       // Add amount for views/leads
@@ -312,16 +314,20 @@ export default function AdminPage() {
         promoData.amount = promoLeadsAmount
       }
 
-      const { error } = await supabase
-        .from('promo_codes')
-        .insert(promoData)
+      const response = await fetch('/api/admin/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(promoData),
+      })
 
-      if (error) {
-        alert('Error creating promo code: ' + error.message)
-      } else {
+      const result = await response.json()
+
+      if (result.success) {
         alert(`Promo code created: ${code}`)
         setPromoNotes('')
         fetchPromoCodes()
+      } else {
+        alert('Error creating promo code: ' + result.error)
       }
     } catch (error) {
       alert('Error creating promo code')
@@ -332,16 +338,28 @@ export default function AdminPage() {
 
   const handleTogglePromoActive = async (promoId: string, currentStatus: boolean) => {
     setIsLoading(true)
-    const { error } = await supabase
-      .from('promo_codes')
-      .update({ is_active: !currentStatus })
-      .eq('id', promoId)
+    
+    try {
+      const response = await fetch('/api/admin/promo', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: promoId,
+          is_active: !currentStatus,
+        }),
+      })
 
-    if (error) {
+      const result = await response.json()
+
+      if (result.success) {
+        fetchPromoCodes()
+      } else {
+        alert('Error updating promo code: ' + result.error)
+      }
+    } catch (error) {
       alert('Error updating promo code')
-    } else {
-      fetchPromoCodes()
     }
+    
     setIsLoading(false)
   }
 
@@ -349,17 +367,24 @@ export default function AdminPage() {
     if (!confirm('Are you sure you want to delete this promo code?')) return
 
     setIsLoading(true)
-    const { error } = await supabase
-      .from('promo_codes')
-      .delete()
-      .eq('id', promoId)
+    
+    try {
+      const response = await fetch(`/api/admin/promo?id=${promoId}`, {
+        method: 'DELETE',
+      })
 
-    if (error) {
+      const result = await response.json()
+
+      if (result.success) {
+        alert('Promo code deleted')
+        fetchPromoCodes()
+      } else {
+        alert('Error deleting promo code: ' + result.error)
+      }
+    } catch (error) {
       alert('Error deleting promo code')
-    } else {
-      alert('Promo code deleted')
-      fetchPromoCodes()
     }
+    
     setIsLoading(false)
   }
 
