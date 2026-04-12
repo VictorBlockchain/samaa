@@ -7,8 +7,14 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { orderId, items, totalAmount, shippingAddress, promoCode, promoDiscount } = body
+    const { userId, userEmail, type, productId, planId, orderId, items, totalAmount, shippingAddress, promoCode, promoDiscount } = body
 
+    // Handle wallet purchases (subscriptions, views, leads)
+    if (type === 'subscription' || type === 'views' || type === 'leads') {
+      return await handleWalletPurchase({ userId, userEmail, type, productId, planId })
+    }
+
+    // Handle shop orders
     if (!orderId || !items || !totalAmount) {
       return NextResponse.json(
         { error: 'Missing required fields: orderId, items, totalAmount' },
@@ -16,6 +22,169 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    return await handleShopOrder({ orderId, items, totalAmount, shippingAddress, promoCode, promoDiscount })
+  } catch (error: any) {
+    console.error('Error creating checkout session:', error)
+    return NextResponse.json(
+      { error: error.message || 'Failed to create checkout session' },
+      { status: 500 }
+    )
+  }
+}
+
+// Handle wallet purchases (subscriptions, views, leads)
+async function handleWalletPurchase({ userId, userEmail, type, productId, planId }: any) {
+  if (!userId || !userEmail) {
+    return NextResponse.json(
+      { error: 'Missing userId or userEmail' },
+      { status: 400 }
+    )
+  }
+
+  console.log('[checkout-session] Wallet purchase:', { type, productId, planId, userId })
+
+  // Get admin settings for pricing
+  const { data: settings } = await supabaseAdmin
+    .from('admin_settings')
+    .select('*')
+    .limit(1)
+    .maybeSingle()
+
+  if (!settings) {
+    return NextResponse.json(
+      { error: 'Admin settings not configured' },
+      { status: 500 }
+    )
+  }
+
+  let lineItems: any[] = []
+  let metadata: any = { userId, type }
+
+  // Handle subscription
+  if (type === 'subscription' && planId) {
+    const isYearly = planId.includes('yearly')
+    const price = isYearly ? settings.premium_yearly_price : settings.premium_monthly_price
+    const viewsIncluded = isYearly ? settings.premium_yearly_views : settings.premium_monthly_views
+    const leadsIncluded = isYearly ? settings.premium_yearly_leads : settings.premium_monthly_leads
+    const interval = isYearly ? 'year' : 'month'
+
+    lineItems = [{
+      price_data: {
+        currency: 'usd',
+        product_data: {
+          name: `Premium ${interval.charAt(0).toUpperCase() + interval.slice(1)} Subscription`,
+          description: `${viewsIncluded} views and ${leadsIncluded} leads per ${interval}`,
+        },
+        unit_amount: Math.round(price * 100),
+        recurring: {
+          interval: interval as 'month' | 'year',
+        },
+      },
+      quantity: 1,
+    }]
+
+    metadata = { ...metadata, planId, viewsIncluded, leadsIncluded, interval }
+  }
+  // Handle views purchase
+  else if (type === 'views' && productId) {
+    const viewsMap: any = {
+      'views_25': { views: 25, price: settings.views_25_price },
+      'views_50': { views: 50, price: settings.views_50_price },
+      'views_100': { views: 100, price: settings.views_100_price },
+      'views_250': { views: 250, price: settings.views_250_price },
+      'views_500': { views: 500, price: settings.views_500_price },
+      // Legacy product IDs
+      'likes_25': { views: 25, price: settings.views_25_price },
+      'likes_50': { views: 50, price: settings.views_50_price },
+      'likes_100': { views: 100, price: settings.views_100_price },
+      'likes_250': { views: 250, price: settings.views_250_price },
+      'likes_500': { views: 500, price: settings.views_500_price },
+    }
+
+    const product = viewsMap[productId]
+    if (!product) {
+      return NextResponse.json(
+        { error: `Invalid product ID: ${productId}` },
+        { status: 400 }
+      )
+    }
+
+    lineItems = [{
+      price_data: {
+        currency: 'usd',
+        product_data: {
+          name: `${product.views} Views Package`,
+          description: `Purchase ${product.views} views for your profile`,
+        },
+        unit_amount: Math.round(product.price * 100),
+      },
+      quantity: 1,
+    }]
+
+    metadata = { ...metadata, productId, views: product.views }
+  }
+  // Handle leads purchase
+  else if (type === 'leads' && productId) {
+    const leadsMap: any = {
+      'leads_25': { leads: 25, price: settings.leads_25_price },
+      'leads_50': { leads: 50, price: settings.leads_50_price },
+      'leads_100': { leads: 100, price: settings.leads_100_price },
+      'leads_250': { leads: 250, price: settings.leads_250_price },
+      'leads_500': { leads: 500, price: settings.leads_500_price },
+      // Legacy product IDs
+      'compliments_25': { leads: 25, price: settings.leads_25_price },
+      'compliments_50': { leads: 50, price: settings.leads_50_price },
+      'compliments_100': { leads: 100, price: settings.leads_100_price },
+      'compliments_250': { leads: 250, price: settings.leads_250_price },
+      'compliments_500': { leads: 500, price: settings.leads_500_price },
+    }
+
+    const product = leadsMap[productId]
+    if (!product) {
+      return NextResponse.json(
+        { error: `Invalid product ID: ${productId}` },
+        { status: 400 }
+      )
+    }
+
+    lineItems = [{
+      price_data: {
+        currency: 'usd',
+        product_data: {
+          name: `${product.leads} Leads Package`,
+          description: `Purchase ${product.leads} leads to start conversations`,
+        },
+        unit_amount: Math.round(product.price * 100),
+      },
+      quantity: 1,
+    }]
+
+    metadata = { ...metadata, productId, leads: product.leads }
+  }
+  else {
+    return NextResponse.json(
+      { error: 'Invalid purchase type or missing product/plan ID' },
+      { status: 400 }
+    )
+  }
+
+  // Create Stripe Checkout Session
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: lineItems,
+    mode: type === 'subscription' ? 'subscription' : 'payment',
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?success=true&type=${type}`,
+    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?cancelled=true`,
+    customer_email: userEmail,
+    metadata,
+  })
+
+  return NextResponse.json({ url: session.url })
+}
+
+// Handle shop orders
+async function handleShopOrder({ orderId, items, totalAmount, shippingAddress, promoCode, promoDiscount }: any) {
+  try {
     console.log('[checkout-session] Processing order:', orderId)
 
     // Get user email from order - using admin client to bypass RLS
