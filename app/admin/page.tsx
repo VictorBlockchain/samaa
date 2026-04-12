@@ -114,6 +114,8 @@ export default function AdminPage() {
   
   const router = useRouter()
   const { userId, isAuthenticated } = useAuth()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(true)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -121,12 +123,40 @@ export default function AdminPage() {
       return
     }
 
-    // TODO: Add admin check
-    // For now, allow access - add admin role check later
-    
-    if (userId) {
-      fetchData()
+    const checkAdminRole = async () => {
+      if (!userId) return
+      
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .single()
+        
+        if (error || !data) {
+          console.error('[admin] Error checking role:', error)
+          router.push('/')
+          return
+        }
+        
+        if (data.role !== 'admin') {
+          console.log('[admin] User is not admin, redirecting')
+          router.push('/')
+          return
+        }
+        
+        console.log('[admin] User is admin, granting access')
+        setIsAdmin(true)
+        fetchData()
+      } catch (error) {
+        console.error('[admin] Error checking admin role:', error)
+        router.push('/')
+      } finally {
+        setIsCheckingAdmin(false)
+      }
     }
+    
+    checkAdminRole()
   }, [userId, isAuthenticated])
 
   const fetchData = async () => {
@@ -395,6 +425,45 @@ export default function AdminPage() {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount)
+  }
+
+  if (isCheckingAdmin) {
+    return (
+      <div className="min-h-screen relative">
+        <CelestialBackground />
+        <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-12 h-12 animate-spin text-indigo-600 mx-auto mb-4" />
+            <p className="text-slate-600 font-queensides">Checking admin access...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen relative">
+        <CelestialBackground />
+        <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen flex items-center justify-center p-4">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-indigo-100/50 p-8 text-center max-w-md">
+            <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <X className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">Access Denied</h2>
+            <p className="text-slate-600 font-queensides mb-6">
+              You don't have permission to access the admin panel.
+            </p>
+            <Button
+              onClick={() => router.push("/")}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-queensides"
+            >
+              Go Home
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const filteredUsers = users.filter(user => 
@@ -909,6 +978,45 @@ export default function AdminPage() {
                           }>
                             {shop.status}
                           </Badge>
+                          {shop.verified && (
+                            <Badge className="bg-indigo-100 text-indigo-700">
+                              <Check className="w-3 h-3 mr-1" />
+                              Verified
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {shop.description && (
+                        <p className="text-sm text-slate-600 font-queensides mb-2">
+                          {shop.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-slate-500 font-queensides">
+                        Created: {formatDate(shop.created_at)}
+                      </p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button
+                        onClick={() => router.push(`/shop?id=${shop.id}`)}
+                        variant="outline"
+                        className="w-full font-queensides"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View Shop
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  )
+}
                           {shop.verified && (
                             <Badge className="bg-indigo-100 text-indigo-700">
                               <Check className="w-3 h-3 mr-1" />
