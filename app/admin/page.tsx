@@ -84,7 +84,7 @@ interface Shop {
 interface PromoCode {
   id: string
   code: string
-  type: string
+  promo_type: string
   subscription_months?: number
   amount?: number
   max_uses: number
@@ -228,7 +228,7 @@ export default function AdminPage() {
 
       const promoData: any = {
         code,
-        type: promoType,
+        promo_type: promoType,
         max_uses: promoQuantity,
         used_count: 0,
         is_active: true,
@@ -743,13 +743,13 @@ export default function AdminPage() {
                                   <Copy className="w-3 h-3" />
                                 </button>
                                 <Badge className={
-                                  promo.type.includes('subscription')
+                                  promo.promo_type.includes('subscription')
                                     ? 'bg-purple-100 text-purple-700'
-                                    : promo.type === 'views'
+                                    : promo.promo_type === 'views'
                                     ? 'bg-blue-100 text-blue-700'
                                     : 'bg-orange-100 text-orange-700'
                                 }>
-                                  {promo.type.replace(/_/g, ' ')}
+                                  {promo.promo_type.replace(/_/g, ' ')}
                                 </Badge>
                               </div>
                               <Badge className={
@@ -764,7 +764,7 @@ export default function AdminPage() {
                             <div className="flex items-center justify-between text-sm">
                               <div className="text-slate-600 font-queensides">
                                 <span className="font-medium">Used:</span> {promo.used_count} / {promo.max_uses}
-                                {promo.amount && ` • ${promo.amount} ${promo.type}`}
+                                {promo.amount && ` • ${promo.amount} ${promo.promo_type}`}
                               </div>
                               <div className="flex gap-2">
                                 <Button
