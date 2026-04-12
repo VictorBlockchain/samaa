@@ -29,14 +29,25 @@ import {
   Tag,
   Plus,
   Copy,
-  Gift
+  Gift,
+  Shield,
+  UserCog
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface User {
   id: string
   first_name?: string
   last_name?: string
   email?: string
+  role?: string
   available_views: number
   available_leads: number
   created_at: string
@@ -112,6 +123,12 @@ export default function AdminPage() {
   const [promoLeadsAmount, setPromoLeadsAmount] = useState(25)
   const [promoNotes, setPromoNotes] = useState("")
   
+  // Role editing modal state
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedRole, setSelectedRole] = useState("user")
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false)
+  
   const router = useRouter()
   const { userId, isAuthenticated } = useAuth()
   const [isAdmin, setIsAdmin] = useState(false)
@@ -172,7 +189,7 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     const { data, error } = await supabase
       .from('users')
-      .select('id, first_name, last_name, available_views, available_leads, created_at')
+      .select('id, first_name, last_name, role, available_views, available_leads, created_at')
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -348,6 +365,37 @@ export default function AdminPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     alert('Copied to clipboard!')
+  }
+
+  const handleOpenRoleModal = (user: User) => {
+    setSelectedUser(user)
+    setSelectedRole(user.role || 'user')
+    setIsRoleModalOpen(true)
+  }
+
+  const handleUpdateRole = async () => {
+    if (!selectedUser) return
+
+    setIsUpdatingRole(true)
+    
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ role: selectedRole })
+        .eq('id', selectedUser.id)
+
+      if (error) {
+        alert('Error updating user role: ' + error.message)
+      } else {
+        alert(`User role updated to ${selectedRole}`)
+        setIsRoleModalOpen(false)
+        fetchUsers()
+      }
+    } catch (error) {
+      alert('Error updating user role')
+    }
+    
+    setIsUpdatingRole(false)
   }
 
   const handleEditViews = async (userId: string, currentViews: number) => {
@@ -574,9 +622,21 @@ export default function AdminPage() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="font-queensides">
-                            {user.first_name} {user.last_name}
-                          </CardTitle>
+                          <div className="flex items-center gap-2 mb-1">
+                            <CardTitle className="font-queensides">
+                              {user.first_name} {user.last_name}
+                            </CardTitle>
+                            <Badge className={
+                              user.role === 'admin'
+                                ? 'bg-red-100 text-red-700'
+                                : user.role === 'moderator'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-slate-100 text-slate-700'
+                            }>
+                              <Shield className="w-3 h-3 mr-1" />
+                              {user.role || 'user'}
+                            </Badge>
+                          </div>
                           <CardDescription className="font-queensides">
                             ID: {user.id.slice(0, 8)}...
                           </CardDescription>
@@ -622,6 +682,15 @@ export default function AdminPage() {
                       </p>
                     </CardContent>
                     <CardFooter className="flex gap-2">
+                      <Button
+                        onClick={() => handleOpenRoleModal(user)}
+                        disabled={isLoading}
+                        variant="outline"
+                        className="flex-1 font-queensides border-indigo-200 hover:bg-indigo-50"
+                      >
+                        <UserCog className="w-4 h-4 mr-2" />
+                        Edit Role
+                      </Button>
                       <Button
                         onClick={() => handleEditViews(user.id, user.available_views)}
                         disabled={isLoading}
@@ -1036,6 +1105,141 @@ export default function AdminPage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Role Editing Modal */}
+      <Dialog open={isRoleModalOpen} onOpenChange={setIsRoleModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-queensides">
+              <UserCog className="w-5 h-5 text-indigo-600" />
+              Edit User Role
+            </DialogTitle>
+            <DialogDescription className="font-queensides">
+              Change the role for {selectedUser?.first_name} {selectedUser?.last_name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Current Role Display */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              <p className="text-sm text-slate-600 font-queensides mb-2">Current Role</p>
+              <Badge className={
+                selectedUser?.role === 'admin'
+                  ? 'bg-red-100 text-red-700 text-sm'
+                  : selectedUser?.role === 'moderator'
+                  ? 'bg-yellow-100 text-yellow-700 text-sm'
+                  : 'bg-slate-100 text-slate-700 text-sm'
+              }>
+                <Shield className="w-3 h-3 mr-1" />
+                {selectedUser?.role || 'user'}
+              </Badge>
+            </div>
+
+            {/* Role Selection */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-slate-700 font-queensides">
+                Select New Role
+              </label>
+              
+              {/* User Role */}
+              <button
+                onClick={() => setSelectedRole('user')}
+                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  selectedRole === 'user'
+                    ? 'border-indigo-500 bg-indigo-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800 font-queensides">User</p>
+                    <p className="text-sm text-slate-600 font-queensides">Regular user access</p>
+                  </div>
+                  {selectedRole === 'user' && (
+                    <Check className="w-5 h-5 text-indigo-600" />
+                  )}
+                </div>
+              </button>
+
+              {/* Moderator Role */}
+              <button
+                onClick={() => setSelectedRole('moderator')}
+                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  selectedRole === 'moderator'
+                    ? 'border-yellow-500 bg-yellow-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800 font-queensides">Moderator</p>
+                    <p className="text-sm text-slate-600 font-queensides">Can manage content and users</p>
+                  </div>
+                  {selectedRole === 'moderator' && (
+                    <Check className="w-5 h-5 text-yellow-600" />
+                  )}
+                </div>
+              </button>
+
+              {/* Admin Role */}
+              <button
+                onClick={() => setSelectedRole('admin')}
+                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  selectedRole === 'admin'
+                    ? 'border-red-500 bg-red-50'
+                    : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-slate-800 font-queensides">Admin</p>
+                    <p className="text-sm text-slate-600 font-queensides">Full system access</p>
+                  </div>
+                  {selectedRole === 'admin' && (
+                    <Check className="w-5 h-5 text-red-600" />
+                  )}
+                </div>
+              </button>
+            </div>
+
+            {/* Warning for admin role */}
+            {selectedRole === 'admin' && (
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-3">
+                <p className="text-sm text-amber-800 font-queensides">
+                  ⚠️ Admin users have full access to the admin panel and can modify all data.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsRoleModalOpen(false)}
+              className="font-queensides"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdateRole}
+              disabled={isUpdatingRole || selectedRole === selectedUser?.role}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 font-queensides"
+            >
+              {isUpdatingRole ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Update Role
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
