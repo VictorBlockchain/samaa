@@ -45,7 +45,13 @@ export default function WalletSuccess() {
   const [verification, setVerification] = useState<PaymentVerification | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    // Wait for auth to be ready
+    if (userId === undefined) {
+      return
+    }
+
+    if (!userId) {
+      // Not authenticated, redirect to login
       router.push('/auth/login')
       return
     }
@@ -56,15 +62,15 @@ export default function WalletSuccess() {
     setPurchaseType(type)
 
     // Verify payment with backend
-    if (sessionId && userId) {
+    if (sessionId) {
       verifyPayment(sessionId)
-    } else if (!sessionId) {
+    } else {
       // No session ID - might be direct access
       setIsVerifying(false)
       setVerification({ verified: false })
       setIsLoading(false)
     }
-  }, [userId, searchParams, isAuthenticated, router])
+  }, [userId, searchParams])
 
   const verifyPayment = async (sessionId: string) => {
     try {
@@ -157,7 +163,28 @@ export default function WalletSuccess() {
   const purchaseInfo = getPurchaseInfo()
   const Icon = purchaseInfo.icon
 
-  if (!isAuthenticated) {
+  if (userId === undefined) {
+    // Auth still loading
+    return (
+      <div className="min-h-screen relative">
+        <CelestialBackground />
+        <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center"
+          >
+            <Loader2 className="w-16 h-16 text-indigo-600 animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">
+              Loading...
+            </h2>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!userId) {
     return null
   }
 
