@@ -67,21 +67,36 @@ async function handleWalletPurchase({ userId, userEmail, type, productId, planId
     const viewsIncluded = isYearly ? settings.premium_yearly_views : settings.premium_monthly_views
     const leadsIncluded = isYearly ? settings.premium_yearly_leads : settings.premium_monthly_leads
     const interval = isYearly ? 'year' : 'month'
+    const stripePriceId = isYearly 
+      ? settings.stripe_subscription_yearly_price_id 
+      : settings.stripe_subscription_monthly_price_id
 
-    lineItems = [{
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: `Premium ${interval.charAt(0).toUpperCase() + interval.slice(1)} Subscription`,
-          description: `${viewsIncluded} views and ${leadsIncluded} leads per ${interval}`,
+    // Use Stripe Price ID if available, otherwise fall back to ad-hoc pricing
+    if (stripePriceId) {
+      // Best practice: Use existing Stripe Price
+      lineItems = [{
+        price: stripePriceId,
+        quantity: 1,
+      }]
+      console.log('[checkout-session] Using Stripe Price ID:', stripePriceId)
+    } else {
+      // Fallback: Create ad-hoc price (not recommended for production)
+      lineItems = [{
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: `Premium ${interval.charAt(0).toUpperCase() + interval.slice(1)} Subscription`,
+            description: `${viewsIncluded} views and ${leadsIncluded} leads per ${interval}`,
+          },
+          unit_amount: Math.round(price * 100),
+          recurring: {
+            interval: interval as 'month' | 'year',
+          },
         },
-        unit_amount: Math.round(price * 100),
-        recurring: {
-          interval: interval as 'month' | 'year',
-        },
-      },
-      quantity: 1,
-    }]
+        quantity: 1,
+      }]
+      console.log('[checkout-session] Using ad-hoc price (no Stripe Price ID configured)')
+    }
 
     metadata = { ...metadata, planId, viewsIncluded, leadsIncluded, interval }
   }

@@ -21,6 +21,9 @@ export interface AdminSettings {
   community_split_percentage: number
   referral_views_bonus: number
   referral_cash_bonus: number
+  // Stripe Price IDs for subscriptions
+  stripe_subscription_monthly_price_id?: string
+  stripe_subscription_yearly_price_id?: string
 }
 
 // Fetch admin settings from database
