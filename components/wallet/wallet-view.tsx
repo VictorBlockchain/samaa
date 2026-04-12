@@ -140,6 +140,8 @@ export default function WalletView() {
   const fetchPaymentHistory = async () => {
     if (!userId) return
     
+    console.log('[wallet] Fetching payment history for user:', userId)
+    
     const { data, error } = await supabase
       .from('user_payments')
       .select('*')
@@ -147,8 +149,11 @@ export default function WalletView() {
       .order('created_at', { ascending: false })
       .limit(20)
 
-    if (!error && data) {
-      setPayments(data)
+    if (error) {
+      console.error('[wallet] Error fetching payment history:', error)
+    } else {
+      console.log('[wallet] Payment history fetched:', data?.length || 0, 'records')
+      setPayments(data || [])
     }
   }
 
@@ -555,12 +560,12 @@ export default function WalletView() {
                 </p>
                 {viewsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
-                    {product.id === 'likes_100' && (
+                    {product.id === 'views_100' && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-queensides">
                         POPULAR
                       </div>
                     )}
-                    {product.id === 'likes_250' && (
+                    {product.id === 'views_250' && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-queensides">
                         BEST VALUE
                       </div>
@@ -614,12 +619,12 @@ export default function WalletView() {
                 </p>
                 {leadsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
-                    {product.id === 'compliments_100' && (
+                    {product.id === 'leads_100' && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-queensides">
                         POPULAR
                       </div>
                     )}
-                    {product.id === 'compliments_250' && (
+                    {product.id === 'leads_250' && (
                       <div className="absolute top-0 right-0 bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg font-queensides">
                         BEST VALUE
                       </div>
