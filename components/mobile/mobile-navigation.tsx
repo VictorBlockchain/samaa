@@ -165,6 +165,12 @@ export function MobileNavigation() {
                       Preferences
                     </button>
                     <button
+                      className="menu-item"
+                      onClick={() => router.push('/wallet')}
+                    >
+                      Wallet
+                    </button>
+                    <button
                       className="menu-item menu-item-danger"
                       onClick={async () => {
                         try { await signOut() } catch {}
