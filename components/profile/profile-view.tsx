@@ -912,8 +912,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
               </ArabicCardContent>
             </ArabicCard>
             <div className="flex items-center justify-center mt-4">
-                // Only show if viewer is opposite gender
- 
+
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -924,7 +923,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                   <span>Take The Lead</span>
                   <Send className="w-4 h-4" />
                 </motion.button>
-
+   
             </div>
           </div>
           </>
