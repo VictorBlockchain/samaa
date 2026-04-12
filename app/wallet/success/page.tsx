@@ -85,9 +85,9 @@ export default function WalletSuccess() {
           status: data.status,
         })
         
-        // Process subscription if it's a subscription type
-        if (data.type === 'subscription' && userId) {
-          await processSubscription(sessionId)
+        // Process purchase (subscription, views, or leads)
+        if (userId) {
+          await processPurchase(sessionId)
         }
         
         // Refresh profile to get updated balance
@@ -106,9 +106,9 @@ export default function WalletSuccess() {
     }
   }
 
-  const processSubscription = async (sessionId: string) => {
+  const processPurchase = async (sessionId: string) => {
     try {
-      console.log('[success-page] Processing subscription for session:', sessionId)
+      console.log('[success-page] Processing purchase for session:', sessionId)
       
       const response = await fetch('/api/stripe/process-subscription', {
         method: 'POST',
@@ -119,15 +119,15 @@ export default function WalletSuccess() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        console.log('[success-page] Subscription processed successfully:', data)
+        console.log('[success-page] Purchase processed successfully:', data)
         if (data.alreadyExists) {
-          console.log('[success-page] Subscription already existed, skipped')
+          console.log('[success-page] Purchase already existed, skipped')
         }
       } else {
-        console.error('[success-page] Error processing subscription:', data.error)
+        console.error('[success-page] Error processing purchase:', data.error)
       }
     } catch (error) {
-      console.error('[success-page] Error calling process-subscription:', error)
+      console.error('[success-page] Error calling process-purchase:', error)
     }
   }
 
@@ -227,7 +227,7 @@ export default function WalletSuccess() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-center"
+            className="text-center mt-10"
           >
             <Loader2 className="w-16 h-16 text-indigo-600 animate-spin mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">
@@ -251,7 +251,7 @@ export default function WalletSuccess() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-2xl"
+            className="w-full max-w-2xl mt-10"
           >
             <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-orange-50 shadow-2xl">
               <CardHeader className="text-center pb-6">
@@ -306,7 +306,7 @@ export default function WalletSuccess() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-2xl"
+          className="w-full max-w-2xl mt-10 space-y-6"
         >
           {/* Success Card */}
           <Card className={`border-2 ${purchaseInfo.borderColor} bg-gradient-to-br ${purchaseInfo.bgColor} shadow-2xl`}>
@@ -462,16 +462,16 @@ export default function WalletSuccess() {
                 className="w-full"
               >
                 <Button
-                  onClick={() => router.push('/explore')}
+                  onClick={() => router.push('/wallet')}
                   className={`w-full bg-gradient-to-r ${purchaseInfo.color} hover:opacity-90 text-white font-queensides py-6 text-lg`}
                 >
-                  <span>Start Exploring</span>
+                  <span>View Wallet</span>
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </motion.div>
 
               {/* Secondary Actions */}
-              <motion.div
+              {/* <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.9 }}
@@ -493,7 +493,7 @@ export default function WalletSuccess() {
                   <Clock className="w-4 h-4 mr-2" />
                   <span>Go Home</span>
                 </Button>
-              </motion.div>
+              </motion.div> */}
             </CardFooter>
           </Card>
 
