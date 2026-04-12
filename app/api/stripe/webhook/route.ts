@@ -125,33 +125,92 @@ export async function POST(request: NextRequest) {
         } else if (type === 'subscription' && planId && userId) {
           const viewsIncluded = metadata.viewsIncluded ? parseInt(metadata.viewsIncluded) : 0
           const leadsIncluded = metadata.leadsIncluded ? parseInt(metadata.leadsIncluded) : 0
+          const interval = metadata.interval || 'month'
 
-          // Update user subscription status
-          await supabase.from('subscriptions').upsert({
+          console.log('[webhook] Processing subscription:', {
+            userId,
+            planId,
+            viewsIncluded,
+            leadsIncluded,
+            interval,
+            sessionId: session.id,
+            stripeSubscriptionId: session.subscription,
+          })
+
+          // Calculate dates
+          const now = new Date()
+          const nextPaymentDate = new Date(now)
+          if (interval === 'year') {
+            nextPaymentDate.setFullYear(nextPaymentDate.getFullYear() + 1)
+          } else {
+            nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1)
+          }
+
+          // Update or create subscription
+          const { error: subscriptionError } = await supabase.from('subscriptions').upsert({
             user_id: userId,
             plan_id: planId,
             status: 'active',
-            stripe_subscription_id: session.subscription,
+            stripe_subscription_id: session.subscription || null,
+            stripe_customer_id: session.customer || null,
             views_included: viewsIncluded,
             leads_included: leadsIncluded,
-            current_period_start: new Date().toISOString(),
-            current_period_end: new Date(
-              Date.now() + (planId.includes('yearly') ? 365 : 30) * 24 * 60 * 60 * 1000
-            ).toISOString(),
+            views_used: 0,
+            leads_used: 0,
+            current_period_start: now.toISOString(),
+            current_period_end: nextPaymentDate.toISOString(),
+            next_payment_date: nextPaymentDate.toISOString(),
+            cancel_at_period_end: false,
+          }, {
+            onConflict: 'user_id,plan_id'
           })
 
-          // Add views and leads from subscription
-          if (viewsIncluded > 0) {
-            await supabase.rpc('add_views', {
-              p_user_id: userId,
-              p_views: viewsIncluded,
-            })
+          if (subscriptionError) {
+            console.error('[webhook] Error creating subscription:', subscriptionError)
+            throw subscriptionError
           }
+
+          console.log('[webhook] Subscription created/updated, now adding views and leads')
+
+          // Add views and leads to user's account
+          if (viewsIncluded > 0) {
+            const { data: userData } = await supabase
+              .from('users')
+              .select('available_views')
+              .eq('id', userId)
+              .maybeSingle()
+
+            const currentViews = userData?.available_views || 0
+            const { error: viewsError } = await supabase
+              .from('users')
+              .update({ available_views: currentViews + viewsIncluded })
+              .eq('id', userId)
+
+            if (viewsError) {
+              console.error('[webhook] Error adding views:', viewsError)
+            } else {
+              console.log('[webhook] Added', viewsIncluded, 'views to user', userId)
+            }
+          }
+
           if (leadsIncluded > 0) {
-            await supabase.rpc('add_leads', {
-              p_user_id: userId,
-              p_leads: leadsIncluded,
-            })
+            const { data: userData } = await supabase
+              .from('users')
+              .select('available_leads')
+              .eq('id', userId)
+              .maybeSingle()
+
+            const currentLeads = userData?.available_leads || 0
+            const { error: leadsError } = await supabase
+              .from('users')
+              .update({ available_leads: currentLeads + leadsIncluded })
+              .eq('id', userId)
+
+            if (leadsError) {
+              console.error('[webhook] Error adding leads:', leadsError)
+            } else {
+              console.log('[webhook] Added', leadsIncluded, 'leads to user', userId)
+            }
           }
 
           // Record payment with community contribution
@@ -254,8 +313,48 @@ export async function POST(request: NextRequest) {
         if (userId) {
           await supabase
             .from('subscriptions')
-            .update({ status: 'cancelled' })
-            .eq('user_id', userId)
+            .update({ 
+              status: 'cancelled',
+              cancel_at_period_end: false,
+            })
+            .eq('stripe_subscription_id', subscription.id)
+          
+          console.log('[webhook] Subscription cancelled for user:', userId)
+        }
+
+        break
+      }
+
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as any
+        const subscriptionId = invoice.subscription
+        
+        if (subscriptionId) {
+          try {
+            // Get the subscription from Stripe
+            const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId as string) as any
+            const userId = stripeSubscription.metadata?.userId
+
+            if (userId) {
+              // Calculate next payment date
+              const nextPaymentDate = new Date(stripeSubscription.current_period_end * 1000)
+
+              // Update subscription period
+              await supabase
+                .from('subscriptions')
+                .update({
+                  current_period_start: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
+                  current_period_end: nextPaymentDate.toISOString(),
+                  next_payment_date: nextPaymentDate.toISOString(),
+                  status: 'active',
+                })
+                .eq('stripe_subscription_id', subscriptionId)
+
+              console.log('[webhook] Subscription renewed for user:', userId, 'Next payment:', nextPaymentDate)
+            }
+          } catch (error) {
+            console.error('[webhook] Error processing invoice.payment_succeeded:', error)
+          }
         }
 
         break
