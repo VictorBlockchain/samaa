@@ -299,7 +299,7 @@ export default function AdminPage() {
         code += chars.charAt(Math.floor(Math.random() * chars.length))
       }
 
-      const promoData = {
+      const promoData: any = {
         code,
         promo_type: promoType,
         max_uses: promoQuantity,
