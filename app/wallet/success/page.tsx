@@ -17,12 +17,21 @@ import {
   ArrowRight,
   Sparkles,
   Wallet,
-  Clock
+  Clock,
+  Loader2,
+  XCircle
 } from "lucide-react"
 
 interface UserProfile {
   available_views: number
   available_leads: number
+}
+
+interface PaymentVerification {
+  verified: boolean
+  type?: string
+  amount?: number
+  status?: string
 }
 
 export default function WalletSuccess() {
@@ -32,15 +41,59 @@ export default function WalletSuccess() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [purchaseType, setPurchaseType] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
+  const [isVerifying, setIsVerifying] = useState(true)
+  const [verification, setVerification] = useState<PaymentVerification | null>(null)
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/auth/login')
+      return
+    }
+
+    const sessionId = searchParams.get('session_id')
     const type = searchParams.get('type') || 'subscription'
+    
     setPurchaseType(type)
 
-    if (userId) {
-      fetchProfile()
+    // Verify payment with backend
+    if (sessionId && userId) {
+      verifyPayment(sessionId)
+    } else if (!sessionId) {
+      // No session ID - might be direct access
+      setIsVerifying(false)
+      setVerification({ verified: false })
+      setIsLoading(false)
     }
-  }, [userId, searchParams])
+  }, [userId, searchParams, isAuthenticated, router])
+
+  const verifyPayment = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/stripe/verify-session?session_id=${sessionId}`)
+      const data = await response.json()
+
+      if (response.ok && data.verified) {
+        setVerification({
+          verified: true,
+          type: data.type,
+          amount: data.amount,
+          status: data.status,
+        })
+        
+        // Refresh profile to get updated balance
+        if (userId) {
+          await fetchProfile()
+        }
+      } else {
+        setVerification({ verified: false })
+      }
+    } catch (error) {
+      console.error('Error verifying payment:', error)
+      setVerification({ verified: false })
+    } finally {
+      setIsVerifying(false)
+      setIsLoading(false)
+    }
+  }
 
   const fetchProfile = async () => {
     if (!userId) return
@@ -54,7 +107,6 @@ export default function WalletSuccess() {
     if (!error && data) {
       setProfile(data)
     }
-    setIsLoading(false)
   }
 
   const getPurchaseInfo = () => {
@@ -106,8 +158,87 @@ export default function WalletSuccess() {
   const Icon = purchaseInfo.icon
 
   if (!isAuthenticated) {
-    router.push('/auth/login')
     return null
+  }
+
+  // Show verification loading
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen relative">
+        <CelestialBackground />
+        <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center"
+          >
+            <Loader2 className="w-16 h-16 text-indigo-600 animate-spin mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">
+              Verifying Payment...
+            </h2>
+            <p className="text-slate-600 font-queensides">
+              Please wait while we confirm your purchase
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error if verification failed
+  if (!verification?.verified) {
+    return (
+      <div className="min-h-screen relative">
+        <CelestialBackground />
+        <div className="relative z-10 bg-gradient-to-br from-indigo-50/80 via-white/80 to-purple-50/80 min-h-screen flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-2xl"
+          >
+            <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-orange-50 shadow-2xl">
+              <CardHeader className="text-center pb-6">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                  className="w-24 h-24 mx-auto mb-6 bg-gradient-to-r from-red-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg"
+                >
+                  <XCircle className="w-12 h-12 text-white" />
+                </motion.div>
+                <CardTitle className="text-3xl font-bold text-slate-800 font-queensides mb-2">
+                  Payment Not Verified
+                </CardTitle>
+                <CardDescription className="text-lg text-slate-600 font-queensides">
+                  We couldn't verify your payment
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-center text-slate-700 font-queensides">
+                  If you made a purchase, please contact support with your payment confirmation email.
+                </p>
+              </CardContent>
+              <CardFooter className="flex flex-col gap-3 pt-6">
+                <Button
+                  onClick={() => router.push('/wallet')}
+                  className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 text-white font-queensides py-6 text-lg"
+                >
+                  <Wallet className="w-5 h-5 mr-2" />
+                  <span>Go to Wallet</span>
+                </Button>
+                <Button
+                  onClick={() => router.push('/')}
+                  variant="outline"
+                  className="w-full font-queensides"
+                >
+                  Go Home
+                </Button>
+              </CardFooter>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    )
   }
 
   return (
