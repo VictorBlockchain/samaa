@@ -34,10 +34,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const getInitialSession = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession()
+        console.log('[AuthContext] Initial session:', initialSession?.user?.id || 'No session')
         setSession(initialSession)
         setUser(initialSession?.user ?? null)
       } catch (error) {
-        console.error('Error getting session:', error)
+        console.error('[AuthContext] Error getting session:', error)
       } finally {
         setIsLoading(false)
       }
@@ -48,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        console.log('[AuthContext] Auth state changed:', event, newSession?.user?.id || 'No session')
         setSession(newSession)
         setUser(newSession?.user ?? null)
         setIsLoading(false)
@@ -76,8 +78,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    try {
+      const { error } = await supabase.auth.signOut()
+      
+      // Clear any app-specific localStorage data
+      if (typeof window !== 'undefined') {
+        // Clear Supabase auth data
+        localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token')
+        
+        // Clear any other app-specific keys
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key?.startsWith('samaa_') || key?.startsWith('sb-')) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+      }
+      
+      return { error }
+    } catch (error) {
+      console.error('[AuthContext] Sign out error:', error)
+      return { error: error as AuthError }
+    }
   }
 
   const resetPassword = async (email: string) => {

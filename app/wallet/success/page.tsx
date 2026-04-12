@@ -37,7 +37,7 @@ interface PaymentVerification {
 export default function WalletSuccess() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { userId, isAuthenticated } = useAuth()
+  const { userId, isAuthenticated, isLoading: authLoading } = useAuth()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [purchaseType, setPurchaseType] = useState<string>("")
   const [isLoading, setIsLoading] = useState(true)
@@ -45,8 +45,8 @@ export default function WalletSuccess() {
   const [verification, setVerification] = useState<PaymentVerification | null>(null)
 
   useEffect(() => {
-    // Wait for auth to be ready
-    if (userId === undefined) {
+    // Wait for auth to finish loading
+    if (authLoading) {
       return
     }
 
@@ -70,7 +70,7 @@ export default function WalletSuccess() {
       setVerification({ verified: false })
       setIsLoading(false)
     }
-  }, [userId, searchParams])
+  }, [userId, searchParams, authLoading])
 
   const verifyPayment = async (sessionId: string) => {
     try {
@@ -163,8 +163,8 @@ export default function WalletSuccess() {
   const purchaseInfo = getPurchaseInfo()
   const Icon = purchaseInfo.icon
 
-  if (userId === undefined) {
-    // Auth still loading
+  // Show loading while auth is initializing
+  if (authLoading) {
     return (
       <div className="min-h-screen relative">
         <CelestialBackground />
