@@ -170,6 +170,37 @@ async function processSubscription(session: any, userId: string, planId: string,
     metadata: { planId, viewsIncluded, leadsIncluded, interval },
   })
 
+  console.log('[process-purchase] Payment recorded, now checking for referral')
+
+  // Check if user was referred and credit referrer
+  try {
+    const { data: referralData } = await supabaseAdmin
+      .from('referrals')
+      .select('id, referrer_id, status')
+      .eq('referred_id', userId)
+      .eq('status', 'signed_up')
+      .maybeSingle()
+
+    if (referralData) {
+      console.log('[process-purchase] User was referred, processing referral bonus')
+      
+      // Call the referral function to credit referrer
+      const { error: referralError } = await supabaseAdmin.rpc('process_referral_subscription', {
+        p_user_id: userId,
+      })
+
+      if (referralError) {
+        console.error('[process-purchase] Error processing referral:', referralError)
+      } else {
+        console.log('[process-purchase] Referral bonus credited to referrer:', referralData.referrer_id)
+      }
+    } else {
+      console.log('[process-purchase] No referral found for user')
+    }
+  } catch (referralError) {
+    console.error('[process-purchase] Error checking referral:', referralError)
+  }
+
   console.log('[process-purchase] Successfully processed subscription for user:', userId)
 
   return NextResponse.json({ 

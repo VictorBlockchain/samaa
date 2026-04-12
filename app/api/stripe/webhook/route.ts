@@ -234,6 +234,33 @@ export async function POST(request: NextRequest) {
               p_source_type: 'subscription',
             })
           }
+
+          // Check if user was referred and credit referrer
+          try {
+            const { data: referralData } = await supabase
+              .from('referrals')
+              .select('id, referrer_id, status')
+              .eq('referred_id', userId)
+              .eq('status', 'signed_up')
+              .maybeSingle()
+
+            if (referralData) {
+              console.log('[webhook] User was referred, processing referral bonus')
+              
+              // Call the referral function to credit referrer
+              const { error: referralError } = await supabase.rpc('process_referral_subscription', {
+                p_user_id: userId,
+              })
+
+              if (referralError) {
+                console.error('[webhook] Error processing referral:', referralError)
+              } else {
+                console.log('[webhook] Referral bonus credited to referrer:', referralData.referrer_id)
+              }
+            }
+          } catch (referralError) {
+            console.error('[webhook] Error checking referral:', referralError)
+          }
         }
 
         break
