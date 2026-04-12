@@ -181,7 +181,7 @@ export default function WalletView() {
     }
   }
 
-  const handlePurchaseLikes = async (productId: string) => {
+  const handlePurchaseViews = async (productId: string) => {
     if (!userId || !user?.email) {
       router.push('/auth/login')
       return
@@ -196,7 +196,7 @@ export default function WalletView() {
         body: JSON.stringify({
           userId,
           userEmail: user.email,
-          type: 'likes',
+          type: 'views',
           productId,
         }),
       })
@@ -209,13 +209,13 @@ export default function WalletView() {
         throw new Error('Failed to create checkout session')
       }
     } catch (error) {
-      console.error('Error purchasing likes:', error)
+      console.error('Error purchasing views:', error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handlePurchaseCompliments = async (productId: string) => {
+  const handlePurchaseLeads = async (productId: string) => {
     if (!userId || !user?.email) {
       router.push('/auth/login')
       return
@@ -230,7 +230,7 @@ export default function WalletView() {
         body: JSON.stringify({
           userId,
           userEmail: user.email,
-          type: 'compliments',
+          type: 'leads',
           productId,
         }),
       })
@@ -243,7 +243,7 @@ export default function WalletView() {
         throw new Error('Failed to create checkout session')
       }
     } catch (error) {
-      console.error('Error purchasing compliments:', error)
+      console.error('Error purchasing leads:', error)
     } finally {
       setIsLoading(false)
     }
@@ -425,13 +425,14 @@ export default function WalletView() {
                 <span className="sm:hidden">Sub</span>
               </TabsTrigger>
               <TabsTrigger value="views" className="font-queensides text-xs sm:text-sm">
-                <Heart className="w-4 h-4 mr-1 sm:mr-2" />
-                Views
+                <Eye className="w-4 h-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Views</span>
+                <span className="sm:hidden">Views</span>
               </TabsTrigger>
-              <TabsTrigger value="lead" className="font-queensides text-xs sm:text-sm">
+              <TabsTrigger value="leads" className="font-queensides text-xs sm:text-sm">
                 <MessageCircle className="w-4 h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Lead</span>
-                <span className="sm:hidden">Lead</span>
+                <span className="hidden sm:inline">Leads</span>
+                <span className="sm:hidden">Leads</span>
               </TabsTrigger>
               <TabsTrigger value="history" className="font-queensides text-xs sm:text-sm">
                 <History className="w-4 h-4 mr-1 sm:mr-2" />
@@ -461,17 +462,17 @@ export default function WalletView() {
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div className="bg-white/60 rounded-lg p-3">
                           <div className="flex items-center space-x-2">
-                            <Heart className="w-4 h-4 text-rose-500" />
+                            <Eye className="w-4 h-4 text-emerald-500" />
                             <span className="text-sm text-slate-600 font-queensides">
-                              {subscription.views_included} likes/mo
+                              {subscription.views_included} views/mo
                             </span>
                           </div>
                         </div>
                         <div className="bg-white/60 rounded-lg p-3">
                           <div className="flex items-center space-x-2">
-                            <MessageCircle className="w-4 h-4 text-amber-500" />
+                            <MessageCircle className="w-4 h-4 text-purple-500" />
                             <span className="text-sm text-slate-600 font-queensides">
-                              {subscription.leads_included} comps/mo
+                              {subscription.leads_included} leads/mo
                             </span>
                           </div>
                         </div>
@@ -548,7 +549,7 @@ export default function WalletView() {
               </motion.div>
             </TabsContent>
 
-            {/* Buy Likes Tab */}
+            {/* Buy Views Tab */}
             <TabsContent value="views">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -556,7 +557,7 @@ export default function WalletView() {
                 className="space-y-4"
               >
                 <p className="text-center text-slate-600 font-queensides mb-4">
-                  Get more likes to increase your visibility
+                  Get more views to see who's interested in your profile
                 </p>
                 {viewsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
@@ -573,8 +574,8 @@ export default function WalletView() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl flex items-center justify-center">
-                            <Heart className="w-6 h-6 text-rose-500" />
+                          <div className="w-12 h-12 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center">
+                            <Eye className="w-6 h-6 text-emerald-600" />
                           </div>
                           <div>
                             <CardTitle className="font-queensides">{product.name}</CardTitle>
@@ -588,9 +589,9 @@ export default function WalletView() {
                     </CardHeader>
                     <CardFooter>
                       <Button
-                        onClick={() => handlePurchaseLikes(product.id)}
+                        onClick={() => handlePurchaseViews(product.id)}
                         disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 font-queensides"
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 font-queensides"
                       >
                         {isLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -607,15 +608,15 @@ export default function WalletView() {
               </motion.div>
             </TabsContent>
 
-            {/* Buy Compliments Tab */}
-            <TabsContent value="lead">
+            {/* Buy Leads Tab */}
+            <TabsContent value="leads">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-4"
               >
                 <p className="text-center text-slate-600 font-queensides mb-4">
-                  Spread kindness with compliments
+                  Take the lead and start meaningful conversations
                 </p>
                 {leadsProducts.map((product) => (
                   <Card key={product.id} className="relative overflow-hidden hover:shadow-lg transition-shadow">
@@ -632,8 +633,8 @@ export default function WalletView() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl flex items-center justify-center">
-                            <MessageCircle className="w-6 h-6 text-amber-500" />
+                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
+                            <MessageCircle className="w-6 h-6 text-indigo-600" />
                           </div>
                           <div>
                             <CardTitle className="font-queensides">{product.name}</CardTitle>
@@ -647,9 +648,9 @@ export default function WalletView() {
                     </CardHeader>
                     <CardFooter>
                       <Button
-                        onClick={() => handlePurchaseCompliments(product.id)}
+                        onClick={() => handlePurchaseLeads(product.id)}
                         disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 font-queensides"
+                        className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 font-queensides"
                       >
                         {isLoading ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -693,18 +694,18 @@ export default function WalletView() {
                               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                                 payment.type === 'subscription' 
                                   ? 'bg-indigo-100' 
-                                  : payment.type === 'likes' 
-                                    ? 'bg-rose-100' 
-                                    : payment.type === 'compliments'
-                                      ? 'bg-amber-100'
+                                  : payment.type === 'views' 
+                                    ? 'bg-emerald-100' 
+                                    : payment.type === 'leads'
+                                      ? 'bg-purple-100'
                                       : 'bg-green-100'
                               }`}>
                                 {payment.type === 'subscription' ? (
                                   <Crown className="w-5 h-5 text-indigo-600" />
-                                ) : payment.type === 'likes' ? (
-                                  <Heart className="w-5 h-5 text-rose-600" />
-                                ) : payment.type === 'compliments' ? (
-                                  <MessageCircle className="w-5 h-5 text-amber-600" />
+                                ) : payment.type === 'views' ? (
+                                  <Eye className="w-5 h-5 text-emerald-600" />
+                                ) : payment.type === 'leads' ? (
+                                  <MessageCircle className="w-5 h-5 text-purple-600" />
                                 ) : (
                                   <DollarSign className="w-5 h-5 text-green-600" />
                                 )}
