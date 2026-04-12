@@ -184,17 +184,39 @@ async function handleWalletPurchase({ userId, userEmail, type, productId, planId
   }
 
   // Create Stripe Checkout Session
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
-    line_items: lineItems,
+  console.log('[checkout-session] Creating session with:', {
     mode: type === 'subscription' ? 'subscription' : 'payment',
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet/success?type=${type}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?cancelled=true`,
-    customer_email: userEmail,
+    lineItemsCount: lineItems.length,
+    customerEmail: userEmail,
     metadata,
   })
 
-  return NextResponse.json({ url: session.url })
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: type === 'subscription' ? 'subscription' : 'payment',
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet/success?type=${type}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/wallet?cancelled=true`,
+      customer_email: userEmail,
+      metadata,
+    })
+
+    console.log('[checkout-session] Session created successfully:', session.id)
+    return NextResponse.json({ url: session.url })
+  } catch (stripeError: any) {
+    console.error('[checkout-session] Stripe API error:', stripeError)
+    console.error('[checkout-session] Error details:', {
+      message: stripeError.message,
+      type: stripeError.type,
+      code: stripeError.code,
+      param: stripeError.param,
+    })
+    return NextResponse.json(
+      { error: `Stripe error: ${stripeError.message}` },
+      { status: 500 }
+    )
+  }
 }
 
 // Handle shop orders

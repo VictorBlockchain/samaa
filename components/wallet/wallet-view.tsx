@@ -271,13 +271,18 @@ export default function WalletView() {
 
       const data = await response.json()
 
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session')
+      }
+
       if (data.url) {
         window.location.href = data.url
       } else {
-        throw new Error('Failed to create checkout session')
+        throw new Error('No checkout URL returned')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error subscribing:', error)
+      alert(`Subscription error: ${error.message}`)
     } finally {
       setIsLoading(false)
     }
