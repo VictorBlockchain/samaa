@@ -117,7 +117,7 @@ export async function createTransaction(
   utxos: Array<{ txid: string; vout: number; value: number }>,
   feeSatoshis: number
 ): Promise<string> {
-  const keyPair = bitcoin.ECPair.fromWIF(privateKeyWIF, network)
+  const keyPair = ECPair.fromWIF(privateKeyWIF, network)
   
   const psbt = new bitcoin.Psbt({ network })
   
@@ -238,6 +238,78 @@ export async function getAddressBalance(address: string): Promise<number> {
   
   const data = await response.json()
   return (data.chain_stats.funded_txo_sum || 0) - (data.chain_stats.spent_txo_sum || 0)
+}
+
+/**
+ * Create and sign a split transaction with multiple outputs
+ * @param privateKeyWIF - Private key in WIF format
+ * @param fromAddress - Source address
+ * @param outputs - Array of {address, amountSatoshis}
+ * @param utxos - Unspent transaction outputs
+ * @param feeSatoshis - Transaction fee in satoshis
+ * @returns Transaction hex
+ */
+export async function createSplitTransaction(
+  privateKeyWIF: string,
+  fromAddress: string,
+  outputs: Array<{ address: string; amountSatoshis: number }>,
+  utxos: Array<{ txid: string; vout: number; value: number }>,
+  feeSatoshis: number
+): Promise<string> {
+  const keyPair = ECPair.fromWIF(privateKeyWIF, network)
+  
+  const psbt = new bitcoin.Psbt({ network })
+  
+  // Add inputs
+  let totalInput = 0
+  for (const utxo of utxos) {
+    psbt.addInput({
+      hash: utxo.txid,
+      index: utxo.vout,
+      witnessUtxo: {
+        script: bitcoin.address.toOutputScript(fromAddress, network),
+        value: BigInt(utxo.value),
+      },
+    })
+    totalInput += utxo.value
+  }
+  
+  // Add outputs
+  for (const output of outputs) {
+    psbt.addOutput({
+      address: output.address,
+      value: BigInt(output.amountSatoshis),
+    })
+  }
+  
+  // Add change output if there's leftover
+  const totalOutput = outputs.reduce((sum, out) => sum + out.amountSatoshis, 0)
+  const change = totalInput - totalOutput - feeSatoshis
+  if (change > 546) { // Dust threshold
+    const { address: changeAddress } = bitcoin.payments.p2wpkh({
+      pubkey: keyPair.publicKey,
+      network,
+    })
+    
+    if (changeAddress) {
+      psbt.addOutput({
+        address: changeAddress,
+        value: BigInt(change),
+      })
+    }
+  }
+  
+  // Sign all inputs
+  for (let i = 0; i < utxos.length; i++) {
+    psbt.signInput(i, keyPair)
+  }
+  
+  // Finalize
+  psbt.finalizeAllInputs()
+  
+  // Extract transaction
+  const tx = psbt.extractTransaction()
+  return tx.toHex()
 }
 
 /**

@@ -1647,6 +1647,73 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           </div>
         )}
 
+        {/* Subscription Prompt for Female Profile's Purse Wallet */}
+        {profile.gender === 'female' && mahrPurseData && !isOwnProfile && !hasActiveSubscription && (
+          <div className="px-6 py-8 max-w-4xl mx-auto">
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                <Star className="w-4 h-4 text-pink-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+                <Moon className="w-4 h-4 text-purple-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+                <Sparkles className="w-4 h-4 text-blue-300" />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl p-8 border-2 border-dashed border-purple-300">
+              <div className="text-center">
+                {/* Lock Icon */}
+                <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Lock className="w-10 h-10 text-white" />
+                </div>
+
+                {/* Title */}
+                <h3 className="text-2xl font-bold text-slate-800 font-queensides mb-3">
+                  Her Time-Locked Purse Wallet
+                </h3>
+
+                {/* Description */}
+                <p className="text-slate-600 font-queensides mb-6 max-w-md mx-auto leading-relaxed">
+                  This profile has created a Purse wallet demonstrating financial independence and planning. 
+                  Subscribe to view her complete Purse wallet details including balance, address, and unlock date.
+                </p>
+
+                {/* Features */}
+                <div className="bg-white/60 rounded-xl p-4 mb-6 max-w-sm mx-auto">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Wallet className="w-4 h-4 text-purple-600" />
+                      <span className="font-queensides">View BTC balance & wallet address</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Lock className="w-4 h-4 text-purple-600" />
+                      <span className="font-queensides">See timelock unlock date & status</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Crown className="w-4 h-4 text-purple-600" />
+                      <span className="font-queensides">Access all premium profile features</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subscribe Button */}
+                <button
+                  onClick={() => router.push('/wallet')}
+                  className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-queensides px-8 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Crown className="w-5 h-5" />
+                    Subscribe to View Purse Wallet
+                  </span>
+                </button>
+
+                <p className="text-xs text-slate-500 font-queensides mt-4">
+                  Unlock premium features and show serious intentions
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {profile.gender === 'male' && mahrPurseData && (isOwnProfile || hasActiveSubscription) && (
           <div className="px-6 py-8 max-w-4xl mx-auto">
           <div className="flex items-center justify-center mb-8">
@@ -1736,6 +1803,73 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                     </Badge>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Subscription Prompt for Male Profile's Mahr Wallet */}
+        {profile.gender === 'male' && mahrPurseData && !isOwnProfile && !hasActiveSubscription && (
+          <div className="px-6 py-8 max-w-4xl mx-auto">
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                <Star className="w-4 h-4 text-pink-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+                <Moon className="w-4 h-4 text-purple-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+                <Sparkles className="w-4 h-4 text-blue-300" />
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl p-8 border-2 border-dashed border-pink-300">
+              <div className="text-center">
+                {/* Lock Icon */}
+                <div className="w-20 h-20 bg-gradient-to-r from-pink-500 to-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Lock className="w-10 h-10 text-white" />
+                </div>
+
+                {/* Title */}
+                <h3 className="text-2xl font-bold text-slate-800 font-queensides mb-3">
+                  His Time-Locked Mahr Wallet
+                </h3>
+
+                {/* Description */}
+                <p className="text-slate-600 font-queensides mb-6 max-w-md mx-auto leading-relaxed">
+                  This profile has created a Mahr wallet showing serious marriage commitment and financial readiness. 
+                  Subscribe to view his complete Mahr wallet details including balance, address, and unlock date.
+                </p>
+
+                {/* Features */}
+                <div className="bg-white/60 rounded-xl p-4 mb-6 max-w-sm mx-auto">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Heart className="w-4 h-4 text-pink-600" />
+                      <span className="font-queensides">View BTC balance & wallet address</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Lock className="w-4 h-4 text-pink-600" />
+                      <span className="font-queensides">See timelock unlock date & status</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Crown className="w-4 h-4 text-pink-600" />
+                      <span className="font-queensides">Access all premium profile features</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subscribe Button */}
+                <button
+                  onClick={() => router.push('/wallet')}
+                  className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white font-queensides px-8 py-4 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Crown className="w-5 h-5" />
+                    Subscribe to View Mahr Wallet
+                  </span>
+                </button>
+
+                <p className="text-xs text-slate-500 font-queensides mt-4">
+                  Unlock premium features and show serious intentions
+                </p>
               </div>
             </div>
           </div>

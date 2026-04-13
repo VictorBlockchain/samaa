@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { generateUserKeypair } from '@/lib/bitcoin-split'
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,13 +55,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update the users table to mark as verified and credit leads/views
+    // Update the users table to mark as verified, credit leads/views, and generate Bitcoin wallet
+    const keypair = generateUserKeypair(1) // Start with index 1
+    
     const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({ 
         is_verified: true,
         available_leads: 3, // Credit 3 leads after email verification
         available_views: 10, // Credit 10 views after email verification
+        btc_address: keypair.address,
+        btc_private_key_encrypted: keypair.privateKeyEncrypted,
+        last_btc_address_index: 1,
+        btc_balance_satoshis: 0,
         updated_at: new Date().toISOString(),
       })
       .eq('id', token)
@@ -69,6 +76,8 @@ export async function POST(request: NextRequest) {
       console.error('Update error:', updateError)
       // Still return success since auth is verified
     }
+
+    console.log(`[verify-email] Generated Bitcoin wallet for user ${token}: ${keypair.address}`)
 
     return NextResponse.json({
       success: true,

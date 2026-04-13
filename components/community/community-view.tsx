@@ -32,6 +32,8 @@ import {
   Gift,
   Plus,
   X,
+  Bitcoin,
+  Copy,
 } from "lucide-react"
 
 interface CommunityFund {
@@ -72,6 +74,11 @@ export default function CommunityPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showApplyModal, setShowApplyModal] = useState(false)
   
+  // Bitcoin wallet state
+  const [communityBtcAddress, setCommunityBtcAddress] = useState<string | null>(null)
+  const [communityBtcBalance, setCommunityBtcBalance] = useState(0)
+  const [btcCopied, setBtcCopied] = useState(false)
+  
   // Form state for masjid application
   const [formData, setFormData] = useState({
     name: '',
@@ -94,6 +101,7 @@ export default function CommunityPage() {
   useEffect(() => {
     fetchCommunityFund()
     fetchMasjids()
+    fetchCommunityBtcWallet()
     if (userId) {
       fetchUserVotes()
     }
@@ -109,6 +117,47 @@ export default function CommunityPage() {
     if (!error && data) {
       setCommunityFund(data)
     }
+  }
+
+  const fetchCommunityBtcWallet = async () => {
+    try {
+      // Get community BTC address from admin settings
+      const { data: settings } = await supabase
+        .from('admin_settings')
+        .select('community_btc_address')
+        .limit(1)
+        .maybeSingle()
+
+      if (settings?.community_btc_address) {
+        setCommunityBtcAddress(settings.community_btc_address)
+        
+        // Fetch actual balance from blockchain
+        const baseUrl = process.env.NODE_ENV === 'production'
+          ? 'https://blockstream.info/api'
+          : 'https://blockstream.info/testnet/api'
+        
+        const response = await fetch(`${baseUrl}/address/${settings.community_btc_address}`)
+        if (response.ok) {
+          const data = await response.json()
+          const balance = (data.chain_stats.funded_txo_sum || 0) - (data.chain_stats.spent_txo_sum || 0)
+          setCommunityBtcBalance(balance)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching community BTC wallet:', error)
+    }
+  }
+
+  const copyBtcAddress = () => {
+    if (!communityBtcAddress) return
+    navigator.clipboard.writeText(communityBtcAddress)
+    setBtcCopied(true)
+    setTimeout(() => setBtcCopied(false), 2000)
+  }
+
+  const formatBtc = (satoshis: number) => {
+    const btc = satoshis / 100000000
+    return btc.toFixed(8)
   }
 
   const fetchMasjids = async () => {
@@ -251,8 +300,9 @@ export default function CommunityPage() {
         </div>
 
         {/* Community Fund Balance Card */}
-        <div className="p-4">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 text-white mb-6">
+        <div className="p-4 space-y-4">
+          {/* Traditional Balance Card */}
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
@@ -302,304 +352,360 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="overview" className="font-queensides">
-                <Building className="w-4 h-4 mr-2" />
-                Masjids
-              </TabsTrigger>
-              <TabsTrigger value="apply" className="font-queensides">
-                <Plus className="w-4 h-4 mr-2" />
-                Apply
-              </TabsTrigger>
-            </TabsList>
+          {/* Bitcoin Wallet Card */}
+          {communityBtcAddress && (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-6 border-2 border-amber-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                  <Bitcoin className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 font-queensides">Community Bitcoin Wallet</h3>
+                  <p className="text-sm text-slate-600 font-queensides">Transparent on-chain donations</p>
+                </div>
+              </div>
 
-            {/* Masjids List */}
-            <TabsContent value="overview">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-bold text-slate-800 font-queensides">
-                    Vote for Donations
-                  </h2>
-                  <p className="text-sm text-slate-500 font-queensides">
-                    {masjids.length} masjids
+              {/* BTC Balance */}
+              <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white mb-4">
+                <div className="text-center">
+                  <p className="text-sm opacity-90 font-queensides mb-1">BTC Balance</p>
+                  <p className="text-3xl font-bold font-mono">
+                    {formatBtc(communityBtcBalance)} BTC
+                  </p>
+                  <p className="text-sm opacity-75 mt-1">
+                    {communityBtcBalance.toLocaleString()} satoshis
                   </p>
                 </div>
-
-                {masjids.length === 0 ? (
-                  <ArabicEmptyStateCard icon={<Building className="w-12 h-12" />}>
-                    <ArabicEmptyStateCardTitle>No masjids yet</ArabicEmptyStateCardTitle>
-                    <ArabicEmptyStateCardDescription>Be the first to apply!</ArabicEmptyStateCardDescription>
-                  </ArabicEmptyStateCard>
-                ) : (
-                  <div className="space-y-4">
-                    {masjids.map((masjid, index) => (
-                      <motion.div
-                        key={masjid.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                        <Card className={`overflow-hidden ${
-                          masjid.status === 'donated' 
-                            ? 'border-green-200 bg-green-50/50' 
-                            : votedMasjids.includes(masjid.id)
-                              ? 'border-emerald-200 bg-emerald-50/50'
-                              : ''
-                        }`}>
-                          <CardHeader className="pb-2">
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <CardTitle className="font-queensides text-lg">{masjid.name}</CardTitle>
-                                <CardDescription className="font-queensides flex items-center mt-1">
-                                  <MapPin className="w-3 h-3 mr-1" />
-                                  {masjid.city}, {masjid.state}
-                                </CardDescription>
-                              </div>
-                              <div className="text-right">
-                                {masjid.status === 'donated' ? (
-                                  <Badge className="bg-green-100 text-green-700">
-                                    <Gift className="w-3 h-3 mr-1" />
-                                    Donated
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-emerald-600">
-                                    <TrendingUp className="w-3 h-3 mr-1" />
-                                    {masjid.vote_count} votes
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            <p className="text-sm text-slate-600 font-queensides mb-3">
-                              {masjid.description}
-                            </p>
-                            
-                            <div className="bg-slate-50 rounded-lg p-3 mb-3">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm text-slate-500 font-queensides">Requested</span>
-                                <span className="font-bold text-slate-800 font-queensides">
-                                  {formatCurrency(masjid.requested_amount)}
-                                </span>
-                              </div>
-                              <p className="text-xs text-slate-500 font-queensides">
-                                Purpose: {masjid.donation_purpose}
-                              </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                              <div className="flex items-center space-x-2 text-slate-600">
-                                <User className="w-4 h-4" />
-                                <span className="font-queensides">Imam: {masjid.imam_name}</span>
-                              </div>
-                              <div className="flex items-center space-x-2 text-slate-600">
-                                <Mail className="w-4 h-4" />
-                                <span className="font-queensides truncate">{masjid.email}</span>
-                              </div>
-                            </div>
-
-                            {masjid.status !== 'donated' && (
-                              <Button
-                                onClick={() => handleVote(masjid.id)}
-                                disabled={isLoading}
-                                className={`w-full font-queensides ${
-                                  votedMasjids.includes(masjid.id)
-                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                    : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white'
-                                }`}
-                              >
-                                {isLoading ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : votedMasjids.includes(masjid.id) ? (
-                                  <>
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Voted
-                                  </>
-                                ) : (
-                                  <>
-                                    <ThumbsUp className="w-4 h-4 mr-2" />
-                                    Vote for this Masjid
-                                  </>
-                                )}
-                              </Button>
-                            )}
-
-                            {masjid.status === 'donated' && (
-                              <div className="text-center text-green-600 font-queensides text-sm">
-                                <Gift className="w-4 h-4 inline mr-1" />
-                                {formatCurrency(masjid.amount_donated)} donated on {' '}
-                                {new Date(masjid.donation_date).toLocaleDateString()}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
               </div>
-            </TabsContent>
 
-            {/* Apply Tab */}
-            <TabsContent value="apply">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-queensides">Apply for Donation</CardTitle>
-                  <CardDescription className="font-queensides">
-                    Submit your masjid for community funding consideration
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label className="font-queensides">Masjid Name *</Label>
-                      <Input
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Islamic Center of..."
-                        className="font-queensides"
-                      />
-                    </div>
+              {/* Address */}
+              <div className="bg-white/80 rounded-xl p-4 border border-amber-100 space-y-2">
+                <p className="text-xs text-slate-500 font-queensides">Wallet Address</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-700 break-all">
+                    {communityBtcAddress}
+                  </code>
+                  <button
+                    onClick={copyBtcAddress}
+                    className="shrink-0 p-2 hover:bg-amber-100 rounded-lg transition-colors"
+                    title="Copy address"
+                  >
+                    {btcCopied ? (
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Copy className="w-5 h-5 text-amber-600" />
+                    )}
+                  </button>
+                </div>
+              </div>
 
-                    <div className="col-span-2">
-                      <Label className="font-queensides">Description</Label>
-                      <Textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Tell us about your masjid..."
-                        className="font-queensides"
-                        rows={3}
-                      />
-                    </div>
+              {/* Info */}
+              <div className="mt-4 bg-amber-100/50 rounded-xl p-3 border border-amber-200">
+                <p className="text-xs text-amber-800 font-queensides text-center">
+                  💝 10% of all purchases are automatically sent to this wallet
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
-                    <div className="col-span-2">
-                      <Label className="font-queensides">Address *</Label>
-                      <Input
-                        value={formData.address}
-                        onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                        placeholder="123 Main Street"
-                        className="font-queensides"
-                      />
-                    </div>
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="overview" className="font-queensides">
+              <Building className="w-4 h-4 mr-2" />
+              Masjids
+            </TabsTrigger>
+            <TabsTrigger value="apply" className="font-queensides">
+              <Plus className="w-4 h-4 mr-2" />
+              Apply
+            </TabsTrigger>
+          </TabsList>
 
-                    <div>
-                      <Label className="font-queensides">City *</Label>
-                      <Input
-                        value={formData.city}
-                        onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                        placeholder="City"
-                        className="font-queensides"
-                      />
-                    </div>
+          {/* Masjids List */}
+          <TabsContent value="overview">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-800 font-queensides">
+                  Vote for Donations
+                </h2>
+                <p className="text-sm text-slate-500 font-queensides">
+                  {masjids.length} masjids
+                </p>
+              </div>
 
-                    <div>
-                      <Label className="font-queensides">State *</Label>
-                      <Input
-                        value={formData.state}
-                        onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                        placeholder="State"
-                        className="font-queensides"
-                      />
-                    </div>
+              {masjids.length === 0 ? (
+                <ArabicEmptyStateCard icon={<Building className="w-12 h-12" />}>
+                  <ArabicEmptyStateCardTitle>No masjids yet</ArabicEmptyStateCardTitle>
+                  <ArabicEmptyStateCardDescription>Be the first to apply!</ArabicEmptyStateCardDescription>
+                </ArabicEmptyStateCard>
+              ) : (
+                <div className="space-y-4">
+                  {masjids.map((masjid, index) => (
+                    <motion.div
+                      key={masjid.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <Card className={`overflow-hidden ${
+                        masjid.status === 'donated' 
+                          ? 'border-green-200 bg-green-50/50' 
+                          : votedMasjids.includes(masjid.id)
+                            ? 'border-emerald-200 bg-emerald-50/50'
+                            : ''
+                      }`}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="font-queensides text-lg">{masjid.name}</CardTitle>
+                              <CardDescription className="font-queensides flex items-center mt-1">
+                                <MapPin className="w-3 h-3 mr-1" />
+                                {masjid.city}, {masjid.state}
+                              </CardDescription>
+                            </div>
+                            <div className="text-right">
+                              {masjid.status === 'donated' ? (
+                                <Badge className="bg-green-100 text-green-700">
+                                  <Gift className="w-3 h-3 mr-1" />
+                                  Donated
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-emerald-600">
+                                  <TrendingUp className="w-3 h-3 mr-1" />
+                                  {masjid.vote_count} votes
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-slate-600 font-queensides mb-3">
+                            {masjid.description}
+                          </p>
+                          
+                          <div className="bg-slate-50 rounded-lg p-3 mb-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm text-slate-500 font-queensides">Requested</span>
+                              <span className="font-bold text-slate-800 font-queensides">
+                                {formatCurrency(masjid.requested_amount)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-queensides">
+                              Purpose: {masjid.donation_purpose}
+                            </p>
+                          </div>
 
-                    <div>
-                      <Label className="font-queensides">Country</Label>
-                      <Input
-                        value={formData.country}
-                        onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-                        className="font-queensides"
-                      />
-                    </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                            <div className="flex items-center space-x-2 text-slate-600">
+                              <User className="w-4 h-4" />
+                              <span className="font-queensides">Imam: {masjid.imam_name}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 text-slate-600">
+                              <Mail className="w-4 h-4" />
+                              <span className="font-queensides truncate">{masjid.email}</span>
+                            </div>
+                          </div>
 
-                    <div>
-                      <Label className="font-queensides">Requested Amount *</Label>
-                      <Input
-                        type="number"
-                        value={formData.requested_amount}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requested_amount: e.target.value }))}
-                        placeholder="5000"
-                        className="font-queensides"
-                      />
-                    </div>
+                          {masjid.status !== 'donated' && (
+                            <Button
+                              onClick={() => handleVote(masjid.id)}
+                              disabled={isLoading}
+                              className={`w-full font-queensides ${
+                                votedMasjids.includes(masjid.id)
+                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                  : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white'
+                              }`}
+                            >
+                              {isLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : votedMasjids.includes(masjid.id) ? (
+                                <>
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Voted
+                                </>
+                              ) : (
+                                <>
+                                  <ThumbsUp className="w-4 h-4 mr-2" />
+                                  Vote for this Masjid
+                                </>
+                              )}
+                            </Button>
+                          )}
 
-                    <div className="col-span-2">
-                      <Label className="font-queensides">Donation Purpose *</Label>
-                      <Textarea
-                        value={formData.donation_purpose}
-                        onChange={(e) => setFormData(prev => ({ ...prev, donation_purpose: e.target.value }))}
-                        placeholder="How will the donation be used?"
-                        className="font-queensides"
-                        rows={2}
-                      />
-                    </div>
+                          {masjid.status === 'donated' && (
+                            <div className="text-center text-green-600 font-queensides text-sm">
+                              <Gift className="w-4 h-4 inline mr-1" />
+                              {formatCurrency(masjid.amount_donated)} donated on {' '}
+                              {new Date(masjid.donation_date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
 
-                    <div className="col-span-2 border-t pt-4 mt-2">
-                      <p className="text-sm text-slate-500 font-queensides mb-3">Contact Information</p>
-                    </div>
-
-                    <div>
-                      <Label className="font-queensides">Imam Name *</Label>
-                      <Input
-                        value={formData.imam_name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, imam_name: e.target.value }))}
-                        placeholder="Imam Name"
-                        className="font-queensides"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="font-queensides">Email *</Label>
-                      <Input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="masjid@example.com"
-                        className="font-queensides"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="font-queensides">Phone *</Label>
-                      <Input
-                        value={formData.phone}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+1 (555) 123-4567"
-                        className="font-queensides"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="font-queensides">Website</Label>
-                      <Input
-                        value={formData.website}
-                        onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                        placeholder="https://..."
-                        className="font-queensides"
-                      />
-                    </div>
+          {/* Apply Tab */}
+          <TabsContent value="apply">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-queensides">Apply for Donation</CardTitle>
+                <CardDescription className="font-queensides">
+                  Submit your masjid for community funding consideration
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <Label className="font-queensides">Masjid Name *</Label>
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Islamic Center of..."
+                      className="font-queensides"
+                    />
                   </div>
 
-                  <Button
-                    onClick={handleApplySubmit}
-                    disabled={isLoading || !formData.name || !formData.address || !formData.email}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 font-queensides"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Building className="w-4 h-4 mr-2" />
-                        Submit Application
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+                  <div className="col-span-2">
+                    <Label className="font-queensides">Description</Label>
+                    <Textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Tell us about your masjid..."
+                      className="font-queensides"
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Label className="font-queensides">Address *</Label>
+                    <Input
+                      value={formData.address}
+                      onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                      placeholder="123 Main Street"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">City *</Label>
+                    <Input
+                      value={formData.city}
+                      onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                      placeholder="City"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">State *</Label>
+                    <Input
+                      value={formData.state}
+                      onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                      placeholder="State"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">Country</Label>
+                    <Input
+                      value={formData.country}
+                      onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">Requested Amount *</Label>
+                    <Input
+                      type="number"
+                      value={formData.requested_amount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, requested_amount: e.target.value }))}
+                      placeholder="5000"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Label className="font-queensides">Donation Purpose *</Label>
+                    <Textarea
+                      value={formData.donation_purpose}
+                      onChange={(e) => setFormData(prev => ({ ...prev, donation_purpose: e.target.value }))}
+                      placeholder="How will the donation be used?"
+                      className="font-queensides"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="col-span-2 border-t pt-4 mt-2">
+                    <p className="text-sm text-slate-500 font-queensides mb-3">Contact Information</p>
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">Imam Name *</Label>
+                    <Input
+                      value={formData.imam_name}
+                      onChange={(e) => setFormData(prev => ({ ...prev, imam_name: e.target.value }))}
+                      placeholder="Imam Name"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">Email *</Label>
+                    <Input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="masjid@example.com"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">Phone *</Label>
+                    <Input
+                      value={formData.phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="+1 (555) 123-4567"
+                      className="font-queensides"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-queensides">Website</Label>
+                    <Input
+                      value={formData.website}
+                      onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
+                      placeholder="https://..."
+                      className="font-queensides"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleApplySubmit}
+                  disabled={isLoading || !formData.name || !formData.address || !formData.email}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 font-queensides"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Building className="w-4 h-4 mr-2" />
+                      Submit Application
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

@@ -16,6 +16,7 @@ import { getViewsProducts, getLeadsProducts, getSubscriptionPlans } from "@/lib/
 import type { AdminSettings } from "@/lib/products"
 import { BitcoinPayment } from "./bitcoin-payment"
 import { MahrPurseWallet } from "./mahr-purse-wallet"
+import { WithdrawModal } from "./withdraw-modal"
 import { 
   ArrowLeft, 
   Crown, 
@@ -128,6 +129,12 @@ export default function WalletView() {
   const [showMahrPurseModal, setShowMahrPurseModal] = useState(false)
   const [btcCopied, setBtcCopied] = useState(false)
   const [isGeneratingBtc, setIsGeneratingBtc] = useState(false)
+  
+  // Withdraw modal state
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false)
+  const [withdrawWalletType, setWithdrawWalletType] = useState<"main" | "mahr" | "purse">("main")
+  const [withdrawBalance, setWithdrawBalance] = useState(0)
+  const [withdrawAddress, setWithdrawAddress] = useState("")
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -450,6 +457,21 @@ export default function WalletView() {
     }
   }
 
+  const handleOpenWithdraw = (walletType: "main" | "mahr" | "purse", balance: number, address: string) => {
+    setWithdrawWalletType(walletType)
+    setWithdrawBalance(balance)
+    setWithdrawAddress(address)
+    setShowWithdrawModal(true)
+  }
+
+  const handleWithdrawSuccess = async () => {
+    // Refresh wallet data
+    await Promise.all([
+      fetchProfile(),
+      fetchPaymentHistory(),
+    ])
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen relative">
@@ -635,10 +657,7 @@ export default function WalletView() {
               {btcBalance > 0 && (
                 <Button
                   className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-queensides"
-                  onClick={() => toast({
-                    title: "Withdrawal Coming Soon",
-                    description: "BTC withdrawal feature is currently in development",
-                  })}
+                  onClick={() => handleOpenWithdraw('main', btcBalance, btcAddress || '')}
                 >
                   <ArrowUpRight className="w-4 h-4 mr-2" />
                   Withdraw BTC
@@ -778,6 +797,21 @@ export default function WalletView() {
                     >
                       View Full Details
                     </Button>
+
+                    {/* Withdraw Button (only if unlocked) */}
+                    {getTimeUntilUnlock(userGender === 'male' ? mahrData?.unlockDate : purseData?.unlockDate) === "Unlocked" && (
+                      <Button
+                        onClick={() => handleOpenWithdraw(
+                          userGender === 'male' ? 'mahr' : 'purse',
+                          userGender === 'male' ? mahrData?.balanceSatoshis || 0 : purseData?.balanceSatoshis || 0,
+                          userGender === 'male' ? mahrData?.address : purseData?.address
+                        )}
+                        className={`w-full bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} text-white font-queensides`}
+                      >
+                        <ArrowUpRight className="w-4 h-4 mr-2" />
+                        Withdraw Funds
+                      </Button>
+                    )}
                   </>
                 )}
               </CardContent>
@@ -1449,6 +1483,35 @@ export default function WalletView() {
                 amountUSD={bitcoinPaymentAmount}
                 description={bitcoinPaymentDescription}
                 onSuccess={() => setShowBitcoinPayment(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Withdraw Modal */}
+      <AnimatePresence>
+        {showWithdrawModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowWithdrawModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <WithdrawModal
+                userId={userId || ''}
+                walletType={withdrawWalletType}
+                balanceSatoshis={withdrawBalance}
+                address={withdrawAddress}
+                onSuccess={handleWithdrawSuccess}
+                onClose={() => setShowWithdrawModal(false)}
               />
             </motion.div>
           </motion.div>
