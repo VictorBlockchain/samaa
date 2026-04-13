@@ -1555,6 +1555,15 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {profile.gender === 'female' && mahrPurseData && (isOwnProfile || hasActiveSubscription) && (
           <div className="px-6 py-8 max-w-4xl mx-auto">
+            <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                <Star className="w-4 h-4 text-pink-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+                <Moon className="w-4 h-4 text-purple-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+                <Sparkles className="w-4 h-4 text-blue-300" />
+              </div>
+            </div>
             <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl p-6 border-2 border-purple-200">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
@@ -1640,6 +1649,15 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {profile.gender === 'male' && mahrPurseData && (isOwnProfile || hasActiveSubscription) && (
           <div className="px-6 py-8 max-w-4xl mx-auto">
+          <div className="flex items-center justify-center mb-8">
+              <div className="flex items-center space-x-4">
+                <Star className="w-4 h-4 text-pink-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-pink-300 to-transparent" />
+                <Moon className="w-4 h-4 text-purple-300" />
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-purple-300 to-transparent" />
+                <Sparkles className="w-4 h-4 text-blue-300" />
+              </div>
+            </div>
             <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl p-6 border-2 border-pink-200">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-rose-600 rounded-xl flex items-center justify-center">
@@ -1724,7 +1742,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
         )}
 
         {/* Islamic Quote */}
-        <div className="px-6 py-20 max-w-4xl mx-auto">
+        <div className="px-6  max-w-4xl mx-auto mb-10">
           <div className="text-center">
             <div className="flex items-center justify-center mb-8">
               <div className="flex items-center space-x-4">
