@@ -3,7 +3,9 @@
  * Generate and encrypt Admin & Community Bitcoin private keys
  * 
  * Usage:
- *   tsx scripts/generate-bitcoin-keys.ts
+ *   tsx scripts/generate-bitcoin-keys.ts              # Uses NODE_ENV from .env.local
+ *   NODE_ENV=production tsx scripts/generate-bitcoin-keys.ts  # Force mainnet
+ *   NODE_ENV=development tsx scripts/generate-bitcoin-keys.ts # Force testnet
  * 
  * This will output:
  * - Generated private keys (WIF format)
@@ -15,6 +17,10 @@
  * - .env.local: COMMUNITY_PRIVATE_KEY_ENCRYPTED
  * - Database admin_settings: admin_master_private_key_encrypted
  * - Database admin_settings: community_private_key_encrypted
+ * 
+ * ⚠️  NETWORK SELECTION:
+ * - NODE_ENV=development → Testnet (addresses start with 'tb1')
+ * - NODE_ENV=production  → Mainnet (addresses start with 'bc1')
  */
 
 import * as dotenv from 'dotenv'
@@ -24,7 +30,14 @@ import { encrypt } from '../lib/encryption'
 // Load environment variables
 dotenv.config({ path: '.env.local' })
 
-console.log('🔐 Bitcoin Key Generator for Admin & Community Wallets\n')
+// Determine network
+const network = process.env.NODE_ENV === 'production' ? 'MAINNET' : 'TESTNET'
+const networkWarning = network === 'MAINNET' 
+  ? '🚨 REAL BITCOIN - USE WITH CAUTION!'
+  : '🧪 Test Bitcoin - Safe for testing'
+
+console.log(`🔐 Bitcoin Key Generator for Admin & Community Wallets`)
+console.log(`🌐 Network: ${network} ${networkWarning}\n`)
 console.log('=' .repeat(80))
 
 // Generate Admin Master Key (index 0)
@@ -83,7 +96,18 @@ console.log('3. Never share the unencrypted private keys.')
 console.log('4. Only the ENCRYPTED keys should be stored in the database.')
 console.log('5. Keep your ENCRYPTION_KEY secure (.env.local).')
 console.log('6. Back up the private keys offline (paper wallet, hardware wallet).')
-console.log('7. Test on testnet first before using on mainnet!')
+
+if (network === 'MAINNET') {
+  console.log('7. 🚨 THIS IS MAINNET - REAL BITCOIN WITH REAL VALUE!')
+  console.log('8. Double-check addresses before sending funds.')
+  console.log('9. Start with a small test transaction first.')
+  console.log('10. Consider using a hardware wallet for extra security.')
+} else {
+  console.log('7. This is TESTNET - use testnet faucets to get test BTC.')
+  console.log('8. Faucet: https://testnet-faucet.mempool.co/')
+  console.log('9. Test thoroughly before switching to mainnet!')
+}
+
 console.log('=' .repeat(80))
 
 // Test decryption
