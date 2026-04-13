@@ -25,8 +25,8 @@ export function generateUserKeypair(index: number): {
   index: number
 } {
   try {
-    // Generate random keypair
-    const keyPair = bitcoin.ECPair.makeRandom({ network })
+    // Generate random keypair using ECPair
+    const keyPair = ECPair.makeRandom({ network })
     const { address } = bitcoin.payments.p2wpkh({
       pubkey: keyPair.publicKey,
       network,
@@ -43,7 +43,7 @@ export function generateUserKeypair(index: number): {
     return {
       address,
       privateKeyEncrypted,
-      publicKey: keyPair.publicKey.toString('hex'),
+      publicKey: Buffer.from(keyPair.publicKey).toString('hex'),
       index,
     }
   } catch (error) {
