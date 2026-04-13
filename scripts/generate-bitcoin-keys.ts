@@ -71,7 +71,7 @@ console.log(`\nUPDATE admin_settings SET`)
 console.log(`  admin_master_private_key_encrypted = '${adminEncryptedKey}',`)
 console.log(`  community_private_key_encrypted = '${communityEncryptedKey}',`)
 console.log(`  admin_payout_address = 'BC1QMV3U6WHG45ATGU9W525ZGJTQPWVS4VKM77T9C4'`)
-console.log(`WHERE id = 1;`)
+console.log(`WHERE id = (SELECT id FROM admin_settings LIMIT 1);`)
 console.log('\n' + '=' .repeat(80))
 
 // Security warning
