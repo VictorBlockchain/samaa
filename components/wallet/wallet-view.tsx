@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase"
 import { getViewsProducts, getLeadsProducts, getSubscriptionPlans } from "@/lib/products"
 import type { AdminSettings } from "@/lib/products"
+import { BitcoinPayment } from "./bitcoin-payment"
 import { 
   ArrowLeft, 
   Crown, 
@@ -26,7 +27,8 @@ import {
   MessageCircle,
   Heart,
   Tag,
-  Gift
+  Gift,
+  Bitcoin
 } from "lucide-react"
 
 interface PaymentRecord {
@@ -100,6 +102,12 @@ export default function WalletView() {
   // Promo code state
   const [promoCode, setPromoCode] = useState("")
   const [isRedeemingPromo, setIsRedeemingPromo] = useState(false)
+  
+  // Bitcoin payment modal state
+  const [showBitcoinPayment, setShowBitcoinPayment] = useState(false)
+  const [bitcoinPaymentType, setBitcoinPaymentType] = useState<"subscription" | "views" | "leads">("subscription")
+  const [bitcoinPaymentAmount, setBitcoinPaymentAmount] = useState(0)
+  const [bitcoinPaymentDescription, setBitcoinPaymentDescription] = useState("")
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -198,32 +206,15 @@ export default function WalletView() {
       return
     }
 
-    setIsLoading(true)
-    
-    try {
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          userEmail: user.email,
-          type: 'views',
-          productId,
-        }),
-      })
+    // Find the product
+    const product = viewsProducts.find(p => p.id === productId)
+    if (!product) return
 
-      const data = await response.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error('Failed to create checkout session')
-      }
-    } catch (error) {
-      console.error('Error purchasing views:', error)
-    } finally {
-      setIsLoading(false)
-    }
+    // Open Bitcoin payment modal
+    setBitcoinPaymentType('views')
+    setBitcoinPaymentAmount(product.price)
+    setBitcoinPaymentDescription(`${product.name} - ${product.views} views`)
+    setShowBitcoinPayment(true)
   }
 
   const handlePurchaseLeads = async (productId: string) => {
@@ -232,32 +223,15 @@ export default function WalletView() {
       return
     }
 
-    setIsLoading(true)
-    
-    try {
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          userEmail: user.email,
-          type: 'leads',
-          productId,
-        }),
-      })
+    // Find the product
+    const product = leadsProducts.find(p => p.id === productId)
+    if (!product) return
 
-      const data = await response.json()
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error('Failed to create checkout session')
-      }
-    } catch (error) {
-      console.error('Error purchasing leads:', error)
-    } finally {
-      setIsLoading(false)
-    }
+    // Open Bitcoin payment modal
+    setBitcoinPaymentType('leads')
+    setBitcoinPaymentAmount(product.price)
+    setBitcoinPaymentDescription(`${product.name} - ${product.leads} leads`)
+    setShowBitcoinPayment(true)
   }
 
   const handleSubscribe = async (planId: string) => {
@@ -266,37 +240,15 @@ export default function WalletView() {
       return
     }
 
-    setIsLoading(true)
-    
-    try {
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          userEmail: user.email,
-          type: 'subscription',
-          planId,
-        }),
-      })
+    // Find the plan
+    const plan = subscriptionPlans.find(p => p.id === planId)
+    if (!plan) return
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session')
-      }
-
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        throw new Error('No checkout URL returned')
-      }
-    } catch (error: any) {
-      console.error('Error subscribing:', error)
-      alert(`Subscription error: ${error.message}`)
-    } finally {
-      setIsLoading(false)
-    }
+    // Open Bitcoin payment modal
+    setBitcoinPaymentType('subscription')
+    setBitcoinPaymentAmount(plan.price)
+    setBitcoinPaymentDescription(`${plan.name} - ${plan.interval === 'month' ? 'Monthly' : 'Yearly'} subscription`)
+    setShowBitcoinPayment(true)
   }
 
   const handleSignOut = async () => {
@@ -890,6 +842,34 @@ export default function WalletView() {
           <br/><br/><br/><br/><br/><br/>
         </div>
       </div>
+
+      {/* Bitcoin Payment Modal */}
+      <AnimatePresence>
+        {showBitcoinPayment && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowBitcoinPayment(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <BitcoinPayment
+                userId={userId || ''}
+                paymentType={bitcoinPaymentType}
+                amountUSD={bitcoinPaymentAmount}
+                description={bitcoinPaymentDescription}
+                onSuccess={() => setShowBitcoinPayment(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
