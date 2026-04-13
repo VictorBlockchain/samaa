@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
 import { Button } from "@/components/ui/button"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,6 +15,7 @@ import { supabase } from "@/lib/supabase"
 import { getViewsProducts, getLeadsProducts, getSubscriptionPlans } from "@/lib/products"
 import type { AdminSettings } from "@/lib/products"
 import { BitcoinPayment } from "./bitcoin-payment"
+import { MahrPurseWallet } from "./mahr-purse-wallet"
 import { 
   ArrowLeft, 
   Crown, 
@@ -28,7 +31,13 @@ import {
   Heart,
   Tag,
   Gift,
-  Bitcoin
+  Bitcoin,
+  Wallet,
+  Copy,
+  ArrowUpRight,
+  Info,
+  Lock,
+  Unlock
 } from "lucide-react"
 
 interface PaymentRecord {
@@ -109,9 +118,21 @@ export default function WalletView() {
   const [bitcoinPaymentAmount, setBitcoinPaymentAmount] = useState(0)
   const [bitcoinPaymentDescription, setBitcoinPaymentDescription] = useState("")
   
+  // Bitcoin wallet state
+  const [btcBalance, setBtcBalance] = useState(0)
+  const [btcAddress, setBtcAddress] = useState<string | null>(null)
+  const [userGender, setUserGender] = useState<string | null>(null)
+  const [mahrData, setMahrData] = useState<any>(null)
+  const [purseData, setPurseData] = useState<any>(null)
+  const [showTimelockExplainer, setShowTimelockExplainer] = useState(false)
+  const [showMahrPurseModal, setShowMahrPurseModal] = useState(false)
+  const [btcCopied, setBtcCopied] = useState(false)
+  const [isGeneratingBtc, setIsGeneratingBtc] = useState(false)
+  
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, userId, isAuthenticated, signOut } = useAuth()
+  const { toast } = useToast()
 
   useEffect(() => {
     // Remove success/cancelled handling - now using dedicated success page
@@ -127,6 +148,7 @@ export default function WalletView() {
       fetchSubscription()
       fetchProfile()
       fetchProducts()
+      fetchBitcoinWallet()
     }
   }, [userId])
 
@@ -191,12 +213,33 @@ export default function WalletView() {
     
     const { data, error } = await supabase
       .from('users')
-      .select('available_views, available_leads')
+      .select('available_views, available_leads, gender, btc_balance_satoshis, btc_address, mahr_principle_address, mahr_balance_satoshis, mahr_unlock_date, mahr_is_active, purse_principle_address, purse_balance_satoshis, purse_unlock_date, purse_is_active')
       .eq('id', userId)
       .single()
 
     if (!error && data) {
-      setProfile(data)
+      setProfile({ available_views: data.available_views, available_leads: data.available_leads })
+      setBtcBalance(data.btc_balance_satoshis || 0)
+      setBtcAddress(data.btc_address || null)
+      setUserGender(data.gender || null)
+      
+      if (data.mahr_is_active) {
+        setMahrData({
+          address: data.mahr_principle_address,
+          balanceSatoshis: data.mahr_balance_satoshis || 0,
+          unlockDate: data.mahr_unlock_date,
+          isActive: data.mahr_is_active
+        })
+      }
+      
+      if (data.purse_is_active) {
+        setPurseData({
+          address: data.purse_principle_address,
+          balanceSatoshis: data.purse_balance_satoshis || 0,
+          unlockDate: data.purse_unlock_date,
+          isActive: data.purse_is_active
+        })
+      }
     }
   }
 
@@ -258,7 +301,11 @@ export default function WalletView() {
 
   const handleRedeemPromo = async () => {
     if (!promoCode.trim() || !userId) {
-      alert('Please enter a promo code')
+      toast({
+        title: "Missing Information",
+        description: "Please enter a promo code",
+        variant: "destructive",
+      })
       return
     }
 
@@ -276,11 +323,20 @@ export default function WalletView() {
       if (data.success) {
         // Success - show appropriate message based on type
         if (data.type === 'subscription') {
-          alert(`\u2728 Success! You received ${data.months} month(s) free subscription with ${data.views} views and ${data.leads} leads!`)
+          toast({
+            title: "✨ Promo Code Redeemed!",
+            description: `You received ${data.months} month(s) free subscription with ${data.views} views and ${data.leads} leads!`,
+          })
         } else if (data.type === 'views') {
-          alert(`\u2728 Success! You received ${data.amount} free views!`)
+          toast({
+            title: "✨ Promo Code Redeemed!",
+            description: `You received ${data.amount} free views!`,
+          })
         } else if (data.type === 'leads') {
-          alert(`\u2728 Success! You received ${data.amount} free leads!`)
+          toast({
+            title: "✨ Promo Code Redeemed!",
+            description: `You received ${data.amount} free leads!`,
+          })
         }
         
         setPromoCode('')
@@ -292,11 +348,19 @@ export default function WalletView() {
           fetchProfile(),
         ])
       } else {
-        alert(data.error || 'Failed to redeem promo code')
+        toast({
+          title: "Redemption Failed",
+          description: data.error || 'Failed to redeem promo code',
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error('[promo] Error redeeming promo:', error)
-      alert('Failed to redeem promo code')
+      toast({
+        title: "Redemption Failed",
+        description: 'Failed to redeem promo code',
+        variant: "destructive",
+      })
     }
     
     setIsRedeemingPromo(false)
@@ -315,6 +379,75 @@ export default function WalletView() {
       style: 'currency',
       currency: currency.toUpperCase(),
     }).format(amount)
+  }
+
+  const formatBtc = (satoshis: number) => {
+    const btc = satoshis / 100000000
+    return btc.toFixed(8)
+  }
+
+  const copyBtcAddress = () => {
+    if (!btcAddress) return
+    navigator.clipboard.writeText(btcAddress)
+    setBtcCopied(true)
+    setTimeout(() => setBtcCopied(false), 2000)
+  }
+
+  const getTimeUntilUnlock = (unlockDate: string) => {
+    const unlock = new Date(unlockDate)
+    const now = new Date()
+    const diff = unlock.getTime() - now.getTime()
+
+    if (diff <= 0) return "Unlocked"
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+    if (days > 0) return `${days}d ${hours}h`
+    return `${hours}h`
+  }
+
+  const fetchBitcoinWallet = async () => {
+    // Data is fetched in fetchProfile now
+  }
+
+  const handleGenerateBtcAddress = async () => {
+    if (!userId) return
+    
+    setIsGeneratingBtc(true)
+    
+    try {
+      const response = await fetch('/api/bitcoin/generate-address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setBtcAddress(result.data.address)
+        toast({
+          title: "✅ Bitcoin Address Generated",
+          description: "Your Bitcoin wallet address has been created successfully",
+        })
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: result.error || 'Failed to generate Bitcoin address',
+          variant: "destructive",
+        })
+      }
+    } catch (error: any) {
+      console.error('[wallet] Error generating BTC address:', error)
+      toast({
+        title: "Generation Failed",
+        description: error.message || 'Failed to generate Bitcoin address',
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingBtc(false)
+    }
   }
 
   if (!isAuthenticated) {
@@ -418,8 +551,242 @@ export default function WalletView() {
           </div>
         </div>
 
+        {/* Bitcoin Wallet Section */}
+        <div className="p-4 space-y-4">
+          {/* Main Bitcoin Wallet */}
+          <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl flex items-center justify-center">
+                    <Bitcoin className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-queensides">Bitcoin Wallet</CardTitle>
+                    <CardDescription className="font-queensides">Your BTC balance & address</CardDescription>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Balance */}
+              <div className="bg-white/80 rounded-xl p-4 border border-amber-100">
+                <div className="text-center">
+                  <p className="text-sm text-slate-600 font-queensides mb-1">Available Balance</p>
+                  <p className="text-3xl font-bold font-mono text-slate-800">
+                    {formatBtc(btcBalance)} BTC
+                  </p>
+                  <p className="text-sm text-slate-500 font-queensides mt-1">
+                    {btcBalance.toLocaleString()} satoshis
+                  </p>
+                </div>
+              </div>
+
+              {/* Address */}
+              {btcAddress ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 font-queensides">
+                    Wallet Address
+                  </label>
+                  <div className="flex gap-2">
+                    <code className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-2 text-xs font-mono break-all">
+                      {btcAddress}
+                    </code>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={copyBtcAddress}
+                      className="shrink-0 bg-white"
+                    >
+                      {btcCopied ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-slate-600 font-queensides mb-3">
+                    No Bitcoin address generated yet
+                  </p>
+                  <Button
+                    onClick={handleGenerateBtcAddress}
+                    disabled={isGeneratingBtc}
+                    className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-queensides"
+                  >
+                    {isGeneratingBtc ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Bitcoin className="w-4 h-4 mr-2" />
+                        Generate Bitcoin Address
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* Withdraw Button */}
+              {btcBalance > 0 && (
+                <Button
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-queensides"
+                  onClick={() => toast({
+                    title: "Withdrawal Coming Soon",
+                    description: "BTC withdrawal feature is currently in development",
+                  })}
+                >
+                  <ArrowUpRight className="w-4 h-4 mr-2" />
+                  Withdraw BTC
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Mahr/Purse Wallet Section */}
+          {userGender && (
+            <Card className="border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-10 h-10 bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} rounded-xl flex items-center justify-center`}>
+                      {userGender === 'male' ? <Heart className="w-6 h-6 text-white" /> : <Wallet className="w-6 h-6 text-white" />}
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-queensides">
+                        {userGender === 'male' ? 'Mahr Wallet' : 'Purse Wallet'}
+                      </CardTitle>
+                      <CardDescription className="font-queensides">
+                        Timelocked commitment wallet
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowTimelockExplainer(true)}
+                    className="shrink-0"
+                  >
+                    <Info className="w-5 h-5 text-indigo-600" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(!mahrData && userGender === 'male') || (!purseData && userGender === 'female') ? (
+                  // No wallet created yet
+                  <div className="text-center py-6">
+                    <div className={`w-16 h-16 bg-gradient-to-r ${userGender === 'male' ? 'from-pink-100 to-rose-100' : 'from-purple-100 to-indigo-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+                      <Lock className={`w-8 h-8 ${userGender === 'male' ? 'text-pink-600' : 'text-purple-600'}`} />
+                    </div>
+                    <h4 className="font-medium text-slate-800 font-queensides mb-2">
+                      No {userGender === 'male' ? 'Mahr' : 'Purse'} Wallet Yet
+                    </h4>
+                    <p className="text-sm text-slate-600 font-queensides mb-4">
+                      {userGender === 'male' 
+                        ? 'Create a Mahr wallet to show your marriage commitment'
+                        : 'Create a Purse wallet to demonstrate financial independence'}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => setShowTimelockExplainer(true)}
+                        variant="outline"
+                        className="flex-1 font-queensides"
+                      >
+                        <Info className="w-4 h-4 mr-2" />
+                        Learn More
+                      </Button>
+                      <Button
+                        onClick={() => setShowMahrPurseModal(true)}
+                        className={`flex-1 bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} text-white font-queensides`}
+                      >
+                        <Lock className="w-4 h-4 mr-2" />
+                        Create Wallet
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Wallet exists
+                  <>
+                    {/* Balance & Status */}
+                    <div className={`bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} rounded-xl p-4 text-white`}>
+                      <div className="text-center">
+                        <p className="text-sm opacity-90 font-queensides mb-1">Balance</p>
+                        <p className="text-3xl font-bold font-mono">
+                          {formatBtc(userGender === 'male' ? mahrData?.balanceSatoshis || 0 : purseData?.balanceSatoshis || 0)} BTC
+                        </p>
+                        <p className="text-sm opacity-75 mt-1">
+                          {(userGender === 'male' ? mahrData?.balanceSatoshis || 0 : purseData?.balanceSatoshis || 0).toLocaleString()} satoshis
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Address & Unlock Info */}
+                    <div className="bg-white/80 rounded-xl p-4 border border-indigo-100 space-y-3">
+                      <div>
+                        <p className="text-xs text-slate-500 font-queensides mb-1">Wallet Address</p>
+                        <div className="flex items-center gap-2">
+                          <Lock className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <code className="flex-1 text-xs font-mono text-slate-700 break-all">
+                            {userGender === 'male' ? mahrData?.address : purseData?.address}
+                          </code>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                              const addr = userGender === 'male' ? mahrData?.address : purseData?.address
+                              if (addr) navigator.clipboard.writeText(addr)
+                            }}
+                            className="shrink-0"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-2 border-t border-indigo-100">
+                        <div>
+                          <p className="text-xs text-slate-500 font-queensides">Unlock Date</p>
+                          <p className="text-sm font-medium text-slate-800 font-queensides">
+                            {new Date(userGender === 'male' ? mahrData?.unlockDate : purseData?.unlockDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 font-queensides">Status</p>
+                          <Badge className={
+                            getTimeUntilUnlock(userGender === 'male' ? mahrData?.unlockDate : purseData?.unlockDate) === "Unlocked"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-amber-100 text-amber-700"
+                          }>
+                            {getTimeUntilUnlock(userGender === 'male' ? mahrData?.unlockDate : purseData?.unlockDate) === "Unlocked" ? (
+                              <><Unlock className="w-3 h-3 mr-1" /> Unlocked</>
+                            ) : (
+                              <><Lock className="w-3 h-3 mr-1" /> {getTimeUntilUnlock(userGender === 'male' ? mahrData?.unlockDate : purseData?.unlockDate)}</>
+                            )}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      onClick={() => setShowMahrPurseModal(true)}
+                      variant="outline"
+                      className="w-full font-queensides"
+                    >
+                      View Full Details
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
         {/* Tabs */}
-        <div className="p-4">
+        <div className="p-4 pt-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4 mb-6">
               <TabsTrigger value="subscription" className="font-queensides text-xs sm:text-sm">
@@ -839,9 +1206,226 @@ export default function WalletView() {
               </motion.div>
             </TabsContent>
           </Tabs>
-          <br/><br/><br/><br/><br/><br/>
         </div>
       </div>
+
+      <Toaster />
+
+      {/* Timelock Explainer Modal */}
+      <AnimatePresence>
+        {showTimelockExplainer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowTimelockExplainer(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6">
+                {/* Header */}
+                <div className="text-center mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Lock className="w-10 h-10 text-white" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800 font-queensides mb-2">
+                    Timelocked Bitcoin Wallets
+                  </h2>
+                  <p className="text-slate-600 font-queensides">
+                    A revolutionary approach to commitment signals
+                  </p>
+                </div>
+
+                {/* What is it */}
+                <div className="space-y-4 mb-6">
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
+                    <h3 className="font-bold text-slate-800 font-queensides mb-2 flex items-center gap-2">
+                      <Info className="w-5 h-5 text-indigo-600" />
+                      What is a Timelocked Wallet?
+                    </h3>
+                    <p className="text-sm text-slate-700 font-queensides leading-relaxed">
+                      A Bitcoin timelocked wallet uses smart contracts to lock funds until a specific future date. 
+                      Once created, <strong>nobody</strong> can access the funds before the unlock date - not even you. 
+                      This creates a verifiable, tamper-proof commitment signal.
+                    </p>
+                  </div>
+
+                  {/* How it works */}
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <h3 className="font-bold text-slate-800 font-queensides mb-3">How It Works</h3>
+                    <div className="space-y-3">
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
+                          <span className="text-sm font-bold text-indigo-600">1</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800 font-queensides text-sm">Choose Unlock Date</p>
+                          <p className="text-xs text-slate-600 font-queensides">Select when you want the funds to become accessible</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
+                          <span className="text-sm font-bold text-indigo-600">2</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800 font-queensides text-sm">Send Bitcoin</p>
+                          <p className="text-xs text-slate-600 font-queensides">Fund your wallet by sending BTC to the timelocked address</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shrink-0">
+                          <span className="text-sm font-bold text-indigo-600">3</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800 font-queensides text-sm">Automatic Unlock</p>
+                          <p className="text-xs text-slate-600 font-queensides">On the unlock date, Bitcoin's protocol automatically releases the funds</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Why it matters */}
+                  <div className={`${userGender === 'male' ? 'bg-pink-50 border-pink-100' : 'bg-purple-50 border-purple-100'} rounded-xl p-4 border`}>
+                    <h3 className="font-bold text-slate-800 font-queensides mb-2 flex items-center gap-2">
+                      {userGender === 'male' ? (
+                        <><Heart className="w-5 h-5 text-pink-600" /> Why Mahr?</>
+                      ) : (
+                        <><Wallet className="w-5 h-5 text-purple-600" /> Why Purse?</>
+                      )}
+                    </h3>
+                    {userGender === 'male' ? (
+                      <ul className="space-y-2 text-sm text-slate-700 font-queensides">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-pink-600 mt-0.5 shrink-0" />
+                          <span>Show serious marriage intentions</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-pink-600 mt-0.5 shrink-0" />
+                          <span>Demonstrate financial readiness</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-pink-600 mt-0.5 shrink-0" />
+                          <span>Visible commitment badge on your profile</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-pink-600 mt-0.5 shrink-0" />
+                          <span>Stand out to potential matches</span>
+                        </li>
+                      </ul>
+                    ) : (
+                      <ul className="space-y-2 text-sm text-slate-700 font-queensides">
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                          <span>Show financial independence</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                          <span>Demonstrate planning & foresight</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                          <span>Attract serious, committed suitors</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                          <span>Build trust through transparency</span>
+                        </li>
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Security */}
+                  <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                    <h3 className="font-bold text-slate-800 font-queensides mb-2 flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      Security & Trust
+                    </h3>
+                    <ul className="space-y-2 text-sm text-slate-700 font-queensides">
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <span>Secured by Bitcoin's blockchain technology</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <span>No third-party custody required</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <span>Mathematically enforced timelocks</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                        <span>Verifiable by anyone on the blockchain</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* CTA */}
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => {
+                      setShowTimelockExplainer(false)
+                      setShowMahrPurseModal(true)
+                    }}
+                    className={`w-full bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} text-white font-queensides text-lg py-6`}
+                  >
+                    <Lock className="w-5 h-5 mr-2" />
+                    Create Your {userGender === 'male' ? 'Mahr' : 'Purse'} Wallet
+                  </Button>
+                  <Button
+                    onClick={() => setShowTimelockExplainer(false)}
+                    variant="outline"
+                    className="w-full font-queensides"
+                  >
+                    Maybe Later
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mahr/Purse Wallet Modal */}
+      <AnimatePresence>
+        {showMahrPurseModal && userGender && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowMahrPurseModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-[90vh] overflow-y-auto"
+            >
+              <MahrPurseWallet
+                userId={userId || ''}
+                userGender={userGender}
+                userType={userGender === 'male' ? 'mahr' : 'purse'}
+              />
+              <Button
+                onClick={() => setShowMahrPurseModal(false)}
+                variant="outline"
+                className="w-full mt-4 bg-white font-queensides"
+              >
+                Close
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bitcoin Payment Modal */}
       <AnimatePresence>
@@ -870,6 +1454,7 @@ export default function WalletView() {
           </motion.div>
         )}
       </AnimatePresence>
+      <br/><br/><br/><br/><br/>
     </div>
   )
 }

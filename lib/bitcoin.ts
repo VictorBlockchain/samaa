@@ -1,6 +1,7 @@
 import * as bitcoin from 'bitcoinjs-lib'
 import * as ecc from 'tiny-secp256k1'
 import { BIP32Factory } from 'bip32'
+import bs58check from 'bs58check'
 
 // Initialize BIP32 with ECC library
 const bip32 = BIP32Factory(ecc)
@@ -18,7 +19,21 @@ const network = process.env.NODE_ENV === 'production'
  */
 export function deriveAddress(xpub: string, index: number): string {
   try {
-    const node = bip32.fromBase58(xpub, network)
+    // Convert zpub to vpub for testnet if needed
+    let convertedXpub = xpub
+    if (network === bitcoin.networks.testnet && xpub.startsWith('zpub')) {
+      // zpub (mainnet) -> vpub (testnet) conversion
+      const decoded = bs58check.decode(xpub)
+      // Replace version bytes: zpub (0x04b24746) -> vpub (0x045f1cf6)
+      decoded[0] = 0x04
+      decoded[1] = 0x5f
+      decoded[2] = 0x1c
+      decoded[3] = 0xf6
+      convertedXpub = bs58check.encode(decoded)
+      console.log('[bitcoin] Converted zpub to vpub for testnet')
+    }
+
+    const node = bip32.fromBase58(convertedXpub, network)
     
     // Derive path: m/0/index for legacy or m/84'/0'/0'/0/index for native SegWit
     // Using simple m/0/index for compatibility

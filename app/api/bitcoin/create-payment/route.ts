@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { deriveAddress, fetchBTCPrice, usdToSatoshis, generateBitcoinURI } from '@/lib/bitcoin'
+import { generateUserKeypair } from '@/lib/bitcoin-split'
+import { fetchBTCPrice, usdToSatoshis, generateBitcoinURI } from '@/lib/bitcoin'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
     // Get or create Bitcoin address for user
     let addressIndex: number
     let bitcoinAddress: string
+    let privateKeyEncrypted: string | undefined
 
     // Check if user has a pending payment (reuse address)
     const { data: pendingPayment } = await supabaseAdmin
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
       bitcoinAddress = pendingPayment.bitcoin_address
       console.log(`[bitcoin-payment] Reusing pending address: ${bitcoinAddress}`)
     } else {
-      // Generate new address
+      // Generate new random keypair for user
       const { data: userData } = await supabaseAdmin
         .from('users')
         .select('last_btc_address_index')
@@ -68,13 +70,19 @@ export async function POST(request: NextRequest) {
         .single()
 
       addressIndex = (userData?.last_btc_address_index || 0) + 1
-      bitcoinAddress = deriveAddress(process.env.XPUB_KEY!, addressIndex)
+      const keypair = generateUserKeypair(addressIndex)
+      bitcoinAddress = keypair.address
+      privateKeyEncrypted = keypair.privateKeyEncrypted
       console.log(`[bitcoin-payment] Generated new address: ${bitcoinAddress} (index: ${addressIndex})`)
 
-      // Update user's address index
+      // Update user's address index and store encrypted private key
       await supabaseAdmin
         .from('users')
-        .update({ last_btc_address_index: addressIndex })
+        .update({ 
+          last_btc_address_index: addressIndex,
+          btc_address: bitcoinAddress,
+          btc_private_key_encrypted: privateKeyEncrypted,
+        })
         .eq('id', userId)
     }
 

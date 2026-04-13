@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { QRCodeSVG } from "qrcode.react"
 import { Button } from "@/components/ui/button"
@@ -170,7 +170,7 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
         <Card className="border-2 border-indigo-200">
           <CardHeader className="text-center">
             <div className={`w-16 h-16 bg-gradient-to-r ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
-              {icon({ className: "w-8 h-8 text-white" })}
+              {React.createElement(icon, { className: "w-8 h-8 text-white" })}
             </div>
             <CardTitle className="text-2xl font-queensides">{title}</CardTitle>
             <CardDescription className="font-queensides">{description}</CardDescription>
@@ -282,7 +282,7 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
       <Card className="border-2 border-indigo-200">
         <CardHeader className="text-center">
           <div className={`w-16 h-16 bg-gradient-to-r ${color} rounded-full flex items-center justify-center mx-auto mb-4`}>
-            {icon({ className: "w-8 h-8 text-white" })}
+            {React.createElement(icon, { className: "w-8 h-8 text-white" })}
           </div>
           <CardTitle className="text-2xl font-queensides">{title}</CardTitle>
           <Badge className={isUnlocked ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}>

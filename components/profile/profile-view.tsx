@@ -33,6 +33,12 @@ import {
   Volume2,
   Users,
   Send,
+  Bitcoin,
+  Wallet,
+  Lock,
+  Unlock,
+  Copy,
+  Crown,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { useRouter } from "next/navigation"
@@ -515,11 +521,45 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
   const [leadMessage, setLeadMessage] = useState('')
   const [isSendingLead, setIsSendingLead] = useState(false)
   const [viewerGender, setViewerGender] = useState<string | null>(null)
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false)
+  const [mahrPurseData, setMahrPurseData] = useState<{
+    address: string
+    balanceSatoshis: number
+    unlockDate: string
+    isActive: boolean
+  } | null>(null)
+  const [copiedAddress, setCopiedAddress] = useState(false)
 
   // Helper function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  // Helper function to format BTC balance
+  const formatBtc = (satoshis: number) => {
+    const btc = satoshis / 100000000
+    return btc.toFixed(8)
+  }
+
+  // Helper function to calculate time until unlock
+  const getTimeUntilUnlock = (unlockDate: string) => {
+    const unlock = new Date(unlockDate)
+    const now = new Date()
+    const diff = unlock.getTime() - now.getTime()
+
+    if (diff <= 0) return "Unlocked"
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+    if (days > 0) return `${days} days ${hours} hours`
+    return `${hours} hours`
+  }
+
+  // Check if unlock date has passed
+  const isUnlocked = (unlockDate: string) => {
+    return new Date(unlockDate) <= new Date()
   }
 
   useEffect(() => {
@@ -540,7 +580,22 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           console.error('Error fetching viewer gender:', error)
         }
       }
+      // Check if viewer has active subscription
+      const checkSubscription = async () => {
+        try {
+          const { data } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .maybeSingle()
+          setHasActiveSubscription(!!data)
+        } catch (error) {
+          console.error('Error checking subscription:', error)
+        }
+      }
       fetchViewerGender()
+      checkSubscription()
     }
     loadProfile()
   }, [profileUserId, userId, isAuthenticated])
@@ -637,6 +692,20 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           availableLeads: (supabaseProfile as any).available_leads || 0,
           availableViews: (supabaseProfile as any).available_views || 0,
         })
+
+        // Fetch Mahr/Purse data if profile has it
+        const profileGender = supabaseProfile.gender
+        const mahrPurseType = profileGender === 'male' ? 'mahr' : 'purse'
+        const isActive = (supabaseProfile as any)[`${mahrPurseType}_is_active`]
+        
+        if (isActive) {
+          setMahrPurseData({
+            address: (supabaseProfile as any)[`${mahrPurseType}_principle_address`] || '',
+            balanceSatoshis: (supabaseProfile as any)[`${mahrPurseType}_balance_satoshis`] || 0,
+            unlockDate: (supabaseProfile as any)[`${mahrPurseType}_unlock_date`] || '',
+            isActive: true,
+          })
+        }
       }
     } catch (error) {
       console.error("Error loading profile:", error)
@@ -1482,6 +1551,176 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
 
         </>
+        )}
+
+        {profile.gender === 'female' && mahrPurseData && (isOwnProfile || hasActiveSubscription) && (
+          <div className="px-6 py-8 max-w-4xl mx-auto">
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl p-6 border-2 border-purple-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 font-queensides">Purse Wallet</h3>
+                  <p className="text-sm text-slate-600 font-queensides">Financial independence & planning</p>
+                </div>
+                {!isOwnProfile && (
+                  <Badge className="ml-auto bg-purple-100 text-purple-700">
+                    <Crown className="w-3 h-3 mr-1" />
+                    Premium
+                  </Badge>
+                )}
+              </div>
+
+              {/* Balance */}
+              <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-2xl p-4 text-white mb-4">
+                <div className="text-center">
+                  <p className="text-sm opacity-90 font-queensides mb-1">Balance</p>
+                  <p className="text-3xl font-bold font-mono">
+                    {formatBtc(mahrPurseData.balanceSatoshis)} BTC
+                  </p>
+                  <p className="text-sm opacity-75 mt-1">
+                    {mahrPurseData.balanceSatoshis.toLocaleString()} satoshis
+                  </p>
+                </div>
+              </div>
+
+              {/* Address & Unlock Info */}
+              <div className="bg-white/80 rounded-xl p-4 border border-purple-100 space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-queensides mb-1">Wallet Address</p>
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-purple-600 shrink-0" />
+                    <code className="flex-1 text-xs font-mono text-slate-700 break-all">
+                      {mahrPurseData.address}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(mahrPurseData.address)
+                        setCopiedAddress(true)
+                        setTimeout(() => setCopiedAddress(false), 2000)
+                      }}
+                      className="shrink-0 p-2 hover:bg-purple-50 rounded-lg transition-colors"
+                    >
+                      {copiedAddress ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-slate-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-3 border-t border-purple-100">
+                  <div>
+                    <p className="text-xs text-slate-500 font-queensides">Unlock Date</p>
+                    <p className="text-sm font-medium text-slate-800 font-queensides">
+                      {formatDate(mahrPurseData.unlockDate)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 font-queensides">Status</p>
+                    <Badge className={
+                      isUnlocked(mahrPurseData.unlockDate)
+                        ? "bg-green-100 text-green-700"
+                        : "bg-amber-100 text-amber-700"
+                    }>
+                      {isUnlocked(mahrPurseData.unlockDate) ? (
+                        <><Unlock className="w-3 h-3 mr-1" /> Unlocked</>
+                      ) : (
+                        <><Lock className="w-3 h-3 mr-1" /> {getTimeUntilUnlock(mahrPurseData.unlockDate)}</>
+                      )}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {profile.gender === 'male' && mahrPurseData && (isOwnProfile || hasActiveSubscription) && (
+          <div className="px-6 py-8 max-w-4xl mx-auto">
+            <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-3xl p-6 border-2 border-pink-200">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-rose-600 rounded-xl flex items-center justify-center">
+                  <Heart className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 font-queensides">Mahr Wallet</h3>
+                  <p className="text-sm text-slate-600 font-queensides">Marriage commitment signal</p>
+                </div>
+                {!isOwnProfile && (
+                  <Badge className="ml-auto bg-pink-100 text-pink-700">
+                    <Crown className="w-3 h-3 mr-1" />
+                    Premium
+                  </Badge>
+                )}
+              </div>
+
+              {/* Balance */}
+              <div className="bg-gradient-to-r from-pink-500 to-rose-600 rounded-2xl p-4 text-white mb-4">
+                <div className="text-center">
+                  <p className="text-sm opacity-90 font-queensides mb-1">Balance</p>
+                  <p className="text-3xl font-bold font-mono">
+                    {formatBtc(mahrPurseData.balanceSatoshis)} BTC
+                  </p>
+                  <p className="text-sm opacity-75 mt-1">
+                    {mahrPurseData.balanceSatoshis.toLocaleString()} satoshis
+                  </p>
+                </div>
+              </div>
+
+              {/* Address & Unlock Info */}
+              <div className="bg-white/80 rounded-xl p-4 border border-pink-100 space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-queensides mb-1">Wallet Address</p>
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-pink-600 shrink-0" />
+                    <code className="flex-1 text-xs font-mono text-slate-700 break-all">
+                      {mahrPurseData.address}
+                    </code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(mahrPurseData.address)
+                        setCopiedAddress(true)
+                        setTimeout(() => setCopiedAddress(false), 2000)
+                      }}
+                      className="shrink-0 p-2 hover:bg-pink-50 rounded-lg transition-colors"
+                    >
+                      {copiedAddress ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-slate-600" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between pt-3 border-t border-pink-100">
+                  <div>
+                    <p className="text-xs text-slate-500 font-queensides">Unlock Date</p>
+                    <p className="text-sm font-medium text-slate-800 font-queensides">
+                      {formatDate(mahrPurseData.unlockDate)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500 font-queensides">Status</p>
+                    <Badge className={
+                      isUnlocked(mahrPurseData.unlockDate)
+                        ? "bg-green-100 text-green-700"
+                        : "bg-amber-100 text-amber-700"
+                    }>
+                      {isUnlocked(mahrPurseData.unlockDate) ? (
+                        <><Unlock className="w-3 h-3 mr-1" /> Unlocked</>
+                      ) : (
+                        <><Lock className="w-3 h-3 mr-1" /> {getTimeUntilUnlock(mahrPurseData.unlockDate)}</>
+                      )}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Islamic Quote */}
