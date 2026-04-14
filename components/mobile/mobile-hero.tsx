@@ -552,7 +552,7 @@ export function MobileHero() {
 
                 <div className="relative z-10">
                   {/* Slides */}
-                  <div className="relative h-[160px]">
+                  <div className="relative h-[200px]">
                     {walletSlides.map((slide, index) => (
                       <motion.div
                         key={slide.id}
@@ -582,8 +582,7 @@ export function MobileHero() {
 
                           {/* Learn More Button */}
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation()
+                            onClick={() => {
                               setSelectedWallet(slide)
                               setShowWalletModal(true)
                             }}
@@ -1021,7 +1020,7 @@ export function MobileHero() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="relative w-full max-w-md bg-gradient-to-br from-white to-indigo-50/30 rounded-3xl shadow-2xl overflow-hidden border border-indigo-200/50"
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-indigo-200/50"
           >
             <div className="relative p-8">
               {/* Arabic corner decorations */}
@@ -1043,21 +1042,12 @@ export function MobileHero() {
               </button>
 
               {/* Wallet Image */}
-              <div className="relative mb-6 rounded-2xl overflow-hidden border-2 border-indigo-200/50 shadow-lg">
+              <div className="relative mb-4 rounded-2xl overflow-hidden border-2 border-indigo-200/50 shadow-lg">
                 <img
                   src={selectedWallet.image}
                   alt={selectedWallet.title}
-                  className="w-full h-48 object-cover"
+                  className="w-full h-auto object-contain bg-gradient-to-br from-indigo-50 to-purple-50"
                 />
-                {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/40 to-transparent"></div>
-              </div>
-
-              {/* Wallet Icon */}
-              <div className="flex justify-center -mt-12 mb-4 relative z-10">
-                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white">
-                  <selectedWallet.icon className="w-8 h-8 text-white" />
-                </div>
               </div>
 
               {/* Title */}
