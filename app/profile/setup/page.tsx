@@ -841,8 +841,8 @@ export default function ProfileSetupPage() {
       age: profile.age ? String(profile.age) : prev.age,
       gender: profile.gender || prev.gender,
       maritalStatus: profile.marital_status || prev.maritalStatus,
-      hasChildren: profile.has_children ? "yes" : "no",
-      wantChildren: profile.wants_children ? "yes" : "no",
+      hasChildren: profile.has_children === true ? "yes" : profile.has_children === false ? "no" : prev.hasChildren,
+      wantChildren: profile.wants_children === true ? "yes" : profile.wants_children === false ? "no" : prev.wantChildren,
       bioTagline:
         profile.bio_tagline ||
         (profile.bio ? String(profile.bio).substring(0, 100) : prev.bioTagline),
@@ -917,8 +917,8 @@ export default function ProfileSetupPage() {
       age: profile.age ? String(profile.age) : "",
       gender: profile.gender || "",
       maritalStatus: profile.marital_status || "",
-      hasChildren: profile.has_children ? "yes" : "no",
-      wantChildren: profile.wants_children ? "yes" : "no",
+      hasChildren: profile.has_children === true ? "yes" : profile.has_children === false ? "no" : "",
+      wantChildren: profile.wants_children === true ? "yes" : profile.wants_children === false ? "no" : "",
       bioTagline: profile.bio_tagline || (profile.bio ? String(profile.bio).substring(0, 100) : ""),
       location: location || "",
       city: profile.city || "",
@@ -2832,7 +2832,7 @@ export default function ProfileSetupPage() {
                         <p className={`text-sm font-queensides ${profileData.bio.length >= 300 ? 'text-emerald-600' : 'text-amber-600'}`}>
                           {profileData.bio.length}/300 characters {profileData.bio.length >= 300 ? '✓' : '(minimum required)'}
                         </p>
-                        {profileData.bio.length >= 300 && (
+                        {/* {profileData.bio.length >= 300 && (
                           <button
                             type="button"
                             onClick={() => router.push(`/profile/bio?userId=${userId}`)}
@@ -2840,7 +2840,7 @@ export default function ProfileSetupPage() {
                           >
                             Rate My Bio ✨
                           </button>
-                        )}
+                        )} */}
                       </div>
                     </div>
                   </div>

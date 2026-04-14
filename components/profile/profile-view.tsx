@@ -682,8 +682,8 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           workPreference: (supabaseProfile as any).work_preference || "",
           stylePreference: (supabaseProfile as any).style_preference || "",
           maritalStatus: (supabaseProfile as any).marital_status || "",
-          hasChildren: (supabaseProfile as any).has_children === true ? "yes" : "no",
-          wantChildren: (supabaseProfile as any).want_children || "",
+          hasChildren: (supabaseProfile as any).has_children === true ? "yes" : (supabaseProfile as any).has_children === false ? "no" : "",
+          wantChildren: (supabaseProfile as any).wants_children === true ? "yes" : (supabaseProfile as any).wants_children === false ? "no" : (supabaseProfile as any).wants_children || "",
           interests: Array.isArray(supabaseProfile.interests) ? supabaseProfile.interests : [],
           personality: Array.isArray((supabaseProfile as any).personality) ? (supabaseProfile as any).personality : [],
           profile_photos: photos,
@@ -1131,11 +1131,11 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
               )}
                 <div className="p-1 rounded-xl">
                   <p className="text-xs font-semibold text-black-600 font-queensides mb-2 uppercase tracking-wide">Has Children</p>
-                  <p className="text-slate-800 font-queensides text-lg capitalize">{profile.hasChildren ? 'Yes' : 'No'}</p>
+                  <p className="text-slate-800 font-queensides text-lg capitalize">{profile.hasChildren === "yes" ? 'Yes' : profile.hasChildren === "no" ? 'No' : 'Not specified'}</p>
                 </div>
                 <div className="p-1 rounded-xl">
                   <p className="text-xs font-semibold text-black-600 font-queensides mb-2 uppercase tracking-wide">Want Children</p>
-                  <p className="text-slate-800 font-queensides text-lg capitalize">{profile.wantChildren ? 'Yes' : 'No'}</p>
+                  <p className="text-slate-800 font-queensides text-lg capitalize">{profile.wantChildren === "yes" ? 'Yes' : profile.wantChildren === "no" ? 'No' : profile.wantChildren === "maybe" ? 'Maybe' : 'Not specified'}</p>
                 </div>
                 <div className="p-1 rounded-xl">
                   <p className="text-xs font-semibold text-black-600 font-queensides mb-2 uppercase tracking-wide">Will Relocate</p>
