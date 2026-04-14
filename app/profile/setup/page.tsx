@@ -63,6 +63,14 @@ function PhotoPreview({ bucket, path }: { bucket: string; path: string }) {
 
   useEffect(() => {
     let cancelled = false
+    
+    // If path is already a full URL, use it directly
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      setImageUrl(path)
+      setLoading(false)
+      return
+    }
+    
     const fetchSignedUrl = async () => {
       try {
         const signedUrl = await getSignedUrlForPath(bucket, path)
@@ -885,7 +893,9 @@ export default function ProfileSetupPage() {
       videoIntro: profile.video_intro || null,
       voiceIntro: profile.voice_intro || null,
       profilePhoto: profile.profile_photo || null,
-      additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
+      additionalPhotos: Array.isArray(profile.additional_photos) 
+        ? profile.additional_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
+        : [],
       financeStyle: (profile as any).finance_style || prev.financeStyle,
       diningFrequency: (profile as any).dining_frequency || prev.diningFrequency,
       travelFrequency: (profile as any).travel_frequency || prev.travelFrequency,
@@ -962,7 +972,9 @@ export default function ProfileSetupPage() {
       languages: Array.isArray((profile as any).languages) ? (profile as any).languages : [],
       personality: Array.isArray((profile as any).personality) ? (profile as any).personality : [],
       profilePhoto: profile.profile_photo || null,
-      additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
+      additionalPhotos: Array.isArray(profile.additional_photos) 
+        ? profile.additional_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
+        : [],
       videoIntro: profile.video_intro || null,
       voiceIntro: profile.voice_intro || null,
       photos: Array.isArray(profile.profile_photos)
@@ -991,9 +1003,9 @@ export default function ProfileSetupPage() {
     setUploadedUrls({
       profilePhoto: profile.profile_photo || undefined,
       additionalPhotos: Array.isArray((profile as any).additional_photos) 
-        ? (profile as any).additional_photos 
+        ? (profile as any).additional_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
         : Array.isArray(profile.profile_photos) 
-          ? profile.profile_photos 
+          ? profile.profile_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
           : [],
       videoIntro: (profile as any).video_intro || undefined,
       voiceIntro: (profile as any).voice_intro || undefined,
