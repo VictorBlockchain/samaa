@@ -30,6 +30,7 @@ interface MahrPurseWalletProps {
   userId: string
   userGender: string
   userType: 'mahr' | 'purse'
+  onSuccess?: () => void
 }
 
 interface WalletData {
@@ -40,7 +41,7 @@ interface WalletData {
   redeemScriptEncrypted: string | null
 }
 
-export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalletProps) {
+export function MahrPurseWallet({ userId, userGender, userType, onSuccess }: MahrPurseWalletProps) {
   const [walletData, setWalletData] = useState<WalletData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
@@ -158,6 +159,10 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
 
       if (result.success) {
         setWalletData(result.data)
+        // Notify parent component to refresh
+        if (onSuccess) {
+          onSuccess()
+        }
       } else {
         const errorMsg = result.error || 'Unknown error occurred'
         console.error('[mahr-purse] Wallet creation failed:', errorMsg)

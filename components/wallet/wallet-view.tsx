@@ -481,6 +481,18 @@ export default function WalletView() {
     ])
   }
 
+  const handleMahrPurseSuccess = async () => {
+    // Refresh wallet data when Mahr/Purse wallet is created
+    await Promise.all([
+      fetchProfile(),
+      fetchPaymentHistory(),
+    ])
+    // Close the modal after a short delay
+    setTimeout(() => {
+      setShowMahrPurseModal(false)
+    }, 1000)
+  }
+
   const validateRelockDate = (date: Date) => {
     const now = new Date()
     const tenYearsFromNow = new Date()
@@ -1551,6 +1563,7 @@ export default function WalletView() {
                 userId={userId || ''}
                 userGender={userGender}
                 userType={userGender === 'male' ? 'mahr' : 'purse'}
+                onSuccess={handleMahrPurseSuccess}
               />
               <Button
                 onClick={() => setShowMahrPurseModal(false)}
