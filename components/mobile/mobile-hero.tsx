@@ -4,7 +4,7 @@ import { motion, useScroll } from "framer-motion"
 import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useAuth } from "@/app/context/AuthContext"
-import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone, Heart, Wallet, Building2, Gift, PiggyBank, Users2 } from "lucide-react"
+import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone, Heart, Wallet, Building2, Gift, PiggyBank, Users2, Bitcoin } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { SwipeCard } from "./swipe-card"
@@ -813,42 +813,72 @@ export function MobileHero() {
               transition={{ delay: 0.8, duration: 0.6, ease: "easeOut" }}
               className="relative group mb-8"
             >
-              <div className="relative rounded-2xl p-6 border-2 border-gradient-to-r from-indigo-300/30 via-purple-300/30 to-blue-300/30 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-gradient-to-br from-white/5 to-indigo-50/10">
-                {/* Crypto-themed corner decorations */}
-                <div className="absolute top-3 left-3 w-5 h-5 border-l-2 border-t-2 border-indigo-400/70 rounded-tl-lg"></div>
-                <div className="absolute top-3 right-3 w-5 h-5 border-r-2 border-t-2 border-purple-400/70 rounded-tr-lg"></div>
-                <div className="absolute bottom-3 left-3 w-5 h-5 border-l-2 border-b-2 border-purple-400/70 rounded-bl-lg"></div>
-                <div className="absolute bottom-3 right-3 w-5 h-5 border-r-2 border-b-2 border-indigo-400/70 rounded-br-lg"></div>
+              <div className="relative rounded-2xl p-8 border-2 border-indigo-400/60 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5">
+                {/* Arabic corner decorations */}
+                <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
+                <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
+                <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
 
-                {/* Blockchain pattern overlay */}
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute top-4 left-4 w-3 h-3 border border-indigo-400/40 transform rotate-45"></div>
-                  <div className="absolute top-6 right-6 w-2 h-2 bg-purple-400/30 rounded-full"></div>
-                  <div className="absolute bottom-4 left-6 w-2 h-2 bg-indigo-400/30 rounded-full"></div>
-                  <div className="absolute bottom-6 right-4 w-3 h-3 border border-purple-400/40 transform rotate-45"></div>
-                </div>
+                {/* Geometric pattern overlay */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-300/30 rounded-full opacity-20"></div>
+                <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
+                <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
 
                 <div className="relative z-10 text-center">
-                  {/* Crypto Icons */}
+                  {/* Bitcoin Icon */}
+                  <div className="flex justify-center mb-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white/30">
+                      <Bitcoin className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
 
-                  <h3 className="text-xl font-bold text-slate-800 mb-3 font-queensides">Get $10</h3>
-               <h5 className="text-md font-medium text-slate-600 mb-5 font-queensides">Refer marriage candidates, get $10 with their 1st subscription.</h5>
-                  {/* Trust badges */}
+                  {/* Header */}
+                  <h3 className="text-2xl font-bold text-slate-800 mb-3 font-queensides">
+                    Get $10 in Bitcoin
+                  </h3>
+                  
+                  {/* Description */}
+                  <p className="text-slate-600 font-queensides leading-relaxed text-base mb-6">
+                    Refer marriage candidates, get $10 in Bitcoin with their 1st subscription.
+                  </p>
+
+                  {/* Features */}
+                  <div className="flex flex-col gap-3 mb-6">
+                    <div className="flex items-center justify-center gap-2 text-sm text-slate-700 font-queensides">
+                      <div className="w-2 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full"></div>
+                      <span>Share your unique referral link</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-sm text-slate-700 font-queensides">
+                      <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full"></div>
+                      <span>Friend subscribes to premium</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-sm text-slate-700 font-queensides">
+                      <div className="w-2 h-2 bg-gradient-to-r from-pink-400 to-amber-400 rounded-full"></div>
+                      <span>Earn $10 in Bitcoin instantly</span>
+                    </div>
+                  </div>
+
+                  {/* Referral Code Display */}
+                  {referralCode && (
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-200/50 mb-6">
+                      <p className="text-xs text-slate-500 font-queensides mb-1">Your referral code</p>
+                      <p className="text-lg font-bold text-indigo-600 font-queensides tracking-wider">{referralCode}</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* Final decorative divider */}
+                {/* Arabic-Inspired Card Divider */}
                 <div className="flex items-center justify-center mt-5">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/30 to-transparent"></div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
                   <div className="mx-4 flex items-center space-x-1">
-                    <div className="w-1 h-1 bg-indigo-400/60 rounded-full"></div>
-                    <div className="w-1.5 h-1.5 bg-purple-400/50 rounded-full transform rotate-45"></div>
-                    <div className="w-2 h-2 border border-indigo-400/40 rounded-full flex items-center justify-center">
-                      <div className="w-0.5 h-0.5 bg-gradient-to-r from-indigo-500/70 to-purple-500/70 rounded-full"></div>
+                    <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                    <div className="w-2 h-2 border border-indigo-400/50 rounded-full flex items-center justify-center">
+                      <div className="w-0.5 h-0.5 bg-indigo-400 rounded-full"></div>
                     </div>
-                    <div className="w-1.5 h-1.5 bg-indigo-400/50 rounded-full transform rotate-45"></div>
-                    <div className="w-1 h-1 bg-purple-400/60 rounded-full"></div>
+                    <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
                   </div>
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-purple-300/30 to-transparent"></div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
                 </div>
               </div>
             </motion.div>
