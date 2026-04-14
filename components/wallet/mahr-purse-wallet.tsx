@@ -20,7 +20,8 @@ import {
   Lock,
   Unlock,
   Clock,
-  TrendingUp
+  TrendingUp,
+  AlertCircle
 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -45,7 +46,8 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
   const [isCreating, setIsCreating] = useState(false)
   const [copied, setCopied] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>()
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [selectedTime, setSelectedTime] = useState<string>("12:00")
+  const [dateError, setDateError] = useState<string>("")
 
   const isMahr = userType === 'mahr'
   const title = isMahr ? "Mahr Wallet" : "Purse Wallet"
@@ -75,10 +77,67 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
     fetchWallet()
   }, [userId, userType])
 
+  // Validate date selection
+  const validateDate = (date: Date) => {
+    const now = new Date()
+    const tenYearsFromNow = new Date()
+    tenYearsFromNow.setFullYear(now.getFullYear() + 10)
+
+    if (date <= now) {
+      setDateError("Date must be in the future")
+      return false
+    }
+
+    if (date > tenYearsFromNow) {
+      setDateError("Date cannot be more than 10 years from today")
+      return false
+    }
+
+    setDateError("")
+    return true
+  }
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dateStr = e.target.value
+    if (!dateStr) {
+      setSelectedDate(undefined)
+      setDateError("")
+      return
+    }
+
+    const [year, month, day] = dateStr.split('-').map(Number)
+    const timeParts = selectedTime.split(':').map(Number)
+    const newDate = new Date(year, month - 1, day, timeParts[0], timeParts[1])
+    
+    setSelectedDate(newDate)
+    validateDate(newDate)
+  }
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const timeStr = e.target.value
+    setSelectedTime(timeStr)
+
+    if (selectedDate) {
+      const [hours, minutes] = timeStr.split(':').map(Number)
+      const [year, month, day] = [
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate()
+      ]
+      const newDate = new Date(year, month, day, hours, minutes)
+      setSelectedDate(newDate)
+      validateDate(newDate)
+    }
+  }
+
   // Create wallet
   const handleCreateWallet = async () => {
     if (!selectedDate) {
-      alert('Please select an unlock date')
+      setDateError('Please select a valid unlock date and time')
+      return
+    }
+
+    if (!validateDate(selectedDate)) {
       return
     }
 
@@ -99,12 +158,11 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
 
       if (result.success) {
         setWalletData(result.data)
-        setShowDatePicker(false)
       } else {
-        alert('Error creating wallet: ' + result.error)
+        setDateError('Error creating wallet: ' + result.error)
       }
     } catch (error) {
-      alert('Failed to create wallet')
+      setDateError('Failed to create wallet')
       console.error('[mahr-purse] Error:', error)
     } finally {
       setIsCreating(false)
@@ -214,37 +272,50 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
               </ul>
             </div>
 
-            {/* Date picker */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 font-queensides">
-                Unlock Date (when funds become accessible)
-              </label>
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-queensides",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : "Select future date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date: Date | undefined) => {
-                      setSelectedDate(date)
-                      setShowDatePicker(false)
-                    }}
-                    disabled={(date: Date) => date <= new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+            {/* Date and time picker */}
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 font-queensides mb-2 block">
+                  Unlock Date & Time (when funds become accessible)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-xs text-slate-500 font-queensides">Date</label>
+                    <input
+                      type="date"
+                      min={new Date().toISOString().split('T')[0]}
+                      max={(() => {
+                        const maxDate = new Date()
+                        maxDate.setFullYear(maxDate.getFullYear() + 10)
+                        return maxDate.toISOString().split('T')[0]
+                      })()}
+                      onChange={handleDateChange}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg font-queensides text-sm focus:border-indigo-500 focus:outline-none transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-slate-500 font-queensides">Time</label>
+                    <input
+                      type="time"
+                      value={selectedTime}
+                      onChange={handleTimeChange}
+                      className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg font-queensides text-sm focus:border-indigo-500 focus:outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+                {dateError && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-2">
+                    <AlertCircle className="w-3 h-3" />
+                    {dateError}
+                  </p>
+                )}
+                {selectedDate && !dateError && (
+                  <p className="text-xs text-green-600 flex items-center gap-1 mt-2">
+                    <CheckCircle className="w-3 h-3" />
+                    Selected: {format(selectedDate, "PPP p")}
+                  </p>
+                )}
+              </div>
             </div>
           </CardContent>
 

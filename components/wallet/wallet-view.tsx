@@ -38,7 +38,8 @@ import {
   ArrowUpRight,
   Info,
   Lock,
-  Unlock
+  Unlock,
+  AlertCircle
 } from "lucide-react"
 
 interface PaymentRecord {
@@ -135,6 +136,14 @@ export default function WalletView() {
   const [withdrawWalletType, setWithdrawWalletType] = useState<"main" | "mahr" | "purse">("main")
   const [withdrawBalance, setWithdrawBalance] = useState(0)
   const [withdrawAddress, setWithdrawAddress] = useState("")
+  
+  // Relock modal state
+  const [showRelockModal, setShowRelockModal] = useState(false)
+  const [relockWalletType, setRelockWalletType] = useState<"mahr" | "purse">("mahr")
+  const [relockUnlockDate, setRelockUnlockDate] = useState("")
+  const [relockUnlockTime, setRelockUnlockTime] = useState("12:00")
+  const [relockError, setRelockError] = useState("")
+  const [isRelocking, setIsRelocking] = useState(false)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -472,6 +481,90 @@ export default function WalletView() {
     ])
   }
 
+  const validateRelockDate = (date: Date) => {
+    const now = new Date()
+    const tenYearsFromNow = new Date()
+    tenYearsFromNow.setFullYear(now.getFullYear() + 10)
+
+    if (date <= now) {
+      setRelockError("Date must be in the future")
+      return false
+    }
+
+    if (date > tenYearsFromNow) {
+      setRelockError("Date cannot be more than 10 years from today")
+      return false
+    }
+
+    setRelockError("")
+    return true
+  }
+
+  const handleRelockDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRelockUnlockDate(e.target.value)
+    setRelockError("")
+  }
+
+  const handleRelockTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRelockUnlockTime(e.target.value)
+    setRelockError("")
+  }
+
+  const handleOpenRelock = (walletType: "mahr" | "purse") => {
+    setRelockWalletType(walletType)
+    setRelockUnlockDate("")
+    setRelockUnlockTime("12:00")
+    setRelockError("")
+    setShowRelockModal(true)
+  }
+
+  const handleRelock = async () => {
+    if (!relockUnlockDate) {
+      setRelockError("Please select a valid date")
+      return
+    }
+
+    const [year, month, day] = relockUnlockDate.split('-').map(Number)
+    const [hours, minutes] = relockUnlockTime.split(':').map(Number)
+    const newUnlockDate = new Date(year, month - 1, day, hours, minutes)
+
+    if (!validateRelockDate(newUnlockDate)) {
+      return
+    }
+
+    setIsRelocking(true)
+
+    try {
+      const response = await fetch('/api/mahr-purse/relock-wallet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          userType: relockWalletType,
+          unlockDate: newUnlockDate.toISOString(),
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "✅ Wallet Relocked!",
+          description: `Your ${relockWalletType === 'mahr' ? 'Mahr' : 'Purse'} wallet has been relocked successfully`,
+        })
+        setShowRelockModal(false)
+        await fetchProfile()
+      } else {
+        setRelockError(result.error || 'Failed to relock wallet')
+      }
+    } catch (error: any) {
+      console.error('[wallet] Error relocking wallet:', error)
+      setRelockError(error.message || 'Failed to relock wallet')
+    } finally {
+      setIsRelocking(false)
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen relative">
@@ -798,19 +891,29 @@ export default function WalletView() {
                       View Full Details
                     </Button>
 
-                    {/* Withdraw Button (only if unlocked) */}
+                    {/* Withdraw and Relock Buttons */}
                     {getTimeUntilUnlock(userGender === 'male' ? mahrData?.unlockDate : purseData?.unlockDate) === "Unlocked" && (
-                      <Button
-                        onClick={() => handleOpenWithdraw(
-                          userGender === 'male' ? 'mahr' : 'purse',
-                          userGender === 'male' ? mahrData?.balanceSatoshis || 0 : purseData?.balanceSatoshis || 0,
-                          userGender === 'male' ? mahrData?.address : purseData?.address
-                        )}
-                        className={`w-full bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} text-white font-queensides`}
-                      >
-                        <ArrowUpRight className="w-4 h-4 mr-2" />
-                        Withdraw Funds
-                      </Button>
+                      <div className="space-y-2">
+                        <Button
+                          onClick={() => handleOpenWithdraw(
+                            userGender === 'male' ? 'mahr' : 'purse',
+                            userGender === 'male' ? mahrData?.balanceSatoshis || 0 : purseData?.balanceSatoshis || 0,
+                            userGender === 'male' ? mahrData?.address : purseData?.address
+                          )}
+                          className={`w-full bg-gradient-to-r ${userGender === 'male' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} text-white font-queensides`}
+                        >
+                          <ArrowUpRight className="w-4 h-4 mr-2" />
+                          Withdraw Funds
+                        </Button>
+                        <Button
+                          onClick={() => handleOpenRelock(userGender === 'male' ? 'mahr' : 'purse')}
+                          variant="outline"
+                          className="w-full font-queensides"
+                        >
+                          <Lock className="w-4 h-4 mr-2" />
+                          Relock Wallet
+                        </Button>
+                      </div>
                     )}
                   </>
                 )}
@@ -1513,6 +1616,129 @@ export default function WalletView() {
                 onSuccess={handleWithdrawSuccess}
                 onClose={() => setShowWithdrawModal(false)}
               />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Relock Modal */}
+      <AnimatePresence>
+        {showRelockModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowRelockModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden"
+            >
+              {/* Header */}
+              <div className={`bg-gradient-to-r ${relockWalletType === 'mahr' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} p-6 text-white`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold font-queensides">Relock {relockWalletType === 'mahr' ? 'Mahr' : 'Purse'} Wallet</h2>
+                    <p className="text-sm opacity-90 font-queensides">Set a new unlock date and time</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Form */}
+              <div className="p-6 space-y-4">
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700 font-queensides mb-2 block">
+                      New Unlock Date & Time
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <label className="text-xs text-slate-500 font-queensides">Date</label>
+                        <input
+                          type="date"
+                          value={relockUnlockDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          max={(() => {
+                            const maxDate = new Date()
+                            maxDate.setFullYear(maxDate.getFullYear() + 10)
+                            return maxDate.toISOString().split('T')[0]
+                          })()}
+                          onChange={handleRelockDateChange}
+                          className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg font-queensides text-sm focus:border-indigo-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs text-slate-500 font-queensides">Time</label>
+                        <input
+                          type="time"
+                          value={relockUnlockTime}
+                          onChange={handleRelockTimeChange}
+                          className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg font-queensides text-sm focus:border-indigo-500 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                    {relockError && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 mt-2">
+                        <AlertCircle className="w-3 h-3" />
+                        {relockError}
+                      </p>
+                    )}
+                    {relockUnlockDate && !relockError && (
+                      <p className="text-xs text-green-600 flex items-center gap-1 mt-2">
+                        <CheckCircle className="w-3 h-3" />
+                        New unlock: {new Date(relockUnlockDate + 'T' + relockUnlockTime).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Info */}
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                    <div className="text-xs text-indigo-800">
+                      <p className="font-medium mb-1">Important</p>
+                      <p>Once relocked, your funds will be inaccessible until the new unlock date. This action cannot be undone.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2 pt-2">
+                  <Button
+                    onClick={handleRelock}
+                    disabled={!relockUnlockDate || isRelocking}
+                    className={`w-full bg-gradient-to-r ${relockWalletType === 'mahr' ? 'from-pink-500 to-rose-600' : 'from-purple-500 to-indigo-600'} text-white font-queensides py-6 text-lg disabled:opacity-50`}
+                  >
+                    {isRelocking ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Relocking...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5 mr-2" />
+                        Relock Wallet
+                      </>
+                    )}
+                  </Button>
+
+                  <Button
+                    onClick={() => setShowRelockModal(false)}
+                    variant="outline"
+                    className="w-full font-queensides"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}

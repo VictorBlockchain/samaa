@@ -2,6 +2,7 @@ import React, { type ReactNode } from "react"
 import type { Metadata } from "next"
 import "./globals.css"
 import ClientLayout from './client'
+import { GoogleAnalytics } from '@/components/analytics/google-analytics'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://samaa.app'),
@@ -55,6 +56,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <GoogleAnalytics />
+      </head>
       <body>
         <ClientLayout>
           {children}
