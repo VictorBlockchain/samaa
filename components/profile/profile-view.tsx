@@ -1212,8 +1212,8 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           </div>
         )}
 
-        {/* Video */}
-        {profile.videoIntro && (
+        {/* Audio - Voice Introduction */}
+        {profile.voiceIntro && (
           <div className="px-6 py-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center mb-8">
               <div className="flex items-center space-x-4">
@@ -1224,28 +1224,24 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                 <Sparkles className="w-4 h-4 text-blue-300" />
               </div>
             </div>
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 shadow-xl">
-              <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-blue-400 rounded-tl-2xl opacity-50" />
-              <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-indigo-400 rounded-tr-2xl opacity-50" />
-              <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-indigo-400 rounded-bl-2xl opacity-50" />
-              <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-blue-400 rounded-br-2xl opacity-50" />
-              <div className="relative z-10 p-2">
-                <video 
-                  controls 
-                  className="w-full rounded-xl shadow-lg bg-black"
-                  style={{ maxHeight: '500px' }}
-                >
-                  <source src={profile.videoIntro} type="video/mp4" />
-                  Your browser does not support the video element.
-                </video>
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-100 border border-purple-200 shadow-lg">
+              <div className="absolute top-0 left-0 w-12 h-12 border-t-3 border-l-3 border-purple-400 rounded-tl-2xl opacity-50" />
+              <div className="absolute top-0 right-0 w-12 h-12 border-t-3 border-r-3 border-pink-400 rounded-tr-2xl opacity-50" />
+              <div className="absolute bottom-0 left-0 w-12 h-12 border-b-3 border-l-3 border-pink-400 rounded-bl-2xl opacity-50" />
+              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-3 border-r-3 border-purple-400 rounded-br-2xl opacity-50" />
+              <div className="relative z-10 p-4">
+                <audio controls className="w-full">
+                  <source src={profile.voiceIntro} type="audio/mpeg" />
+                  Your browser does not support the audio element.
+                </audio>
               </div>
-              <div className="relative z-10 px-4 py-3 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 backdrop-blur-sm border-t border-blue-200/50">
+              <div className="relative z-10 px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm border-t border-purple-200/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-queensides text-blue-700 font-medium">Video Introduction</span>
+                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                    <span className="text-xs font-queensides text-purple-700 font-medium">Voice Introduction</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-blue-600 font-queensides">
+                  <div className="flex items-center gap-1.5 text-xs text-purple-600 font-queensides">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1432,8 +1428,8 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           </>
         )}
 
-        {/* Audio */}
-        {profile.voiceIntro && (
+        {/* Video Introduction */}
+        {profile.videoIntro && (
           <div className="px-6 py-8 max-w-4xl mx-auto">
             <div className="flex items-center justify-center mb-8">
               <div className="flex items-center space-x-4">
@@ -1444,24 +1440,28 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                 <Sparkles className="w-4 h-4 text-blue-300" />
               </div>
             </div>
-            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-purple-50 to-pink-100 border border-purple-200 shadow-lg">
-              <div className="absolute top-0 left-0 w-12 h-12 border-t-3 border-l-3 border-purple-400 rounded-tl-2xl opacity-50" />
-              <div className="absolute top-0 right-0 w-12 h-12 border-t-3 border-r-3 border-pink-400 rounded-tr-2xl opacity-50" />
-              <div className="absolute bottom-0 left-0 w-12 h-12 border-b-3 border-l-3 border-pink-400 rounded-bl-2xl opacity-50" />
-              <div className="absolute bottom-0 right-0 w-12 h-12 border-b-3 border-r-3 border-purple-400 rounded-br-2xl opacity-50" />
-              <div className="relative z-10 p-4">
-                <audio controls className="w-full">
-                  <source src={profile.voiceIntro} type="audio/mpeg" />
-                  Your browser does not support the audio element.
-                </audio>
+            <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-200 shadow-xl">
+              <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-blue-400 rounded-tl-2xl opacity-50" />
+              <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-indigo-400 rounded-tr-2xl opacity-50" />
+              <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-indigo-400 rounded-bl-2xl opacity-50" />
+              <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-blue-400 rounded-br-2xl opacity-50" />
+              <div className="relative z-10 p-2">
+                <video 
+                  controls 
+                  className="w-full rounded-xl shadow-lg bg-black"
+                  style={{ maxHeight: '500px' }}
+                >
+                  <source src={profile.videoIntro} type="video/mp4" />
+                  Your browser does not support the video element.
+                </video>
               </div>
-              <div className="relative z-10 px-4 py-2.5 bg-gradient-to-r from-purple-500/10 to-pink-500/10 backdrop-blur-sm border-t border-purple-200/50">
+              <div className="relative z-10 px-4 py-3 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 backdrop-blur-sm border-t border-blue-200/50">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-queensides text-purple-700 font-medium">Voice Introduction</span>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                    <span className="text-xs font-queensides text-blue-700 font-medium">Video Introduction</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-purple-600 font-queensides">
+                  <div className="flex items-center gap-1.5 text-xs text-blue-600 font-queensides">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
