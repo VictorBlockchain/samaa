@@ -11,10 +11,12 @@ interface FileUploadProps {
   multiple?: boolean
   onFileSelect: (files: File[]) => void
   onUpload?: (files: File[]) => Promise<void>
+  onDelete?: (filePath: string) => Promise<void>
   disabled?: boolean
   className?: string
   type?: 'image' | 'video' | 'audio' | 'any'
   placeholder?: string
+  existingFiles?: string[]
 }
 
 interface UploadedFile {
@@ -31,13 +33,16 @@ export function FileUpload({
   multiple = false,
   onFileSelect,
   onUpload,
+  onDelete,
   disabled = false,
   className = "",
   type = 'any',
-  placeholder
+  placeholder,
+  existingFiles = []
 }: FileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([])
   const [isDragOver, setIsDragOver] = useState(false)
+  const [uploadedPaths, setUploadedPaths] = useState<string[]>(existingFiles)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const getIcon = () => {
@@ -161,7 +166,23 @@ export function FileUpload({
     }
   }
 
-  const removeFile = (index: number) => {
+  const removeFile = async (index: number) => {
+    const fileToRemove = files[index]
+    
+    // If file was already uploaded, delete from storage
+    if (fileToRemove.status === 'success' && onDelete) {
+      try {
+        // Try to get the path from the file metadata or construct it
+        const filePath = (fileToRemove.file as any).storagePath
+        if (filePath) {
+          await onDelete(filePath)
+          setUploadedPaths(prev => prev.filter(p => p !== filePath))
+        }
+      } catch (error) {
+        console.error('Failed to delete file from storage:', error)
+      }
+    }
+    
     setFiles(prev => {
       const newFiles = prev.filter((_, i) => i !== index)
       onFileSelect(newFiles.map(f => f.file))
@@ -183,10 +204,18 @@ export function FileUpload({
     try {
       await onUpload(validFiles.map(f => f.file))
       
-      // Update status to success
-      setFiles(prev => prev.map(f => 
-        f.status === 'uploading' ? { ...f, status: 'success' as const, progress: 100 } : f
-      ))
+      // Update status to success and store paths
+      setFiles(prev => prev.map(f => {
+        if (f.status === 'uploading') {
+          const updatedFile = { ...f, status: 'success' as const, progress: 100 }
+          // Store the path if available
+          if ((f.file as any).storagePath) {
+            setUploadedPaths(prev => [...prev, (f.file as any).storagePath])
+          }
+          return updatedFile
+        }
+        return f
+      }))
     } catch (error) {
       // Update status to error
       setFiles(prev => prev.map(f => 

@@ -374,6 +374,8 @@ export function ProfileSetup() {
         result.path ||
         (result.url ? storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, result.url) : null)
       if (result.success && path) {
+        // Attach the storage path to the file for later deletion
+        ;(file as any).storagePath = path
         setUploadedUrls((prev) => ({ ...prev, profilePhoto: path }))
       } else {
         openModal("Upload Failed", result.error || "Failed to upload profile photo", "error")
@@ -398,10 +400,16 @@ export function ProfileSetup() {
       const successfulUrls = results
         .filter((r: any) => r.success && (r.path || r.url))
         .map(
-          (r: any) =>
-            r.path ||
-            storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)!
+          (r: any) => {
+            const path = r.path || storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)
+            // Attach the storage path to the file for later deletion
+            if (path) {
+              ;(files[results.indexOf(r)] as any).storagePath = path
+            }
+            return path
+          }
         )
+        .filter(Boolean)
 
       setUploadedUrls((prev) => ({
         ...prev,
@@ -453,6 +461,29 @@ export function ProfileSetup() {
     } catch (error) {
       console.error("Upload error:", error)
       openModal("Upload Error", "Failed to upload audio.", "error")
+    }
+  }
+
+  const handleDeleteMedia = async (filePath: string) => {
+    if (!filePath) return
+    
+    try {
+      // Delete from Supabase Storage
+      const result = await ProfileMediaService.deleteProfileMedia(
+        STORAGE_CONFIG.BUCKETS.PROFILES,
+        filePath
+      )
+      
+      if (!result.success) {
+        console.error('Failed to delete media from storage:', result.error)
+        toast({
+          title: "Delete Failed",
+          description: "Failed to delete file from storage",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error deleting media:', error)
     }
   }
 
@@ -2361,6 +2392,8 @@ export function ProfileSetup() {
                                 updateProfileData("profilePhoto", files[0] || null)
                               }
                               onUpload={handleProfilePhotoUpload}
+                              onDelete={handleDeleteMedia}
+                              existingFiles={uploadedUrls.profilePhoto ? [uploadedUrls.profilePhoto] : []}
                               type="image"
                               placeholder="Upload your main profile photo"
                               className="mb-4"
@@ -2379,6 +2412,8 @@ export function ProfileSetup() {
                               multiple={true}
                               onFileSelect={(files) => updateProfileData("additionalPhotos", files)}
                               onUpload={handleAdditionalPhotosUpload}
+                              onDelete={handleDeleteMedia}
+                              existingFiles={uploadedUrls.additionalPhotos}
                               type="image"
                               placeholder="Upload additional photos (up to 4 more)"
                               className="mb-4"

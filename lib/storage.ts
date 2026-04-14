@@ -53,11 +53,12 @@ export function validateFile(file: File, type: 'image' | 'video' | 'audio'): { v
   return { valid: true }
 }
 
-// Generate unique file name
+// Generate unique file name with better uniqueness
 export function generateFileName(originalName: string, userId: string): string {
   const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 10)
   const extension = originalName.split('.').pop()
-  return `${userId}/${timestamp}.${extension}`
+  return `${userId}/${timestamp}-${random}.${extension}`
 }
 
 /** Extract object path within `bucket` from a storage path or full Supabase URL. */
