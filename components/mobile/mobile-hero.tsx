@@ -4,7 +4,7 @@ import { motion, useScroll } from "framer-motion"
 import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useAuth } from "@/app/context/AuthContext"
-import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone, Bitcoin, Heart, Wallet, Building, ChevronLeft, ChevronRight } from "lucide-react"
+import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone, Heart, Wallet, Building } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { SwipeCard } from "./swipe-card"
@@ -56,43 +56,24 @@ export function MobileHero() {
       id: 'mahr',
       title: 'Mahr Bitcoin Wallet',
       description: 'Time locked bitcoin wallet, show her how much you\'ve set aside for her dowry and her future',
-      image: '/images/mahr_wallet.png',
       icon: Heart,
       color: 'from-pink-500 to-rose-600',
-      bgColor: 'from-pink-50 to-rose-50',
-      borderColor: 'border-pink-200',
     },
     {
       id: 'purse',
       title: 'Purse Bitcoin Wallet',
       description: 'Time locked bitcoin wallet, show him you are financially savvy and have some funds set aside for your future',
-      image: '/images/purse_wallet.png',
       icon: Wallet,
       color: 'from-purple-500 to-indigo-600',
-      bgColor: 'from-purple-50 to-indigo-50',
-      borderColor: 'border-purple-200',
     },
     {
       id: 'community',
       title: 'Community Bitcoin Wallet',
       description: '% of all purchases go into community wallet, funds will be donated to Mahr, Purse and Masjids',
-      image: '/images/community_wallet.png',
       icon: Building,
       color: 'from-emerald-500 to-teal-600',
-      bgColor: 'from-emerald-50 to-teal-50',
-      borderColor: 'border-emerald-200',
     },
   ]
-
-  const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % 3)
-    setIsAutoPlaying(false)
-  }
-
-  const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + 3) % 3)
-    setIsAutoPlaying(false)
-  }
 
   // Load matches when authenticated
   useEffect(() => {
@@ -544,80 +525,61 @@ export function MobileHero() {
               </div>
             </motion.div>
 
+            {/* Crypto Wallet Text Slider */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 2.2, duration: 0.8, ease: "easeOut" }}
-              className="mb-6"
+              className="mb-8"
             >
               {/* Header */}
-              <h3 className="text-lg font-bold text-center mb-4 font-queensides bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+              <h3 className="text-xl font-bold text-center mb-6 font-queensides bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 Crypto infused for those serious about getting married!
               </h3>
 
-              {/* Slider Container */}
-              <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl border-2 border-amber-200/50 overflow-hidden shadow-xl">
+              {/* Text Slider Container */}
+              <div className="relative rounded-2xl p-6 border border-indigo-200/30 backdrop-blur-sm bg-white/5 overflow-hidden group">
+                {/* Arabic-inspired corner decorations */}
+                <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
+                <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
+                <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
+                <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
+
                 {/* Slides */}
-                <div className="relative h-[320px]">
+                <div className="relative h-[140px]">
                   {walletSlides.map((slide, index) => (
                     <motion.div
                       key={slide.id}
                       initial={false}
                       animate={{
                         opacity: index === currentSlide ? 1 : 0,
-                        x: index === currentSlide ? 0 : index < currentSlide ? -100 : 100,
+                        y: index === currentSlide ? 0 : 20,
                       }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
                       className="absolute inset-0"
                     >
-                      <div className={`h-full bg-gradient-to-br ${slide.bgColor} p-4`}>
-                        {/* Image */}
-                        <div className="relative mb-3 rounded-2xl overflow-hidden shadow-lg">
-                          <img
-                            src={slide.image}
-                            alt={slide.title}
-                            className="w-full h-[180px] object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                          
-                          {/* Icon Badge */}
-                          <div className={`absolute top-3 left-3 w-10 h-10 bg-gradient-to-r ${slide.color} rounded-xl flex items-center justify-center shadow-lg`}>
-                            <slide.icon className="w-5 h-5 text-white" />
-                          </div>
+                      <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                        {/* Icon */}
+                        <div className={`inline-flex w-12 h-12 bg-gradient-to-r ${slide.color} rounded-xl items-center justify-center mb-3 shadow-lg border border-white/20`}>
+                          <slide.icon className="w-6 h-6 text-white" />
                         </div>
-
-                        {/* Content */}
-                        <div className="text-center">
-                          <h4 className={`text-lg font-bold mb-2 font-queensides bg-gradient-to-r ${slide.color} bg-clip-text text-transparent`}>
-                            {slide.title}
-                          </h4>
-                          <p className="text-xs text-slate-700 font-queensides leading-relaxed px-2">
-                            {slide.description}
-                          </p>
-                        </div>
+                        
+                        {/* Title */}
+                        <h4 className="text-lg font-bold mb-2 font-queensides bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                          {slide.title}
+                        </h4>
+                        
+                        {/* Description */}
+                        <p className="text-sm text-slate-600 font-queensides leading-relaxed">
+                          {slide.description}
+                        </p>
                       </div>
                     </motion.div>
                   ))}
                 </div>
 
-                {/* Navigation Arrows */}
-                <button
-                  onClick={prevSlide}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all hover:scale-110"
-                  aria-label="Previous slide"
-                >
-                  <ChevronLeft className="w-5 h-5 text-slate-700" />
-                </button>
-                <button
-                  onClick={nextSlide}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow-lg flex items-center justify-center hover:bg-white transition-all hover:scale-110"
-                  aria-label="Next slide"
-                >
-                  <ChevronRight className="w-5 h-5 text-slate-700" />
-                </button>
-
                 {/* Dots Indicator */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                <div className="flex items-center justify-center gap-2 mt-2">
                   {walletSlides.map((_, index) => (
                     <button
                       key={index}
@@ -627,8 +589,8 @@ export function MobileHero() {
                       }}
                       className={`transition-all duration-300 ${
                         index === currentSlide
-                          ? 'w-6 h-2 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full'
-                          : 'w-2 h-2 bg-slate-300 rounded-full hover:bg-slate-400'
+                          ? 'w-8 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full shadow-md'
+                          : 'w-2 h-2 bg-indigo-200/50 rounded-full hover:bg-indigo-300/70'
                       }`}
                       aria-label={`Go to slide ${index + 1}`}
                     />
