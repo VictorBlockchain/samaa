@@ -98,15 +98,24 @@ export async function POST(request: NextRequest) {
       [`${userType}_redeem_script_encrypted`]: encryptedRedeemScript,
     }
 
-    const { error: updateError } = await supabaseAdmin
+    console.log(`[mahr-purse] Updating user with data:`, {
+      userId,
+      userType,
+      address: timelock.address,
+      unlockDate: unlockDateObj.toISOString(),
+    })
+
+    const { error: updateError, data: updateData_result } = await supabaseAdmin
       .from('users')
       .update(updateData)
       .eq('id', userId)
+      .select()
 
     if (updateError) {
       console.error('[mahr-purse] Error updating user:', updateError)
+      console.error('[mahr-purse] Update error details:', JSON.stringify(updateError, null, 2))
       return NextResponse.json(
-        { error: 'Failed to create wallet' },
+        { error: `Failed to create wallet: ${updateError.message}` },
         { status: 500 }
       )
     }

@@ -159,11 +159,15 @@ export function MahrPurseWallet({ userId, userGender, userType }: MahrPurseWalle
       if (result.success) {
         setWalletData(result.data)
       } else {
-        setDateError('Error creating wallet: ' + result.error)
+        const errorMsg = result.error || 'Unknown error occurred'
+        console.error('[mahr-purse] Wallet creation failed:', errorMsg)
+        console.error('[mahr-purse] Response status:', response.status)
+        setDateError(`Error creating wallet: ${errorMsg}`)
       }
-    } catch (error) {
-      setDateError('Failed to create wallet')
-      console.error('[mahr-purse] Error:', error)
+    } catch (error: any) {
+      const errorMsg = error.message || 'Network or server error'
+      console.error('[mahr-purse] Exception during wallet creation:', error)
+      setDateError(`Failed to create wallet: ${errorMsg}`)
     } finally {
       setIsCreating(false)
     }
