@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createTimelockedAddress } from '@/lib/bitcoin-timelock'
+import { generateUserKeypair, getUTXOs, createTransaction, broadcastTransaction, getDecryptedPrivateKey } from '@/lib/bitcoin-split'
+import { encrypt } from '@/lib/encryption'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,9 +97,92 @@ export async function POST(request: NextRequest) {
 
     console.log(`[mahr-purse] New unlock date: ${unlockDateObj.toISOString()}`)
 
-    // Update user record with new unlock date
+    // Generate new Bitcoin keypair for the new timelocked wallet
+    const keypair = generateUserKeypair(Date.now())
+    console.log(`[mahr-purse] Generated new keypair for relock`)
+
+    // Create new timelocked address with the new unlock date
+    const unlockTimestamp = Math.floor(unlockDateObj.getTime() / 1000)
+    const newTimelock = createTimelockedAddress(
+      keypair.publicKey,
+      unlockTimestamp,
+      true
+    )
+    console.log(`[mahr-purse] Created new timelocked address: ${newTimelock.address}`)
+
+    // Get the old wallet's encrypted private key
+    const oldPrivateKeyEncrypted = userData[`${userType}_principle_address_key`]
+    
+    if (!oldPrivateKeyEncrypted) {
+      return NextResponse.json(
+        { error: 'Cannot relock: wallet private key not found' },
+        { status: 500 }
+      )
+    }
+
+    // Decrypt the old private key
+    const oldPrivateKeyWIF = getDecryptedPrivateKey(oldPrivateKeyEncrypted)
+    const oldAddress = userData[`${userType}_principle_address`]
+
+    // Get current balance from blockchain
+    const { getAddressBalance } = await import('@/lib/bitcoin-split')
+    const currentBalance = await getAddressBalance(oldAddress)
+    
+    console.log(`[mahr-purse] Current balance: ${currentBalance} satoshis`)
+
+    if (currentBalance === 0) {
+      // No funds to transfer, just update the address and date
+      console.log(`[mahr-purse] No balance to transfer, updating wallet info only`)
+    } else {
+      // Transfer funds from old address to new timelocked address
+      const utxos = await getUTXOs(oldAddress)
+      
+      if (utxos.length === 0) {
+        return NextResponse.json(
+          { error: 'No UTXOs found for transfer' },
+          { status: 500 }
+        )
+      }
+
+      // Reserve fee for transaction
+      const networkFee = 2000
+      const transferAmount = currentBalance - networkFee
+
+      if (transferAmount <= 0) {
+        return NextResponse.json(
+          { error: 'Balance too low to cover network fees' },
+          { status: 400 }
+        )
+      }
+
+      console.log(`[mahr-purse] Transferring ${transferAmount} satoshis to new timelocked address`)
+
+      // Create and sign the transfer transaction
+      const txHex = await createTransaction(
+        oldPrivateKeyWIF,
+        oldAddress,
+        newTimelock.address,
+        transferAmount,
+        utxos,
+        networkFee
+      )
+
+      // Broadcast the transaction
+      const txId = await broadcastTransaction(txHex)
+      console.log(`[mahr-purse] Broadcasted transfer transaction: ${txId}`)
+    }
+
+    // Encrypt new private key and redeem script
+    const encryptedNewPrivateKey = encrypt(keypair.privateKeyEncrypted)
+    const encryptedNewRedeemScript = encrypt(newTimelock.redeemScript.toString('hex'))
+
+    // Update user record with new wallet info
     const updateData: any = {
+      [`${userType}_principle_address`]: newTimelock.address,
+      [`${userType}_principle_address_key`]: encryptedNewPrivateKey,
       [`${userType}_unlock_date`]: unlockDateObj.toISOString(),
+      [`${userType}_redeem_script_encrypted`]: encryptedNewRedeemScript,
+      [`${userType}_balance_satoshis`]: currentBalance > 0 ? currentBalance - 2000 : 0,
     }
 
     const { error: updateError } = await supabaseAdmin
@@ -107,19 +193,22 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('[mahr-purse] Error updating user:', updateError)
       return NextResponse.json(
-        { error: 'Failed to relock wallet' },
+        { error: 'Failed to update wallet after relock' },
         { status: 500 }
       )
     }
 
-    console.log(`[mahr-purse] ${userType} wallet relocked successfully`)
+    console.log(`[mahr-purse] ${userType} wallet relocked successfully with new address`)
 
     return NextResponse.json({
       success: true,
       data: {
-        address: userData[`${userType}_principle_address`],
+        oldAddress: userData[`${userType}_principle_address`],
+        newAddress: newTimelock.address,
         unlockDate: unlockDateObj.toISOString(),
+        balanceSatoshis: currentBalance > 0 ? currentBalance - 2000 : 0,
         isActive: true,
+        transactionId: currentBalance > 0 ? 'pending' : null,
       },
     })
   } catch (error: any) {

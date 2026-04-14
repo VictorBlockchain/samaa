@@ -1700,12 +1700,18 @@ export default function WalletView() {
                 </div>
 
                 {/* Info */}
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
-                    <div className="text-xs text-indigo-800">
-                      <p className="font-medium mb-1">Important</p>
-                      <p>Once relocked, your funds will be inaccessible until the new unlock date. This action cannot be undone.</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-amber-800 space-y-2">
+                      <p className="font-medium">Important - New Wallet Address Will Be Created</p>
+                      <p>Relocking will:</p>
+                      <ul className="list-disc list-inside space-y-1 ml-2">
+                        <li>Create a <strong>new timelocked Bitcoin address</strong> with your selected unlock date</li>
+                        <li>Transfer all funds from your current address to the new address</li>
+                        <li>Deduct a small network fee (~2000 satoshis) for the blockchain transaction</li>
+                      </ul>
+                      <p className="font-medium mt-2">This action cannot be undone.</p>
                     </div>
                   </div>
                 </div>
