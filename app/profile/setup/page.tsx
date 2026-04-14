@@ -890,9 +890,6 @@ export default function ProfileSetupPage() {
       videoIntro: profile.video_intro || null,
       voiceIntro: profile.voice_intro || null,
       profilePhoto: profile.profile_photo || null,
-      photos: Array.isArray(profile.profile_photos)
-        ? profile.profile_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
-        : [],
       financeStyle: (profile as any).finance_style || prev.financeStyle,
       diningFrequency: (profile as any).dining_frequency || prev.diningFrequency,
       travelFrequency: (profile as any).travel_frequency || prev.travelFrequency,
@@ -974,11 +971,6 @@ export default function ProfileSetupPage() {
         : [],
       videoIntro: profile.video_intro || null,
       voiceIntro: profile.voice_intro || null,
-      photos: Array.isArray(profile.profile_photos)
-        ? profile.profile_photos.map((p: string) =>
-            storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p)
-          )
-        : [],
       preferences: {
         // Ensure preferences are still handled
         ageRange: { min: profile.age_range_min ?? 22, max: profile.age_range_max ?? 35 },
@@ -2141,12 +2133,6 @@ export default function ProfileSetupPage() {
                           <RadioGroupItem value="divorced" id="status-divorced" />
                           <Label htmlFor="status-divorced" className="font-queensides text-black">
                             Divorced
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="married" id="status-married" />
-                          <Label htmlFor="status-married" className="font-queensides text-black">
-                            Married Before
                           </Label>
                         </div>
                         {profileData.gender === "male" && (
