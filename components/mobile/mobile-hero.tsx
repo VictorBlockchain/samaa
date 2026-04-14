@@ -505,28 +505,49 @@ export function MobileHero() {
               transition={{ delay: 2, duration: 0.8, ease: "easeOut" }}
               className="relative group mb-4"
             >
-              <div className="relative rounded-2xl p-6 border border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5">
-                {/* Arabic-inspired corner decorations */}
-                <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
-                <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
-                <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
-                <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
+              <div className="relative rounded-2xl p-8 border-2 border-indigo-400/60 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5 group hover:border-indigo-500/70">
+                {/* Arabic corner decorations */}
+                <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
+                <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
+                <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
 
-                {/* Subtle background pattern */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/10 to-purple-50/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                {/* Geometric pattern overlay */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-300/30 rounded-full opacity-20"></div>
+                <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
+                <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
 
                 <div className="relative z-10 text-center">
-                  <p className="text-lg text-slate-600 font-queensides leading-relaxed">
+                  {/* Decorative Icon */}
+                  <div className="flex justify-center mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg border-2 border-white/20">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+
+                  {/* Tagline */}
+                  <p className="text-slate-600 font-queensides leading-relaxed text-base mb-2">
                     Samaa is the marriage for
-                    <br />
-                    <span className="font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent text-xl">
-                      Muslim futurists
-                    </span>
+                  </p>
+                  
+                  {/* Highlighted Text */}
+                  <p className="text-2xl font-bold font-queensides bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    Muslim futurists
                   </p>
                 </div>
 
-                {/* Center decorative element */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-indigo-400/30 rounded-full opacity-50"></div>
+                {/* Arabic-Inspired Card Divider */}
+                <div className="flex items-center justify-center mt-5">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
+                  <div className="mx-4 flex items-center space-x-1">
+                    <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                    <div className="w-2 h-2 border border-indigo-400/50 rounded-full flex items-center justify-center">
+                      <div className="w-0.5 h-0.5 bg-indigo-400 rounded-full"></div>
+                    </div>
+                    <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                  </div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
+                </div>
               </div>
             </motion.div>
 
