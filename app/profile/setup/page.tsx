@@ -403,10 +403,9 @@ interface ProfileData {
   customInterests?: string[]
   personality?: string[]
   profilePhoto: File | null
-  additionalPhotos: File[]
+  photos: string[]
   videoIntro: File | null
   voiceIntro: File | null
-  photos: string[] // Renamed from photos to profile_photos
   preferences: {
     ageRange: { min: number; max: number }
     maxDistance: number
@@ -488,10 +487,9 @@ export default function ProfileSetupPage() {
     customInterests: [],
     personality: [],
     profilePhoto: null,
-    additionalPhotos: [],
+    photos: [],
     videoIntro: null,
     voiceIntro: null,
-    photos: [],
     preferences: {
       ageRange: { min: 22, max: 35 },
       maxDistance: 50,
@@ -522,11 +520,11 @@ export default function ProfileSetupPage() {
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({})
   const [uploadedUrls, setUploadedUrls] = useState<{
     profilePhoto?: string
-    additionalPhotos: string[]
+    photos: string[]
     videoIntro?: string
     voiceIntro?: string
   }>({
-    additionalPhotos: [],
+    photos: [],
   })
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [mainPhotoIndex, setMainPhotoIndex] = useState(0)
@@ -591,13 +589,13 @@ export default function ProfileSetupPage() {
     if (files.length === 0 || !userId) return
 
     // Check if adding these files would exceed the 6 photo limit
-    const currentCount = uploadedUrls.additionalPhotos.length
+    const currentCount = uploadedUrls.photos.length
     if (currentCount + files.length > 6) {
       openModal("Photo Limit", `You can only have up to 6 photos. You currently have ${currentCount} photo(s).`, "error")
       return
     }
 
-    updateProfileData("additionalPhotos", files)
+    updateProfileData("photos", files)
 
     try {
       const uploadPromises = files.map((file) =>
@@ -611,15 +609,15 @@ export default function ProfileSetupPage() {
           (r: any) => r.path || storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)!
         )
 
-      const newPhotos = [...uploadedUrls.additionalPhotos, ...successfulUrls]
+      const newPhotos = [...uploadedUrls.photos, ...successfulUrls]
       setUploadedUrls((prev) => ({
         ...prev,
-        additionalPhotos: newPhotos,
+        photos: newPhotos,
       }))
 
       // Save to database immediately
       await ProfileService.updateProfileByUserId(userId, {
-        additional_photos: newPhotos.length > 0 ? newPhotos : null,
+        profile_photos: newPhotos.length > 0 ? newPhotos : null,
       } as any)
 
       const failedCount = results.length - successfulUrls.length
@@ -824,7 +822,6 @@ export default function ProfileSetupPage() {
       living_arrangements: (profile as any).living_arrangements,
       profile_photo: profile.profile_photo,
       profile_photos: profile.profile_photos,
-      additional_photos: (profile as any).additional_photos,
       video_intro: (profile as any).video_intro,
       voice_intro: (profile as any).voice_intro,
     })
@@ -893,8 +890,8 @@ export default function ProfileSetupPage() {
       videoIntro: profile.video_intro || null,
       voiceIntro: profile.voice_intro || null,
       profilePhoto: profile.profile_photo || null,
-      additionalPhotos: Array.isArray(profile.additional_photos) 
-        ? profile.additional_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
+      photos: Array.isArray(profile.profile_photos)
+        ? profile.profile_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
         : [],
       financeStyle: (profile as any).finance_style || prev.financeStyle,
       diningFrequency: (profile as any).dining_frequency || prev.diningFrequency,
@@ -972,8 +969,8 @@ export default function ProfileSetupPage() {
       languages: Array.isArray((profile as any).languages) ? (profile as any).languages : [],
       personality: Array.isArray((profile as any).personality) ? (profile as any).personality : [],
       profilePhoto: profile.profile_photo || null,
-      additionalPhotos: Array.isArray(profile.additional_photos) 
-        ? profile.additional_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
+      photos: Array.isArray(profile.profile_photos)
+        ? profile.profile_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
         : [],
       videoIntro: profile.video_intro || null,
       voiceIntro: profile.voice_intro || null,
@@ -1002,22 +999,18 @@ export default function ProfileSetupPage() {
 
     setUploadedUrls({
       profilePhoto: profile.profile_photo || undefined,
-      additionalPhotos: Array.isArray((profile as any).additional_photos) 
-        ? (profile as any).additional_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
-        : Array.isArray(profile.profile_photos) 
-          ? profile.profile_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
-          : [],
+      photos: Array.isArray(profile.profile_photos) 
+        ? profile.profile_photos.map((p: string) => storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, p))
+        : [],
       videoIntro: (profile as any).video_intro || undefined,
       voiceIntro: (profile as any).voice_intro || undefined,
     })
 
     console.log('Set uploadedUrls:', {
       profilePhoto: profile.profile_photo,
-      additionalPhotos: Array.isArray((profile as any).additional_photos) 
-        ? (profile as any).additional_photos 
-        : Array.isArray(profile.profile_photos) 
-          ? profile.profile_photos 
-          : [],
+      photos: Array.isArray(profile.profile_photos) 
+        ? profile.profile_photos 
+        : [],
       videoIntro: (profile as any).video_intro,
       voiceIntro: (profile as any).voice_intro,
     })
@@ -1182,12 +1175,12 @@ export default function ProfileSetupPage() {
   }
 
   const removePhotoAt = async (index: number) => {
-    const photoToDelete = uploadedUrls.additionalPhotos[index]
+    const photoToDelete = uploadedUrls.photos[index]
     
-    const next = uploadedUrls.additionalPhotos.filter((_, i) => i !== index)
+    const next = uploadedUrls.photos.filter((_, i) => i !== index)
     setUploadedUrls((prev) => ({
       ...prev,
-      additionalPhotos: next,
+      photos: next,
     }))
     
     // Update main photo index if needed
@@ -1308,7 +1301,7 @@ export default function ProfileSetupPage() {
   const persistPhotosSection = async (): Promise<boolean> => {
     if (!userId) return false
     const row = await ProfileService.updateProfileByUserId(userId, {
-      profile_photos: uploadedUrls.additionalPhotos.length > 0 ? uploadedUrls.additionalPhotos : null,
+      profile_photos: uploadedUrls.photos.length > 0 ? uploadedUrls.photos : null,
       video_intro: uploadedUrls.videoIntro || null,
       voice_intro: uploadedUrls.voiceIntro || null,
     } as any)
@@ -1376,8 +1369,7 @@ export default function ProfileSetupPage() {
       interests: profileData.interests.length > 0 ? profileData.interests : null,
       custom_interests: profileData.customInterests && profileData.customInterests.length > 0 ? profileData.customInterests : null,
       profile_photo: uploadedUrls.profilePhoto || null,
-      profile_photos: uploadedUrls.additionalPhotos.length > 0 ? uploadedUrls.additionalPhotos : null,
-      additional_photos: uploadedUrls.additionalPhotos.length > 0 ? uploadedUrls.additionalPhotos : null,
+      profile_photos: uploadedUrls.photos.length > 0 ? uploadedUrls.photos : null,
       video_intro: uploadedUrls.videoIntro || null,
       voice_intro: uploadedUrls.voiceIntro || null,
       education: profileData.preferences.education[0] || null,
@@ -1496,7 +1488,7 @@ export default function ProfileSetupPage() {
         }
 
         let mainPhotoUrl = uploadedUrls.profilePhoto
-        let additionalUrls = [...uploadedUrls.additionalPhotos]
+        let additionalUrls = [...uploadedUrls.photos]
         let videoUrl = uploadedUrls.videoIntro
         let audioUrl = uploadedUrls.voiceIntro
         try {
@@ -1515,11 +1507,13 @@ export default function ProfileSetupPage() {
               return
             }
           }
-          if (additionalUrls.length === 0 && (profileData.additionalPhotos?.length || 0) > 0) {
+          // Photos are uploaded immediately via handleAdditionalPhotosUpload, no need to upload here
+          /* DISABLED - photos uploaded on selection
+          if (additionalUrls.length === 0 && profileData.profilePhoto) {
             toast({ title: "Uploading Photos", description: "Uploading your additional photos..." })
             const results = await withTimeout(
               Promise.all(
-                profileData.additionalPhotos.map((f) =>
+                profileData.photos.map((f) =>
                   ProfileMediaService.uploadProfilePhoto(f, userId)
                 )
               ),
@@ -1536,8 +1530,9 @@ export default function ProfileSetupPage() {
               return
             }
             additionalUrls = successful
-            setUploadedUrls((prev) => ({ ...prev, additionalPhotos: successful }))
+            setUploadedUrls((prev) => ({ ...prev, photos: successful }))
           }
+          */
           if (!videoUrl && profileData.videoIntro) {
             toast({ title: "Uploading Video", description: "Uploading your video intro..." })
             const rv = await withTimeout(
@@ -3692,8 +3687,8 @@ export default function ProfileSetupPage() {
                         <Label className="font-queensides text-black text-lg">
                           Upload Photos (Up to 6)
                         </Label>
-                        <span className={`text-sm font-queensides font-semibold ${uploadedUrls.additionalPhotos.length >= 6 ? 'text-red-600' : 'text-slate-600'}`}>
-                          {uploadedUrls.additionalPhotos.length}/6
+                        <span className={`text-sm font-queensides font-semibold ${uploadedUrls.photos.length >= 6 ? 'text-red-600' : 'text-slate-600'}`}>
+                          {uploadedUrls.photos.length}/6
                         </span>
                       </div>
                       <p className="text-slate-600 font-queensides text-sm mb-4">
@@ -3701,7 +3696,7 @@ export default function ProfileSetupPage() {
                       </p>
                       
                       {/* Disable upload if limit reached */}
-                      {uploadedUrls.additionalPhotos.length >= 6 ? (
+                      {uploadedUrls.photos.length >= 6 ? (
                         <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-xl text-center">
                           <p className="text-amber-800 font-queensides font-semibold">
                             Photo limit reached (6/6). Delete a photo to upload more.
@@ -3718,14 +3713,14 @@ export default function ProfileSetupPage() {
                       )}
                       
                       {/* Photo Slider */}
-                      {uploadedUrls.additionalPhotos.length > 0 && (
+                      {uploadedUrls.photos.length > 0 && (
                         <div className="mt-6">
                           <div className="relative bg-gradient-to-br from-slate-50 to-indigo-50 rounded-2xl border border-indigo-200/50 p-6">
                             {/* Main Photo Display */}
                             <div className="relative aspect-square max-w-md mx-auto mb-4 rounded-2xl overflow-hidden shadow-xl border-4 border-white">
                               <PhotoPreview 
                                 bucket={STORAGE_CONFIG.BUCKETS.PROFILES} 
-                                path={uploadedUrls.additionalPhotos[currentPhotoIndex]} 
+                                path={uploadedUrls.photos[currentPhotoIndex]}
                               />
                               
                               {/* Main Photo Badge */}
@@ -3749,7 +3744,7 @@ export default function ProfileSetupPage() {
                               
                               {/* Photo Counter */}
                               <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-queensides">
-                                {currentPhotoIndex + 1} / {uploadedUrls.additionalPhotos.length}
+                                {currentPhotoIndex + 1} / {uploadedUrls.photos.length}
                               </div>
                             </div>
                             
@@ -3757,10 +3752,10 @@ export default function ProfileSetupPage() {
                             <div className="flex items-center justify-between gap-4">
                               <button
                                 onClick={() => setCurrentPhotoIndex(prev => 
-                                  prev > 0 ? prev - 1 : uploadedUrls.additionalPhotos.length - 1
+                                  prev > 0 ? prev - 1 : uploadedUrls.photos.length - 1
                                 )}
                                 className="p-3 rounded-xl bg-white hover:bg-indigo-50 border border-indigo-200 hover:border-indigo-300 transition-all duration-300 shadow-md hover:shadow-lg group"
-                                disabled={uploadedUrls.additionalPhotos.length <= 1}
+                                disabled={uploadedUrls.photos.length <= 1}
                               >
                                 <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -3775,13 +3770,13 @@ export default function ProfileSetupPage() {
                                   if (currentPhotoIndex === mainPhotoIndex) return
                                   
                                   // Reorder array to put selected photo first
-                                  const photos = [...uploadedUrls.additionalPhotos]
+                                  const photos = [...uploadedUrls.photos]
                                   const [selectedPhoto] = photos.splice(currentPhotoIndex, 1)
                                   const reordered = [selectedPhoto, ...photos]
                                   
                                   setUploadedUrls((prev) => ({
                                     ...prev,
-                                    additionalPhotos: reordered,
+                                    photos: reordered,
                                   }))
                                   setMainPhotoIndex(0)
                                   setCurrentPhotoIndex(0)
@@ -3789,7 +3784,7 @@ export default function ProfileSetupPage() {
                                   // Save to database immediately
                                   if (userId) {
                                     await ProfileService.updateProfileByUserId(userId, {
-                                      additional_photos: reordered,
+                                      profile_photos: reordered,
                                     } as any)
                                   }
                                 }}
@@ -3807,10 +3802,10 @@ export default function ProfileSetupPage() {
                               
                               <button
                                 onClick={() => setCurrentPhotoIndex(prev => 
-                                  prev < uploadedUrls.additionalPhotos.length - 1 ? prev + 1 : 0
+                                  prev < uploadedUrls.photos.length - 1 ? prev + 1 : 0
                                 )}
                                 className="p-3 rounded-xl bg-white hover:bg-indigo-50 border border-indigo-200 hover:border-indigo-300 transition-all duration-300 shadow-md hover:shadow-lg group"
-                                disabled={uploadedUrls.additionalPhotos.length <= 1}
+                                disabled={uploadedUrls.photos.length <= 1}
                               >
                                 <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
