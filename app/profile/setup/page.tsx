@@ -590,8 +590,13 @@ export default function ProfileSetupPage() {
 
     // Check if adding these files would exceed the 6 photo limit
     const currentCount = uploadedUrls.photos.length
-    if (currentCount + files.length > 6) {
-      openModal("Photo Limit", `You can only have up to 6 photos. You currently have ${currentCount} photo(s).`, "error")
+    if (currentCount >= MAX_PROFILE_PHOTOS) {
+      openModal("Photo Limit", `You can only have up to ${MAX_PROFILE_PHOTOS} photos. You currently have ${currentCount} photo(s).`, "error")
+      return
+    }
+    if (currentCount + files.length > MAX_PROFILE_PHOTOS) {
+      const allowed = MAX_PROFILE_PHOTOS - currentCount
+      openModal("Photo Limit", `You can only add ${allowed} more photo(s) to reach the maximum of ${MAX_PROFILE_PHOTOS}.`, "error")
       return
     }
 
@@ -609,7 +614,7 @@ export default function ProfileSetupPage() {
           (r: any) => r.path || storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, r.url!)!
         )
 
-      const newPhotos = [...uploadedUrls.photos, ...successfulUrls]
+      const newPhotos = [...uploadedUrls.photos, ...successfulUrls].slice(0, MAX_PROFILE_PHOTOS)
       setUploadedUrls((prev) => ({
         ...prev,
         photos: newPhotos,
@@ -1174,6 +1179,11 @@ export default function ProfileSetupPage() {
       ...prev,
       photos: next,
     }))
+    
+    // Update current photo index if needed
+    if (currentPhotoIndex >= next.length) {
+      setCurrentPhotoIndex(Math.max(0, next.length - 1))
+    }
     
     // Update main photo index if needed
     if (mainPhotoIndex === index) {
@@ -3708,10 +3718,12 @@ export default function ProfileSetupPage() {
                           <div className="relative bg-gradient-to-br from-slate-50 to-indigo-50 rounded-2xl border border-indigo-200/50 p-6">
                             {/* Main Photo Display */}
                             <div className="relative aspect-square max-w-md mx-auto mb-4 rounded-2xl overflow-hidden shadow-xl border-4 border-white">
-                              <PhotoPreview 
-                                bucket={STORAGE_CONFIG.BUCKETS.PROFILES} 
-                                path={uploadedUrls.photos[currentPhotoIndex]}
-                              />
+                              {uploadedUrls.photos[currentPhotoIndex] && (
+                                <PhotoPreview 
+                                  bucket={STORAGE_CONFIG.BUCKETS.PROFILES} 
+                                  path={uploadedUrls.photos[currentPhotoIndex]}
+                                />
+                              )}
                               
                               {/* Main Photo Badge */}
                               {currentPhotoIndex === mainPhotoIndex && (
