@@ -1063,14 +1063,13 @@ export function MobileHero() {
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
-            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-indigo-200/50"
+            className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-indigo-200/50 max-h-[80vh] flex flex-col"
           >
-            <div className="relative p-8">
+            {/* Fixed Header with Image */}
+            <div className="relative flex-shrink-0">
               {/* Arabic corner decorations */}
-              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
-              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
-              <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
-              <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
+              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl z-10"></div>
+              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl z-10"></div>
 
               {/* Close Button */}
               <button
@@ -1078,23 +1077,26 @@ export function MobileHero() {
                   setShowWalletModal(false)
                   setSelectedWallet(null)
                 }}
-                className="absolute top-4 right-4 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all hover:scale-110 border border-indigo-200/50 shadow-md z-10"
+                className="absolute top-4 right-4 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all hover:scale-110 border border-indigo-200/50 shadow-md z-20"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5 text-indigo-600" />
               </button>
 
               {/* Wallet Image */}
-              <div className="relative mb-4 rounded-2xl overflow-hidden border-2 border-indigo-200/50 shadow-lg">
+              <div className="relative rounded-t-3xl overflow-hidden border-b-2 border-indigo-200/50">
                 <img
                   src={selectedWallet.image}
                   alt={selectedWallet.title}
-                  className="w-full h-auto object-contain bg-gradient-to-br from-indigo-50 to-purple-50"
+                  className="w-full h-48 object-contain bg-gradient-to-br from-indigo-50 to-purple-50"
                 />
               </div>
+            </div>
 
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-8 pb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {/* Title */}
-              <h3 className="text-2xl font-bold text-center text-slate-800 mb-4 font-queensides">
+              <h3 className="text-2xl font-bold text-center text-slate-800 mb-4 mt-6 font-queensides">
                 {selectedWallet.title}
               </h3>
 
@@ -1115,8 +1117,10 @@ export function MobileHero() {
                 </div>
                 <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
               </div>
+            </div>
 
-              {/* Close Button */}
+            {/* Fixed Footer with Button */}
+            <div className="flex-shrink-0 px-8 pb-8">
               <button
                 onClick={() => {
                   setShowWalletModal(false)
@@ -1128,8 +1132,9 @@ export function MobileHero() {
               </button>
             </div>
 
-            {/* Decorative elements */}
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-indigo-100/30 to-purple-100/30 rounded-full blur-3xl"></div>
+            {/* Bottom corner decorations */}
+            <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl pointer-events-none"></div>
+            <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl pointer-events-none"></div>
           </motion.div>
         </div>
       )}
