@@ -303,19 +303,6 @@ export default function CommunityPage() {
         <div className="p-4 space-y-4">
           {/* Traditional Balance Card */}
           <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-3xl p-6 text-white">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <PiggyBank className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="text-sm opacity-90 font-queensides">Community Balance</p>
-                  <p className="text-3xl font-bold font-queensides">
-                    {formatCurrency(communityFund?.total_balance || 0)}
-                  </p>
-                </div>
-              </div>
-            </div>
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="bg-white/10 rounded-xl p-3">
                 <p className="text-sm opacity-90 font-queensides">Total Donated</p>
@@ -402,7 +389,7 @@ export default function CommunityPage() {
               {/* Info */}
               <div className="mt-4 bg-amber-100/50 rounded-xl p-3 border border-amber-200">
                 <p className="text-xs text-amber-800 font-queensides text-center">
-                  💝 10% of all purchases are automatically sent to this wallet
+                  💝 % of all purchases are automatically sent to this wallet. <br/>Funds are used for mahr, purse, and masjid donations.
                 </p>
               </div>
             </div>
@@ -423,7 +410,7 @@ export default function CommunityPage() {
           </TabsList>
 
           {/* Masjids List */}
-          <TabsContent value="overview">
+          <TabsContent value="overview" className="p-4">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-800 font-queensides">
@@ -547,13 +534,15 @@ export default function CommunityPage() {
                 </div>
               )}
             </div>
+                        <br/><br/><br/><br/>
+
           </TabsContent>
 
           {/* Apply Tab */}
-          <TabsContent value="apply">
+          <TabsContent value="apply" className="p-4">
             <Card>
               <CardHeader>
-                <CardTitle className="font-queensides">Apply for Donation</CardTitle>
+                <CardTitle className="font-queensides">Register Masjid</CardTitle>
                 <CardDescription className="font-queensides">
                   Submit your masjid for community funding consideration
                 </CardDescription>
@@ -704,6 +693,7 @@ export default function CommunityPage() {
                 </Button>
               </CardContent>
             </Card>
+            <br/><br/><br/><br/>
           </TabsContent>
         </Tabs>
       </div>
