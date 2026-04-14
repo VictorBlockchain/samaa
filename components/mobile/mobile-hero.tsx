@@ -37,6 +37,8 @@ export function MobileHero() {
   const [isMobile, setIsMobile] = useState(true)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
+  const [showWalletModal, setShowWalletModal] = useState(false)
+  const [selectedWallet, setSelectedWallet] = useState<typeof walletSlides[0] | null>(null)
 
   const { isAuthenticated, userId } = useAuth()
 
@@ -57,18 +59,24 @@ export function MobileHero() {
       title: 'Mahr Bitcoin Wallet',
       description: 'Time locked bitcoin wallet, show her how much you\'ve set aside for her dowry and her future',
       icon: Gift,
+      image: '/images/mahr_wallet.png',
+      explainer: 'The Mahr Bitcoin Wallet is a time-locked wallet that demonstrates your serious commitment. Set aside Bitcoin for your future bride\'s dowry (Mahr), showing her that you\'re financially prepared and dedicated to building a secure future together. The time-lock ensures the funds remain untouched until the wedding, symbolizing your promise and dedication.',
     },
     {
       id: 'purse',
       title: 'Purse Bitcoin Wallet',
       description: 'Time locked bitcoin wallet, show him you are financially savvy and have some funds set aside for your future',
       icon: PiggyBank,
+      image: '/images/purse_wallet.png',
+      explainer: 'The Purse Bitcoin Wallet showcases your financial wisdom and independence. By setting aside Bitcoin in a time-locked wallet, you demonstrate to potential matches that you\'re financially responsible and preparing for your shared future. It\'s a modern approach to traditional savings, proving you\'re ready for marriage in every sense.',
     },
     {
       id: 'community',
       title: 'Community Bitcoin Wallet',
       description: '% of all purchases go into community wallet, funds will be donated to Mahr, Purse and Masjids',
       icon: Users2,
+      image: '/images/community_wallet.png',
+      explainer: 'The Community Bitcoin Wallet embodies our collective responsibility. A percentage of every purchase on Samaa goes into this shared wallet, which distributes funds to support couples\' Mahr and Purse wallets, as well as donations to Masjids. It\'s our way of giving back to the community and helping make marriages more accessible for everyone.',
     },
   ]
 
@@ -495,7 +503,7 @@ export function MobileHero() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 2, duration: 0.8, ease: "easeOut" }}
-              className="relative group mb-8"
+              className="relative group mb-4"
             >
               <div className="relative rounded-2xl p-6 border border-indigo-200/30 hover:border-indigo-300/50 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5">
                 {/* Arabic-inspired corner decorations */}
@@ -568,9 +576,32 @@ export function MobileHero() {
                           </h4>
                           
                           {/* Description */}
-                          <p className="text-slate-600 font-queensides leading-relaxed text-base">
+                          <p className="text-slate-600 font-queensides leading-relaxed text-base mb-4">
                             {slide.description}
                           </p>
+
+                          {/* Learn More Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedWallet(slide)
+                              setShowWalletModal(true)
+                            }}
+                            className="relative overflow-hidden bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 group border border-white/20 font-queensides text-sm"
+                          >
+                            {/* Shimmer effect */}
+                            <motion.div
+                              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                              animate={{ x: [-80, 200] }}
+                              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                            />
+                            <span className="relative z-10 flex items-center gap-2">
+                              Learn More
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </span>
+                          </button>
                         </div>
                       </motion.div>
                     ))}
@@ -982,6 +1013,93 @@ export function MobileHero() {
 
 
       </div>
+
+      {/* Wallet Info Modal */}
+      {showWalletModal && selectedWallet && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="relative w-full max-w-md bg-gradient-to-br from-white to-indigo-50/30 rounded-3xl shadow-2xl overflow-hidden border border-indigo-200/50"
+          >
+            <div className="relative p-8">
+              {/* Arabic corner decorations */}
+              <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
+              <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
+              <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
+              <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowWalletModal(false)
+                  setSelectedWallet(null)
+                }}
+                className="absolute top-4 right-4 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-all hover:scale-110 border border-indigo-200/50 shadow-md z-10"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5 text-indigo-600" />
+              </button>
+
+              {/* Wallet Image */}
+              <div className="relative mb-6 rounded-2xl overflow-hidden border-2 border-indigo-200/50 shadow-lg">
+                <img
+                  src={selectedWallet.image}
+                  alt={selectedWallet.title}
+                  className="w-full h-48 object-cover"
+                />
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/40 to-transparent"></div>
+              </div>
+
+              {/* Wallet Icon */}
+              <div className="flex justify-center -mt-12 mb-4 relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl border-4 border-white">
+                  <selectedWallet.icon className="w-8 h-8 text-white" />
+                </div>
+              </div>
+
+              {/* Title */}
+              <h3 className="text-2xl font-bold text-center text-slate-800 mb-4 font-queensides">
+                {selectedWallet.title}
+              </h3>
+
+              {/* Description */}
+              <p className="text-slate-600 font-queensides leading-relaxed text-base mb-6">
+                {selectedWallet.explainer}
+              </p>
+
+              {/* Arabic-Inspired Card Divider */}
+              <div className="flex items-center justify-center mb-6">
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
+                <div className="mx-4 flex items-center space-x-1">
+                  <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                  <div className="w-2 h-2 border border-indigo-400/50 rounded-full flex items-center justify-center">
+                    <div className="w-0.5 h-0.5 bg-indigo-400 rounded-full"></div>
+                  </div>
+                  <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                </div>
+                <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowWalletModal(false)
+                  setSelectedWallet(null)
+                }}
+                className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold py-3.5 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 font-queensides"
+              >
+                Got it, thanks!
+              </button>
+            </div>
+
+            {/* Decorative elements */}
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-gradient-to-br from-indigo-100/30 to-purple-100/30 rounded-full blur-3xl"></div>
+          </motion.div>
+        </div>
+      )}
 
       {/* Mobile-Only Modal */}
       {showMobileModal && (
