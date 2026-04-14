@@ -868,6 +868,8 @@ export default function ProfileSetupPage() {
       familyInvolvement: (profile as any).family_involvement || prev.familyInvolvement,
       dob: (profile as any).date_of_birth || prev.dob,
       height: (profile as any).height || prev.height,
+      heightFeet: (profile as any).height ? String(Math.floor((profile as any).height / 2.54 / 12)) : prev.heightFeet,
+      heightInches: (profile as any).height ? String(Math.round(((profile as any).height / 2.54) % 12)) : prev.heightInches,
       nationality: (profile as any).nationality || prev.nationality,
       bio: profile.bio || prev.bio,
       interests: Array.isArray(profile.interests) ? profile.interests : prev.interests,
@@ -884,6 +886,19 @@ export default function ProfileSetupPage() {
       voiceIntro: profile.voice_intro || null,
       profilePhoto: profile.profile_photo || null,
       additionalPhotos: Array.isArray(profile.additional_photos) ? profile.additional_photos : [],
+      financeStyle: (profile as any).finance_style || prev.financeStyle,
+      diningFrequency: (profile as any).dining_frequency || prev.diningFrequency,
+      travelFrequency: (profile as any).travel_frequency || prev.travelFrequency,
+      shoppingFrequency: (profile as any).shopping_frequency_preference || prev.shoppingFrequency,
+      shoppingBudgetType: (profile as any).shopping_budget_preference_type || prev.shoppingBudgetType,
+      shoppingBudgetAmount: (profile as any).shopping_budget_preference_amount ? String((profile as any).shopping_budget_preference_amount) : prev.shoppingBudgetAmount,
+      hairStyle: (profile as any).hair_style || prev.hairStyle,
+      makeUpStyle: (profile as any).make_up_style || prev.makeUpStyle,
+      polygamyReason: (profile as any).polygamy_reason || prev.polygamyReason,
+      selfCareFrequency: (profile as any).self_care_frequency_preference || prev.selfCareFrequency,
+      selfCareBudgetType: (profile as any).self_care_budget_preference_type || prev.selfCareBudgetType,
+      selfCareBudgetAmount: (profile as any).self_care_budget_preference_amount ? String((profile as any).self_care_budget_preference_amount) : prev.selfCareBudgetAmount,
+      languages: Array.isArray((profile as any).languages) ? (profile as any).languages : prev.languages,
       preferences: {
         // Ensure preferences are still handled
         ...prev.preferences,
@@ -2170,6 +2185,58 @@ export default function ProfileSetupPage() {
                           <RadioGroupItem value="no" id="relocate-no" />
                           <Label htmlFor="relocate-no" className="font-queensides text-black">
                             No
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {/* Has Children */}
+                    <div>
+                      <Label className="font-queensides text-black">Has Children</Label>
+                      <RadioGroup
+                        value={profileData.hasChildren || ""}
+                        onValueChange={(value) => updateProfileData("hasChildren", value)}
+                        className="mt-2 space-y-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="has-children-yes" />
+                          <Label htmlFor="has-children-yes" className="font-queensides text-black">
+                            Yes
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="has-children-no" />
+                          <Label htmlFor="has-children-no" className="font-queensides text-black">
+                            No
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {/* Want Children */}
+                    <div>
+                      <Label className="font-queensides text-black">Want Children</Label>
+                      <RadioGroup
+                        value={profileData.wantChildren || ""}
+                        onValueChange={(value) => updateProfileData("wantChildren", value)}
+                        className="mt-2 space-y-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="yes" id="want-children-yes" />
+                          <Label htmlFor="want-children-yes" className="font-queensides text-black">
+                            Yes
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="no" id="want-children-no" />
+                          <Label htmlFor="want-children-no" className="font-queensides text-black">
+                            No
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="maybe" id="want-children-maybe" />
+                          <Label htmlFor="want-children-maybe" className="font-queensides text-black">
+                            Maybe
                           </Label>
                         </div>
                       </RadioGroup>
