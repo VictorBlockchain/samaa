@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -39,6 +39,8 @@ import {
   Unlock,
   Copy,
   Crown,
+  Edit,
+  Loader2,
 } from "lucide-react"
 import { CelestialBackground } from "@/components/ui/celestial-background"
 import { useRouter } from "next/navigation"
@@ -46,7 +48,7 @@ import { useUser } from "@/app/context/UserContext"
 import { DesktopNavigation } from "@/components/desktop/desktop-navigation"
 import { MobileNavigation } from "@/components/mobile/mobile-navigation"
 import { ProfileService } from "@/lib/database"
-import { getSignedUrlForPath, storagePathFromUrlOrPath, STORAGE_CONFIG } from "@/lib/storage"
+import { getSignedUrlForPath, storagePathFromUrlOrPath, STORAGE_CONFIG, ProfileMediaService } from "@/lib/storage"
 import { ArabicCard, ArabicCardContent, ArabicCardTitle, ArabicCardDescription } from "@/components/ui/arabic-card"
 import { supabase } from "@/lib/supabase"
 
@@ -529,6 +531,11 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
     isActive: boolean
   } | null>(null)
   const [copiedAddress, setCopiedAddress] = useState(false)
+  
+  // Image editing state
+  const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Helper function to format date
   const formatDate = (dateString: string) => {
@@ -745,6 +752,77 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
     }
   }
 
+  // Image editing handlers
+  const handleEditPhoto = (index: number) => {
+    setEditingPhotoIndex(index)
+    fileInputRef.current?.click()
+  }
+
+  const handlePhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || editingPhotoIndex === null || !userId || !profile) return
+
+    setIsUploadingPhoto(true)
+
+    try {
+      // Upload new photo
+      const result = await ProfileMediaService.uploadProfilePhoto(file, userId)
+      
+      if (result.success && result.path) {
+        // Get signed URL for the new photo
+        const signedUrl = await getSignedUrlForPath(STORAGE_CONFIG.BUCKETS.PROFILES, result.path, 7200)
+        const newPhotoUrl = signedUrl || result.path
+
+        // Delete old photo from storage if it exists
+        const oldPhotos = profile.profile_photos || []
+        if (oldPhotos[editingPhotoIndex]) {
+          const oldPath = storagePathFromUrlOrPath(STORAGE_CONFIG.BUCKETS.PROFILES, oldPhotos[editingPhotoIndex])
+          try {
+            await ProfileMediaService.deleteProfileMedia(STORAGE_CONFIG.BUCKETS.PROFILES, oldPath)
+          } catch (error) {
+            console.error('Failed to delete old photo:', error)
+          }
+        }
+
+        // Update photos array
+        const updatedPhotos = [...oldPhotos]
+        updatedPhotos[editingPhotoIndex] = result.path
+
+        // Save to database
+        const { error } = await supabase
+          .from('users')
+          .update({ profile_photos: updatedPhotos })
+          .eq('id', profileUserId)
+
+        if (error) {
+          console.error('Error updating profile photos:', error)
+          alert('Failed to update photo')
+        } else {
+          // Update local state
+          const updatedProfile: ProfileData = {
+            ...profile,
+            profile_photos: updatedPhotos.map((path, i) => 
+              i === editingPhotoIndex ? newPhotoUrl : path
+            )
+          }
+          setProfile(updatedProfile)
+        }
+      } else {
+        alert('Failed to upload photo: ' + (result.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Error updating photo:', error)
+      alert('Failed to update photo')
+    } finally {
+      setIsUploadingPhoto(false)
+      setEditingPhotoIndex(null)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-rose-50 flex items-center justify-center">
@@ -823,7 +901,7 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
         {/* Hero Image */}
         <div className="relative w-full">
           {profile.profile_photos && profile.profile_photos.length > 0 ? (
-            <div className="relative w-full overflow-hidden">
+            <div className="relative w-full overflow-hidden group">
               <img
                 src={profile.profile_photos[0]}
                 alt={`${profile.firstName}'s profile photo`}
@@ -831,10 +909,38 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
                 style={{ maxHeight: '600px' }}
               />
               <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+              
+              {/* Edit button for profile owner */}
+              {isOwnProfile && (
+                <button
+                  onClick={() => handleEditPhoto(0)}
+                  disabled={isUploadingPhoto}
+                  className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Edit photo"
+                >
+                  {isUploadingPhoto && editingPhotoIndex === 0 ? (
+                    <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />
+                  ) : (
+                    <Edit className="w-4 h-4 text-pink-600" />
+                  )}
+                </button>
+              )}
             </div>
           ) : (
-            <div className="relative w-full h-96 bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
+            <div className="relative w-full h-96 bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center group">
               <UserCircle className="w-32 h-32 text-pink-300" />
+              
+              {/* Add photo button for profile owner */}
+              {isOwnProfile && (
+                <button
+                  onClick={() => handleEditPhoto(0)}
+                  disabled={isUploadingPhoto}
+                  className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Add photo"
+                >
+                  <Camera className="w-4 h-4 text-pink-600" />
+                </button>
+              )}
             </div>
           )}
 
@@ -1059,13 +1165,29 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {/* Photo 2 */}
         {profile.profile_photos && profile.profile_photos.length > 1 && (
-          <div className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-hidden group">
             <img
               src={profile.profile_photos[1]}
               alt={`${profile.firstName}'s photo`}
               className="w-full h-auto object-cover"
               style={{ maxHeight: '500px' }}
             />
+            
+            {/* Edit button for profile owner */}
+            {isOwnProfile && (
+              <button
+                onClick={() => handleEditPhoto(1)}
+                disabled={isUploadingPhoto}
+                className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit photo"
+              >
+                {isUploadingPhoto && editingPhotoIndex === 1 ? (
+                  <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />
+                ) : (
+                  <Edit className="w-4 h-4 text-pink-600" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -1137,13 +1259,29 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {/* Photo 3 */}
         {profile.profile_photos && profile.profile_photos.length > 2 && (
-          <div className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-hidden group">
             <img
               src={profile.profile_photos[2]}
               alt={`${profile.firstName}'s photo`}
               className="w-full h-auto object-cover"
               style={{ maxHeight: '500px' }}
             />
+            
+            {/* Edit button for profile owner */}
+            {isOwnProfile && (
+              <button
+                onClick={() => handleEditPhoto(2)}
+                disabled={isUploadingPhoto}
+                className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit photo"
+              >
+                {isUploadingPhoto && editingPhotoIndex === 2 ? (
+                  <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />
+                ) : (
+                  <Edit className="w-4 h-4 text-pink-600" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -1337,13 +1475,29 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {/* Photo 4 */}
         {profile.profile_photos && profile.profile_photos.length > 3 && (
-          <div className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-hidden group">
             <img
               src={profile.profile_photos[3]}
               alt={`${profile.firstName}'s photo`}
               className="w-full h-auto object-cover"
               style={{ maxHeight: '500px' }}
             />
+            
+            {/* Edit button for profile owner */}
+            {isOwnProfile && (
+              <button
+                onClick={() => handleEditPhoto(3)}
+                disabled={isUploadingPhoto}
+                className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit photo"
+              >
+                {isUploadingPhoto && editingPhotoIndex === 3 ? (
+                  <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />
+                ) : (
+                  <Edit className="w-4 h-4 text-pink-600" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -1449,13 +1603,29 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {/* Photo 5 */}
         {profile.profile_photos && profile.profile_photos.length > 4 && (
-          <div className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-hidden group">
             <img
               src={profile.profile_photos[4]}
               alt={`${profile.firstName}'s photo`}
               className="w-full h-auto object-cover"
               style={{ maxHeight: '500px' }}
             />
+            
+            {/* Edit button for profile owner */}
+            {isOwnProfile && (
+              <button
+                onClick={() => handleEditPhoto(4)}
+                disabled={isUploadingPhoto}
+                className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit photo"
+              >
+                {isUploadingPhoto && editingPhotoIndex === 4 ? (
+                  <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />
+                ) : (
+                  <Edit className="w-4 h-4 text-pink-600" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -1539,13 +1709,29 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
 
         {/* Remaining Photos Grid */}
         {profile.profile_photos && profile.profile_photos.length > 5 && (
-          <div className="relative w-full overflow-hidden">
+          <div className="relative w-full overflow-hidden group">
             <img
               src={profile.profile_photos[5]}
               alt={`${profile.firstName}'s photo`}
               className="w-full h-auto object-cover"
               style={{ maxHeight: '500px' }}
             />
+            
+            {/* Edit button for profile owner */}
+            {isOwnProfile && (
+              <button
+                onClick={() => handleEditPhoto(5)}
+                disabled={isUploadingPhoto}
+                className="absolute top-4 right-4 p-2.5 bg-white/90 backdrop-blur-sm rounded-full shadow-lg hover:bg-white transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Edit photo"
+              >
+                {isUploadingPhoto && editingPhotoIndex === 5 ? (
+                  <Loader2 className="w-4 h-4 text-pink-600 animate-spin" />
+                ) : (
+                  <Edit className="w-4 h-4 text-pink-600" />
+                )}
+              </button>
+            )}
           </div>
         )}
 
@@ -1994,6 +2180,15 @@ export function ProfileViewElegant({ userId: profileUserId }: { userId: string }
           </>
         )}
       </AnimatePresence>
+      
+      {/* Hidden file input for photo editing */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handlePhotoFileChange}
+        accept={STORAGE_CONFIG.ALLOWED_IMAGE_TYPES.join(',')}
+        className="hidden"
+      />
     </div>
   )
 }
