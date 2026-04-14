@@ -4,7 +4,7 @@ import { motion, useScroll } from "framer-motion"
 import React, { useEffect, useRef, useState } from "react"
 import { WalletButton } from "@/components/wallet/wallet-button"
 import { useAuth } from "@/app/context/AuthContext"
-import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone, Heart, Wallet, Building } from "lucide-react"
+import { User, Search, MessageCircle, Eye, MessageSquare, Camera, Image as ImageIcon, Video, Sparkles, Users, Store, MoonStar, BadgeCheck, Shield, Clapperboard, ShoppingCart, X, Smartphone, Heart, Wallet, Building2, Gift, PiggyBank, Users2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { MessageTabs } from "./message-tabs"
 import { SwipeCard } from "./swipe-card"
@@ -56,22 +56,19 @@ export function MobileHero() {
       id: 'mahr',
       title: 'Mahr Bitcoin Wallet',
       description: 'Time locked bitcoin wallet, show her how much you\'ve set aside for her dowry and her future',
-      icon: Heart,
-      color: 'from-pink-500 to-rose-600',
+      icon: Gift,
     },
     {
       id: 'purse',
       title: 'Purse Bitcoin Wallet',
       description: 'Time locked bitcoin wallet, show him you are financially savvy and have some funds set aside for your future',
-      icon: Wallet,
-      color: 'from-purple-500 to-indigo-600',
+      icon: PiggyBank,
     },
     {
       id: 'community',
       title: 'Community Bitcoin Wallet',
       description: '% of all purchases go into community wallet, funds will be donated to Mahr, Purse and Masjids',
-      icon: Building,
-      color: 'from-emerald-500 to-teal-600',
+      icon: Users2,
     },
   ]
 
@@ -532,69 +529,84 @@ export function MobileHero() {
               transition={{ delay: 2.2, duration: 0.8, ease: "easeOut" }}
               className="mb-8"
             >
-              {/* Header */}
-              <h3 className="text-xl font-bold text-center mb-6 font-queensides bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Crypto infused for those serious about getting married!
-              </h3>
-
               {/* Text Slider Container */}
-              <div className="relative rounded-2xl p-6 border border-indigo-200/30 backdrop-blur-sm bg-white/5 overflow-hidden group">
-                {/* Arabic-inspired corner decorations */}
-                <div className="absolute top-2 left-2 w-4 h-4 border-l-2 border-t-2 border-indigo-300/40 rounded-tl-lg"></div>
-                <div className="absolute top-2 right-2 w-4 h-4 border-r-2 border-t-2 border-indigo-300/40 rounded-tr-lg"></div>
-                <div className="absolute bottom-2 left-2 w-4 h-4 border-l-2 border-b-2 border-indigo-300/40 rounded-bl-lg"></div>
-                <div className="absolute bottom-2 right-2 w-4 h-4 border-r-2 border-b-2 border-indigo-300/40 rounded-br-lg"></div>
+              <div className="relative rounded-2xl p-8 border-2 border-indigo-400/60 transition-all duration-300 overflow-hidden backdrop-blur-sm bg-white/5">
+                {/* Arabic corner decorations */}
+                <div className="absolute top-3 left-3 w-6 h-6 border-l-2 border-t-2 border-indigo-400/60 rounded-tl-xl"></div>
+                <div className="absolute top-3 right-3 w-6 h-6 border-r-2 border-t-2 border-purple-400/60 rounded-tr-xl"></div>
+                <div className="absolute bottom-3 left-3 w-6 h-6 border-l-2 border-b-2 border-purple-400/60 rounded-bl-xl"></div>
+                <div className="absolute bottom-3 right-3 w-6 h-6 border-r-2 border-b-2 border-indigo-400/60 rounded-br-xl"></div>
 
-                {/* Slides */}
-                <div className="relative h-[140px]">
-                  {walletSlides.map((slide, index) => (
-                    <motion.div
-                      key={slide.id}
-                      initial={false}
-                      animate={{
-                        opacity: index === currentSlide ? 1 : 0,
-                        y: index === currentSlide ? 0 : 20,
-                      }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                      className="absolute inset-0"
-                    >
-                      <div className="flex flex-col items-center justify-center h-full text-center px-4">
-                        {/* Icon */}
-                        <div className={`inline-flex w-12 h-12 bg-gradient-to-r ${slide.color} rounded-xl items-center justify-center mb-3 shadow-lg border border-white/20`}>
-                          <slide.icon className="w-6 h-6 text-white" />
+                {/* Geometric pattern overlay */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 border border-indigo-300/30 rounded-full opacity-20"></div>
+                <div className="absolute top-1/4 right-1/4 w-2 h-2 bg-purple-300/20 rounded-full"></div>
+                <div className="absolute bottom-1/4 left-1/4 w-2 h-2 bg-indigo-300/20 rounded-full"></div>
+
+                <div className="relative z-10">
+                  {/* Slides */}
+                  <div className="relative h-[160px]">
+                    {walletSlides.map((slide, index) => (
+                      <motion.div
+                        key={slide.id}
+                        initial={false}
+                        animate={{
+                          opacity: index === currentSlide ? 1 : 0,
+                          y: index === currentSlide ? 0 : 20,
+                        }}
+                        transition={{ duration: 0.5, ease: "easeOut" }}
+                        className="absolute inset-0"
+                      >
+                        <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                          {/* Icon */}
+                          <div className="flex justify-center mb-3">
+                            <slide.icon className="w-8 h-8 text-indigo-600" />
+                          </div>
+                          
+                          {/* Title */}
+                          <h4 className="text-2xl font-bold text-slate-800 mb-4 font-queensides">
+                            {slide.title}
+                          </h4>
+                          
+                          {/* Description */}
+                          <p className="text-slate-600 font-queensides leading-relaxed text-base">
+                            {slide.description}
+                          </p>
                         </div>
-                        
-                        {/* Title */}
-                        <h4 className="text-lg font-bold mb-2 font-queensides bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                          {slide.title}
-                        </h4>
-                        
-                        {/* Description */}
-                        <p className="text-sm text-slate-600 font-queensides leading-relaxed">
-                          {slide.description}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Dots Indicator */}
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    {walletSlides.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setCurrentSlide(index)
+                          setIsAutoPlaying(false)
+                        }}
+                        className={`transition-all duration-300 ${
+                          index === currentSlide
+                            ? 'w-8 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full shadow-md'
+                            : 'w-2 h-2 bg-indigo-200/50 rounded-full hover:bg-indigo-300/70'
+                        }`}
+                        aria-label={`Go to slide ${index + 1}`}
+                      />
+                    ))}
+                  </div>
                 </div>
 
-                {/* Dots Indicator */}
-                <div className="flex items-center justify-center gap-2 mt-2">
-                  {walletSlides.map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setCurrentSlide(index)
-                        setIsAutoPlaying(false)
-                      }}
-                      className={`transition-all duration-300 ${
-                        index === currentSlide
-                          ? 'w-8 h-2 bg-gradient-to-r from-indigo-400 to-purple-400 rounded-full shadow-md'
-                          : 'w-2 h-2 bg-indigo-200/50 rounded-full hover:bg-indigo-300/70'
-                      }`}
-                      aria-label={`Go to slide ${index + 1}`}
-                    />
-                  ))}
+                {/* Arabic-Inspired Card Divider */}
+                <div className="flex items-center justify-center mt-5">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
+                  <div className="mx-4 flex items-center space-x-1">
+                    <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                    <div className="w-2 h-2 border border-indigo-400/50 rounded-full flex items-center justify-center">
+                      <div className="w-0.5 h-0.5 bg-indigo-400 rounded-full"></div>
+                    </div>
+                    <div className="w-1 h-1 bg-indigo-400/70 rounded-full"></div>
+                  </div>
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-indigo-300/40 to-transparent"></div>
                 </div>
               </div>
             </motion.div>
