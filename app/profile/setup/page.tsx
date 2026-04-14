@@ -3261,8 +3261,12 @@ export default function ProfileSetupPage() {
                           <Label className="font-queensides text-black">Psychedelic Types</Label>
                           <div className="grid grid-cols-2 gap-3">
                             {[
-                              { key: "mushroom", label: "Mushroom" },
                               { key: "cannabis", label: "Cannabis" },
+                              { key: "psilocybin", label: "Psilocybin" },
+                              { key: "ayahuasca", label: "Ayahuasca" },
+                              { key: "mdma", label: "MDMA" },
+                              { key: "lsd", label: "LSD" },
+                              { key: "ketamine", label: "Ketamine" },
                               { key: "other", label: "Other" },
                             ].map((opt) => (
                               <div
