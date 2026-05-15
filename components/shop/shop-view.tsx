@@ -259,7 +259,7 @@ export function ShopView() {
         .order('created_at', { ascending: false })
       
       if (ordersError) {
-        console.error('Error loading user orders:', ordersError)
+        console.error('Error loading user orders:', ordersError)2
       }
       
       // Fetch order items separately for each order
