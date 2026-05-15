@@ -1,17 +1,18 @@
-import * as bitcoin from 'bitcoinjs-lib'
-import * as ecc from 'tiny-secp256k1'
-import { BIP32Factory, BIP32Interface } from 'bip32'
-import { ECPairFactory } from 'ecpair'
-import { encrypt, decrypt } from './encryption'
+import * as bitcoin from "bitcoinjs-lib"
+import { createRequire } from "module"
+const require = createRequire(import.meta.url)
+const ecc = require("tiny-secp256k1")
+import { BIP32Factory, BIP32Interface } from "bip32"
+import { ECPairFactory } from "ecpair"
+import { encrypt, decrypt } from "./encryption"
 
 // Initialize libraries
 const bip32 = BIP32Factory(ecc)
 const ECPair = ECPairFactory(ecc)
 
 // Network configuration
-const network = process.env.NODE_ENV === 'production' 
-  ? bitcoin.networks.bitcoin 
-  : bitcoin.networks.testnet
+const network =
+  process.env.NODE_ENV === "production" ? bitcoin.networks.bitcoin : bitcoin.networks.testnet
 
 /**
  * Generate Bitcoin keypair for a user
@@ -31,23 +32,23 @@ export function generateUserKeypair(index: number): {
       pubkey: keyPair.publicKey,
       network,
     })
-    
+
     if (!address) {
-      throw new Error('Failed to generate address')
+      throw new Error("Failed to generate address")
     }
-    
+
     // Get private key in WIF format and encrypt it
     const privateKeyWIF = keyPair.toWIF()
     const privateKeyEncrypted = encrypt(privateKeyWIF)
-    
+
     return {
       address,
       privateKeyEncrypted,
-      publicKey: Buffer.from(keyPair.publicKey).toString('hex'),
+      publicKey: Buffer.from(keyPair.publicKey).toString("hex"),
       index,
     }
   } catch (error) {
-    console.error('[bitcoin-split] Error generating keypair:', error)
+    console.error("[bitcoin-split] Error generating keypair:", error)
     throw error
   }
 }
@@ -73,19 +74,19 @@ export function deriveAddressFromXPUB(xpub: string, index: number): string {
   try {
     const node = bip32.fromBase58(xpub, network)
     const child = node.derivePath(`0/${index}`)
-    
+
     const { address } = bitcoin.payments.p2wpkh({
       pubkey: child.publicKey,
       network,
     })
-    
+
     if (!address) {
-      throw new Error('Failed to generate address')
+      throw new Error("Failed to generate address")
     }
-    
+
     return address
   } catch (error) {
-    console.error('[bitcoin-split] Error deriving address from XPUB:', error)
+    console.error("[bitcoin-split] Error deriving address from XPUB:", error)
     throw error
   }
 }
@@ -118,9 +119,9 @@ export async function createTransaction(
   feeSatoshis: number
 ): Promise<string> {
   const keyPair = ECPair.fromWIF(privateKeyWIF, network)
-  
+
   const psbt = new bitcoin.Psbt({ network })
-  
+
   // Add inputs
   let totalInput = 0
   for (const utxo of utxos) {
@@ -136,13 +137,13 @@ export async function createTransaction(
     })
     totalInput += utxo.value
   }
-  
+
   // Add output
   psbt.addOutput({
     address: toAddress,
     value: BigInt(amountSatoshis),
   })
-  
+
   // Add change output if there's leftover
   const change = totalInput - amountSatoshis - feeSatoshis
   if (change > 0) {
@@ -150,7 +151,7 @@ export async function createTransaction(
       pubkey: keyPair.publicKey,
       network,
     })
-    
+
     if (changeAddress) {
       psbt.addOutput({
         address: changeAddress,
@@ -158,15 +159,15 @@ export async function createTransaction(
       })
     }
   }
-  
+
   // Sign all inputs
   for (let i = 0; i < utxos.length; i++) {
     psbt.signInput(i, keyPair)
   }
-  
+
   // Finalize
   psbt.finalizeAllInputs()
-  
+
   // Extract transaction
   const tx = psbt.extractTransaction()
   return tx.toHex()
@@ -178,21 +179,22 @@ export async function createTransaction(
  * @returns Transaction ID
  */
 export async function broadcastTransaction(txHex: string): Promise<string> {
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? 'https://blockstream.info/api'
-    : 'https://blockstream.info/testnet/api'
-  
+  const baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://blockstream.info/api"
+      : "https://blockstream.info/testnet/api"
+
   const response = await fetch(`${baseUrl}/tx`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
+    method: "POST",
+    headers: { "Content-Type": "text/plain" },
     body: txHex,
   })
-  
+
   if (!response.ok) {
     const error = await response.text()
     throw new Error(`Failed to broadcast: ${error}`)
   }
-  
+
   return await response.text()
 }
 
@@ -201,17 +203,20 @@ export async function broadcastTransaction(txHex: string): Promise<string> {
  * @param address - Bitcoin address
  * @returns Array of UTXOs
  */
-export async function getUTXOs(address: string): Promise<Array<{ txid: string; vout: number; value: number }>> {
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? 'https://blockstream.info/api'
-    : 'https://blockstream.info/testnet/api'
-  
+export async function getUTXOs(
+  address: string
+): Promise<Array<{ txid: string; vout: number; value: number }>> {
+  const baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://blockstream.info/api"
+      : "https://blockstream.info/testnet/api"
+
   const response = await fetch(`${baseUrl}/address/${address}/utxo`)
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch UTXOs')
+    throw new Error("Failed to fetch UTXOs")
   }
-  
+
   const utxos = await response.json()
   return utxos.map((utxo: any) => ({
     txid: utxo.txid,
@@ -226,16 +231,17 @@ export async function getUTXOs(address: string): Promise<Array<{ txid: string; v
  * @returns Balance in satoshis
  */
 export async function getAddressBalance(address: string): Promise<number> {
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? 'https://blockstream.info/api'
-    : 'https://blockstream.info/testnet/api'
-  
+  const baseUrl =
+    process.env.NODE_ENV === "production"
+      ? "https://blockstream.info/api"
+      : "https://blockstream.info/testnet/api"
+
   const response = await fetch(`${baseUrl}/address/${address}`)
-  
+
   if (!response.ok) {
-    throw new Error('Failed to fetch balance')
+    throw new Error("Failed to fetch balance")
   }
-  
+
   const data = await response.json()
   return (data.chain_stats.funded_txo_sum || 0) - (data.chain_stats.spent_txo_sum || 0)
 }
@@ -257,9 +263,9 @@ export async function createSplitTransaction(
   feeSatoshis: number
 ): Promise<string> {
   const keyPair = ECPair.fromWIF(privateKeyWIF, network)
-  
+
   const psbt = new bitcoin.Psbt({ network })
-  
+
   // Add inputs
   let totalInput = 0
   for (const utxo of utxos) {
@@ -273,7 +279,7 @@ export async function createSplitTransaction(
     })
     totalInput += utxo.value
   }
-  
+
   // Add outputs
   for (const output of outputs) {
     psbt.addOutput({
@@ -281,16 +287,17 @@ export async function createSplitTransaction(
       value: BigInt(output.amountSatoshis),
     })
   }
-  
+
   // Add change output if there's leftover
   const totalOutput = outputs.reduce((sum, out) => sum + out.amountSatoshis, 0)
   const change = totalInput - totalOutput - feeSatoshis
-  if (change > 546) { // Dust threshold
+  if (change > 546) {
+    // Dust threshold
     const { address: changeAddress } = bitcoin.payments.p2wpkh({
       pubkey: keyPair.publicKey,
       network,
     })
-    
+
     if (changeAddress) {
       psbt.addOutput({
         address: changeAddress,
@@ -298,15 +305,15 @@ export async function createSplitTransaction(
       })
     }
   }
-  
+
   // Sign all inputs
   for (let i = 0; i < utxos.length; i++) {
     psbt.signInput(i, keyPair)
   }
-  
+
   // Finalize
   psbt.finalizeAllInputs()
-  
+
   // Extract transaction
   const tx = psbt.extractTransaction()
   return tx.toHex()
@@ -328,14 +335,14 @@ export async function sendBTC(
 ): Promise<string> {
   // Get UTXOs
   const utxos = await getUTXOs(fromAddress)
-  
+
   if (utxos.length === 0) {
-    throw new Error('No UTXOs available')
+    throw new Error("No UTXOs available")
   }
-  
+
   // Calculate fee (simplified - ~2000 satoshis for typical tx)
   const feeSatoshis = 2000
-  
+
   // Create and sign transaction
   const txHex = await createTransaction(
     privateKeyWIF,
@@ -345,7 +352,7 @@ export async function sendBTC(
     utxos,
     feeSatoshis
   )
-  
+
   // Broadcast
   return await broadcastTransaction(txHex)
 }

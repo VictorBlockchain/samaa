@@ -1,19 +1,20 @@
-import * as bitcoin from 'bitcoinjs-lib'
-import * as ecc from 'tiny-secp256k1'
-import { ECPairFactory, ECPairInterface } from 'ecpair'
-import { BIP32Factory } from 'bip32'
+import * as bitcoin from "bitcoinjs-lib"
+import { createRequire } from "module"
+const require = createRequire(import.meta.url)
+const ecc = require("tiny-secp256k1")
+import { ECPairFactory, ECPairInterface } from "ecpair"
+import { BIP32Factory } from "bip32"
 
 // Initialize libraries
 const bip32 = BIP32Factory(ecc)
 const ECPair = ECPairFactory(ecc)
 
-const network = process.env.NODE_ENV === 'production' 
-  ? bitcoin.networks.bitcoin 
-  : bitcoin.networks.testnet
+const network =
+  process.env.NODE_ENV === "production" ? bitcoin.networks.bitcoin : bitcoin.networks.testnet
 
 /**
  * Create a time-locked address using CLTV (CheckLockTimeVerify)
- * 
+ *
  * @param publicKey - Recipient's public key (hex string)
  * @param unlockTime - Unix timestamp or block height when funds can be spent
  * @param isTimestamp - If true, unlockTime is a timestamp. If false, it's a block height
@@ -28,13 +29,13 @@ export function createTimelockedAddress(
   redeemScript: Buffer
   lockTime: number
 } {
-  const pubkeyBuffer = Buffer.from(publicKey, 'hex')
-  
+  const pubkeyBuffer = Buffer.from(publicKey, "hex")
+
   // CLTV requires the time to be encoded in the script
   // For timestamps, must be >= 500000000 (Unix timestamp)
   // For block heights, must be < 500000000
   const lockTime = isTimestamp ? Math.max(unlockTime, 500000000) : Math.min(unlockTime, 499999999)
-  
+
   // Build the redeem script for CLTV
   // OP_IF
   //   OP_PUSH <locktime>
@@ -54,7 +55,7 @@ export function createTimelockedAddress(
     bitcoin.opcodes.OP_CHECKSIG,
     bitcoin.opcodes.OP_ENDIF,
   ])
-  
+
   // Create P2SH address from redeem script
   const { address } = bitcoin.payments.p2sh({
     redeem: {
@@ -63,11 +64,11 @@ export function createTimelockedAddress(
     },
     network,
   })
-  
+
   if (!address) {
-    throw new Error('Failed to create timelocked address')
+    throw new Error("Failed to create timelocked address")
   }
-  
+
   return {
     address,
     redeemScript: Buffer.from(redeemScript),
@@ -78,7 +79,7 @@ export function createTimelockedAddress(
 /**
  * Create a more flexible time-locked script with refund option
  * Allows recipient to spend after time OR admin to refund immediately
- * 
+ *
  * @param recipientPubKey - Recipient's public key
  * @param refundPubKey - Admin/refund public key
  * @param unlockTime - Unix timestamp when recipient can spend
@@ -93,9 +94,9 @@ export function createRefundableTimelockedAddress(
   redeemScript: Buffer
   lockTime: number
 } {
-  const recipientKey = Buffer.from(recipientPubKey, 'hex')
-  const refundKey = Buffer.from(refundPubKey, 'hex')
-  
+  const recipientKey = Buffer.from(recipientPubKey, "hex")
+  const refundKey = Buffer.from(refundPubKey, "hex")
+
   // Script:
   // OP_IF
   //   OP_PUSH <locktime>
@@ -113,10 +114,10 @@ export function createRefundableTimelockedAddress(
   //   OP_EQUALVERIFY
   //   OP_CHECKSIG
   // OP_ENDIF
-  
+
   const recipientHash = bitcoin.crypto.hash160(recipientKey)
   const refundHash = bitcoin.crypto.hash160(refundKey)
-  
+
   const redeemScript = bitcoin.script.compile([
     bitcoin.opcodes.OP_IF,
     bitcoin.script.number.encode(Math.max(unlockTime, 500000000)),
@@ -135,7 +136,7 @@ export function createRefundableTimelockedAddress(
     bitcoin.opcodes.OP_CHECKSIG,
     bitcoin.opcodes.OP_ENDIF,
   ])
-  
+
   const { address } = bitcoin.payments.p2sh({
     redeem: {
       output: redeemScript,
@@ -143,11 +144,11 @@ export function createRefundableTimelockedAddress(
     },
     network,
   })
-  
+
   if (!address) {
-    throw new Error('Failed to create refundable timelocked address')
+    throw new Error("Failed to create refundable timelocked address")
   }
-  
+
   return {
     address,
     redeemScript: Buffer.from(redeemScript),
@@ -157,7 +158,7 @@ export function createRefundableTimelockedAddress(
 
 /**
  * Create time-locked transaction spending from CLTV address
- * 
+ *
  * @param utxos - Unspent outputs from timelocked address
  * @param toAddress - Destination address
  * @param amount - Amount to send in satoshis
@@ -175,9 +176,9 @@ export async function spendTimelockedUTXO(
   currentBlockTime: number
 ): Promise<string> {
   const keyPair = ECPair.fromWIF(privateKeyWIF, network)
-  
+
   const psbt = new bitcoin.Psbt({ network })
-  
+
   // Add timelocked inputs
   for (const utxo of utxos) {
     psbt.addInput({
@@ -194,24 +195,24 @@ export async function spendTimelockedUTXO(
       witnessScript: redeemScript,
     })
   }
-  
+
   // Add output
   psbt.addOutput({
     address: toAddress,
     value: BigInt(amount),
   })
-  
+
   // Add change if needed
   const totalInput = utxos.reduce((sum, utxo) => sum + utxo.value, 0)
   const fee = 2000 // Estimated fee
   const change = totalInput - amount - fee
-  
+
   if (change > 0) {
     const { address: changeAddress } = bitcoin.payments.p2wpkh({
       pubkey: keyPair.publicKey,
       network,
     })
-    
+
     if (changeAddress) {
       psbt.addOutput({
         address: changeAddress,
@@ -219,17 +220,17 @@ export async function spendTimelockedUTXO(
       })
     }
   }
-  
+
   // Sign all inputs
   for (let i = 0; i < utxos.length; i++) {
     psbt.signInput(i, keyPair)
   }
-  
+
   // Finalize inputs with witness script
   for (let i = 0; i < utxos.length; i++) {
     psbt.finalizeInput(i)
   }
-  
+
   // Extract transaction
   const tx = psbt.extractTransaction()
   return tx.toHex()
@@ -281,17 +282,17 @@ export function createSubscriptionTimelocks(
   month: number
 }> {
   const timelocks = []
-  
+
   for (let month = 0; month < months; month++) {
     const unlockDate = new Date(startDate)
     unlockDate.setMonth(unlockDate.getMonth() + month)
-    
+
     const timelock = createTimelockedAddress(
       recipientPubKey,
       Math.floor(unlockDate.getTime() / 1000),
       true
     )
-    
+
     timelocks.push({
       ...timelock,
       unlockDate,
@@ -299,6 +300,6 @@ export function createSubscriptionTimelocks(
       month: month + 1,
     })
   }
-  
+
   return timelocks
 }
