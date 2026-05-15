@@ -2,11 +2,40 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { 
-  ArrowLeft, ShoppingBag, Store, Package, Truck, Plus, Edit3, Eye, Trash2, 
-  Users, TrendingUp, Calendar, CreditCard, CheckCircle, Clock, X, Search, 
-  Star, Heart, Share2, MapPin, Mail, Phone, Globe, AlertCircle, Sparkles, 
-  HeartHandshake, Bitcoin, Wallet, ChevronDown, MessageCircle, Play, Bookmark
+import {
+  ArrowLeft,
+  ShoppingBag,
+  Store,
+  Package,
+  Truck,
+  Plus,
+  Edit3,
+  Eye,
+  Trash2,
+  Users,
+  TrendingUp,
+  Calendar,
+  CreditCard,
+  CheckCircle,
+  Clock,
+  X,
+  Search,
+  Star,
+  Heart,
+  Share2,
+  MapPin,
+  Mail,
+  Phone,
+  Globe,
+  AlertCircle,
+  Sparkles,
+  HeartHandshake,
+  Bitcoin,
+  Wallet,
+  ChevronDown,
+  MessageCircle,
+  Play,
+  Bookmark,
 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/app/context/AuthContext"
@@ -17,14 +46,25 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { CelestialBackground } from "@/components/ui/celestial-background"
-import { ShopService, Shop, CreateShopData, ProductService, WishlistService, ProfileService } from "@/lib/database"
+import {
+  ShopService,
+  Shop,
+  CreateShopData,
+  ProductService,
+  WishlistService,
+  ProfileService,
+} from "@/lib/database"
 import { CartService, CartItem, OrderService } from "@/lib/cart"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { getMediaUrl, STORAGE_CONFIG } from "@/lib/storage"
 import { Toaster } from "@/components/ui/toaster"
 import { AddToCartSheet } from "@/components/shop/add-to-cart-sheet"
-import { ArabicEmptyStateCard, ArabicEmptyStateCardTitle, ArabicEmptyStateCardDescription } from "@/components/ui/arabic-empty-state-card"
+import {
+  ArabicEmptyStateCard,
+  ArabicEmptyStateCardTitle,
+  ArabicEmptyStateCardDescription,
+} from "@/components/ui/arabic-empty-state-card"
 
 // Product interface
 interface Product {
@@ -46,19 +86,64 @@ interface Product {
 
 // Shop category options
 const SHOP_CATEGORIES = [
-  { value: 'bride_fashion', label: 'Bride Fashion', icon: '👰', gradient: 'from-pink-100 to-rose-100' },
-  { value: 'groom_fashion', label: 'Groom Fashion', icon: '🤵', gradient: 'from-blue-100 to-indigo-100' },
-  { value: 'womens_fashion', label: 'Women\'s Fashion', icon: '👗', gradient: 'from-purple-100 to-violet-100' },
-  { value: 'mens_fashion', label: 'Men\'s Fashion', icon: '👔', gradient: 'from-slate-100 to-gray-100' },
-  { value: 'wedding_gifts', label: 'Wedding Gifts', icon: '🎁', gradient: 'from-emerald-100 to-green-100' },
-  { value: 'accessories', label: 'Accessories', icon: '💍', gradient: 'from-amber-100 to-yellow-100' },
-  { value: 'islamic_art', label: 'Islamic Art', icon: '🖼️', gradient: 'from-cyan-100 to-teal-100' },
-  { value: 'home_decor', label: 'Home Decor', icon: '🏠', gradient: 'from-orange-100 to-red-100' },
-  { value: 'jewelry', label: 'Jewelry', icon: '💎', gradient: 'from-indigo-100 to-purple-100' },
-  { value: 'books_media', label: 'Books & Media', icon: '📚', gradient: 'from-teal-100 to-cyan-100' },
-  { value: 'beauty_personal_care', label: 'Beauty & Personal Care', icon: '✨', gradient: 'from-pink-100 to-purple-100' },
-  { value: 'food_beverages', label: 'Food & Beverages', icon: '🍽️', gradient: 'from-green-100 to-emerald-100' },
-  { value: 'other', label: 'Other', icon: '📦', gradient: 'from-gray-100 to-slate-100' }
+  {
+    value: "bride_fashion",
+    label: "Bride Fashion",
+    icon: "👰",
+    gradient: "from-pink-100 to-rose-100",
+  },
+  {
+    value: "groom_fashion",
+    label: "Groom Fashion",
+    icon: "🤵",
+    gradient: "from-blue-100 to-indigo-100",
+  },
+  {
+    value: "womens_fashion",
+    label: "Women's Fashion",
+    icon: "👗",
+    gradient: "from-purple-100 to-violet-100",
+  },
+  {
+    value: "mens_fashion",
+    label: "Men's Fashion",
+    icon: "👔",
+    gradient: "from-slate-100 to-gray-100",
+  },
+  {
+    value: "wedding_gifts",
+    label: "Wedding Gifts",
+    icon: "🎁",
+    gradient: "from-emerald-100 to-green-100",
+  },
+  {
+    value: "accessories",
+    label: "Accessories",
+    icon: "💍",
+    gradient: "from-amber-100 to-yellow-100",
+  },
+  { value: "islamic_art", label: "Islamic Art", icon: "🖼️", gradient: "from-cyan-100 to-teal-100" },
+  { value: "home_decor", label: "Home Decor", icon: "🏠", gradient: "from-orange-100 to-red-100" },
+  { value: "jewelry", label: "Jewelry", icon: "💎", gradient: "from-indigo-100 to-purple-100" },
+  {
+    value: "books_media",
+    label: "Books & Media",
+    icon: "📚",
+    gradient: "from-teal-100 to-cyan-100",
+  },
+  {
+    value: "beauty_personal_care",
+    label: "Beauty & Personal Care",
+    icon: "✨",
+    gradient: "from-pink-100 to-purple-100",
+  },
+  {
+    value: "food_beverages",
+    label: "Food & Beverages",
+    icon: "🍽️",
+    gradient: "from-green-100 to-emerald-100",
+  },
+  { value: "other", label: "Other", icon: "📦", gradient: "from-gray-100 to-slate-100" },
 ]
 
 // Mock products for search demonstration
@@ -75,7 +160,7 @@ const SHOP_PRODUCTS: Product[] = [
     rating: 4.8,
     reviews: 24,
     inStock: true,
-    shop_id: "shop1"
+    shop_id: "shop1",
   },
   {
     id: "2",
@@ -89,7 +174,7 @@ const SHOP_PRODUCTS: Product[] = [
     rating: 4.6,
     reviews: 18,
     inStock: true,
-    shop_id: "shop2"
+    shop_id: "shop2",
   },
   {
     id: "3",
@@ -103,12 +188,12 @@ const SHOP_PRODUCTS: Product[] = [
     rating: 4.9,
     reviews: 42,
     inStock: true,
-    shop_id: "shop3"
-  }
+    shop_id: "shop3",
+  },
 ]
 
 // Order status types
-type OrderStatus = 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+type OrderStatus = "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled"
 
 interface Order {
   id: string
@@ -153,13 +238,13 @@ export function ShopView() {
   const [showCheckout, setShowCheckout] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [shippingAddress, setShippingAddress] = useState({
-    name: '',
-    street: '',
-    city: '',
-    state: '',
-    postalCode: '',
-    country: 'US',
-    phone: ''
+    name: "",
+    street: "",
+    city: "",
+    state: "",
+    postalCode: "",
+    country: "US",
+    phone: "",
   })
 
   // Search state
@@ -187,8 +272,8 @@ export function ShopView() {
 
   // Handle tab parameter from URL
   useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab && ['shop', 'categories', 'myshop', 'orders'].includes(tab)) {
+    const tab = searchParams.get("tab")
+    if (tab && ["shop", "categories", "myshop", "orders"].includes(tab)) {
       setActiveTab(tab as "shop" | "categories" | "myshop" | "orders")
     }
   }, [searchParams])
@@ -205,7 +290,7 @@ export function ShopView() {
     if (isAuthenticated && userId) {
       loadUserShop()
       // Load wishlist IDs
-      WishlistService.getUserWishlistProductIds(userId).then(ids => {
+      WishlistService.getUserWishlistProductIds(userId).then((ids) => {
         setWishlistIds(new Set(ids))
       })
     }
@@ -229,7 +314,7 @@ export function ShopView() {
 
   const loadUserShop = async () => {
     if (!userId) return
-    
+
     setIsLoading(true)
     try {
       const shop = await ShopService.getShopByOwner(userId)
@@ -240,7 +325,7 @@ export function ShopView() {
         setShopProducts(products as unknown as Product[])
       }
     } catch (error) {
-      console.error('Error loading shop:', error)
+      console.error("Error loading shop:", error)
     } finally {
       setIsLoading(false)
     }
@@ -253,43 +338,43 @@ export function ShopView() {
     try {
       // Load orders placed by this user (as customer)
       const { data: userOrders, error: ordersError } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-      
+        .from("orders")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+
       if (ordersError) {
-        console.error('Error loading user orders:', ordersError)2
+        console.error("Error loading user orders:", ordersError)
       }
-      
+
       // Fetch order items separately for each order
       const ordersWithItems = await Promise.all(
         (userOrders || []).map(async (order) => {
           try {
             console.log(`[loadOrders] Fetching items for order ${order.order_number} (${order.id})`)
             const { data: items, error: itemsError } = await supabase
-              .from('order_items')
-              .select('*')
-              .eq('order_id', order.id)
-            
+              .from("order_items")
+              .select("*")
+              .eq("order_id", order.id)
+
             if (itemsError) {
               console.error(`Error loading items for order ${order.id}:`, itemsError)
-              return { ...order, items: [] }  // Return order with empty items
+              return { ...order, items: [] } // Return order with empty items
             }
-            
+
             // Fetch product images for each item
             if (items && items.length > 0) {
-              const productIds = items.map(item => item.product_id).filter(Boolean)
+              const productIds = items.map((item) => item.product_id).filter(Boolean)
               if (productIds.length > 0) {
                 const { data: products } = await supabase
-                  .from('products')
-                  .select('id, name, images, shop_id')
-                  .in('id', productIds)
-                
-                const productMap = new Map(products?.map(p => [p.id, p]) || [])
-                
+                  .from("products")
+                  .select("id, name, images, shop_id")
+                  .in("id", productIds)
+
+                const productMap = new Map(products?.map((p) => [p.id, p]) || [])
+
                 // Enrich items with product data
-                items.forEach(item => {
+                items.forEach((item) => {
                   const product = productMap.get(item.product_id)
                   if (product) {
                     item.product_image = product.images?.[0] || null
@@ -298,62 +383,67 @@ export function ShopView() {
                 })
               }
             }
-            
-            console.log(`[loadOrders] Found ${items?.length || 0} items for order ${order.order_number}`)
+
+            console.log(
+              `[loadOrders] Found ${items?.length || 0} items for order ${order.order_number}`
+            )
             return { ...order, items: items || [] }
           } catch (err) {
             console.error(`Failed to load items for order ${order.id}:`, err)
-            return { ...order, items: [] }  // Return order with empty items
+            return { ...order, items: [] } // Return order with empty items
           }
         })
       )
-      
-      console.log('[loadOrders] Final orders with items:', ordersWithItems.map((o: any) => ({ 
-        order_number: o.order_number, 
-        itemsCount: o.items?.length || 0 
-      })))
-      
+
+      console.log(
+        "[loadOrders] Final orders with items:",
+        ordersWithItems.map((o: any) => ({
+          order_number: o.order_number,
+          itemsCount: o.items?.length || 0,
+        }))
+      )
+
       setPlacedOrders(ordersWithItems as Order[])
 
       // Load orders received by this user's shop (as seller)
       if (userShop) {
         const { data: shopOrders, error: shopOrdersError } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('shop_id', userShop.id)
-          .order('created_at', { ascending: false })
-        
+          .from("orders")
+          .select("*")
+          .eq("shop_id", userShop.id)
+          .order("created_at", { ascending: false })
+
         if (shopOrdersError) {
-          console.error('Error loading shop orders:', shopOrdersError)
+          console.error("Error loading shop orders:", shopOrdersError)
         }
-        
+
         // Fetch order items separately for each shop order
         const shopOrdersWithItems = await Promise.all(
           (shopOrders || []).map(async (order) => {
             try {
               const { data: items, error: itemsError } = await supabase
-                .from('order_items')
-                .select('*')
-                .eq('order_id', order.id)
-              
+                .from("order_items")
+                .select("*")
+                .eq("order_id", order.id)
+
               if (itemsError) {
                 console.error(`Error loading items for shop order ${order.id}:`, itemsError)
                 return { ...order, items: [] }
               }
-              
+
               // Fetch product images for each item
               if (items && items.length > 0) {
-                const productIds = items.map(item => item.product_id).filter(Boolean)
+                const productIds = items.map((item) => item.product_id).filter(Boolean)
                 if (productIds.length > 0) {
                   const { data: products } = await supabase
-                    .from('products')
-                    .select('id, name, images, shop_id')
-                    .in('id', productIds)
-                  
-                  const productMap = new Map(products?.map(p => [p.id, p]) || [])
-                  
+                    .from("products")
+                    .select("id, name, images, shop_id")
+                    .in("id", productIds)
+
+                  const productMap = new Map(products?.map((p) => [p.id, p]) || [])
+
                   // Enrich items with product data
-                  items.forEach(item => {
+                  items.forEach((item) => {
                     const product = productMap.get(item.product_id)
                     if (product) {
                       item.product_image = product.images?.[0] || null
@@ -362,7 +452,7 @@ export function ShopView() {
                   })
                 }
               }
-              
+
               return { ...order, items: items || [] }
             } catch (err) {
               console.error(`Failed to load items for shop order ${order.id}:`, err)
@@ -370,11 +460,11 @@ export function ShopView() {
             }
           })
         )
-        
+
         setReceivedOrders(shopOrdersWithItems as Order[])
       }
     } catch (error) {
-      console.error('Error loading orders:', error)
+      console.error("Error loading orders:", error)
     } finally {
       setOrdersLoading(false)
     }
@@ -383,13 +473,13 @@ export function ShopView() {
   // Load user cart
   const loadCart = async () => {
     if (!userId) return
-    
+
     setCartLoading(true)
     try {
       const items = await CartService.getCartItems(userId)
       setCartItems(items)
     } catch (error) {
-      console.error('Error loading cart:', error)
+      console.error("Error loading cart:", error)
     } finally {
       setCartLoading(false)
     }
@@ -399,26 +489,26 @@ export function ShopView() {
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!userId) return
-      
+
       try {
         const profile = await ProfileService.getProfileByUserId(userId)
         if (profile) {
           // Pre-populate shipping address from profile
           setShippingAddress({
-            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim(),
-            street: (profile as any).address || '',
-            city: (profile as any).city || '',
-            state: (profile as any).state || '',
-            postalCode: (profile as any).postal_code || '',
-            country: (profile as any).country || 'US',
-            phone: (profile as any).phone || ''
+            name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim(),
+            street: (profile as any).address || "",
+            city: (profile as any).city || "",
+            state: (profile as any).state || "",
+            postalCode: (profile as any).postal_code || "",
+            country: (profile as any).country || "US",
+            phone: (profile as any).phone || "",
           })
         }
       } catch (error) {
-        console.error('Error loading profile:', error)
+        console.error("Error loading profile:", error)
       }
     }
-    
+
     if (isAuthenticated && userId) {
       loadUserProfile()
     }
@@ -426,37 +516,37 @@ export function ShopView() {
 
   // Handle payment success/cancelled from Stripe redirect
   useEffect(() => {
-    const paymentStatus = searchParams.get('payment')
-    const sessionId = searchParams.get('session_id')
-    const orderId = searchParams.get('order_id')
-    
-    if (paymentStatus === 'success' && sessionId) {
-      console.log('[shop-view] Payment successful!', { sessionId, orderId })
+    const paymentStatus = searchParams.get("payment")
+    const sessionId = searchParams.get("session_id")
+    const orderId = searchParams.get("order_id")
+
+    if (paymentStatus === "success" && sessionId) {
+      console.log("[shop-view] Payment successful!", { sessionId, orderId })
       toast({
         title: "Payment Successful! 🎉",
         description: "Your order has been placed successfully. Check your email for confirmation.",
         variant: "default",
       })
-      
+
       // Clear cart after successful payment
       if (userId) {
         CartService.clearCart(userId).then(() => {
           loadCart() // Reload cart state
         })
       }
-      
+
       // Reload orders to show the new order
       if (userId) {
         loadOrders()
       }
-      
+
       // Switch to orders tab to show the new order
       setTimeout(() => {
-        setActiveTab('orders')
-        setOrdersView('placed')
+        setActiveTab("orders")
+        setOrdersView("placed")
       }, 1000)
-    } else if (paymentStatus === 'cancelled') {
-      console.log('[shop-view] Payment cancelled')
+    } else if (paymentStatus === "cancelled") {
+      console.log("[shop-view] Payment cancelled")
       toast({
         title: "Payment Cancelled",
         description: "Your payment was cancelled. Your cart items are still saved.",
@@ -468,95 +558,94 @@ export function ShopView() {
   // Remove item from cart
   const removeFromCart = async (itemId: string) => {
     if (!userId) return
-    
+
     try {
       await CartService.removeFromCart(userId, itemId)
       await loadCart()
     } catch (error) {
-      console.error('Error removing from cart:', error)
+      console.error("Error removing from cart:", error)
     }
   }
 
   // Update cart item quantity
   const updateCartQuantity = async (itemId: string, quantity: number) => {
     if (!userId) return
-    
+
     try {
       await CartService.updateCartItemQuantity(userId, itemId, quantity)
       await loadCart()
     } catch (error) {
-      console.error('Error updating cart:', error)
+      console.error("Error updating cart:", error)
     }
   }
 
   // Proceed to checkout
   const proceedToCheckout = async () => {
     if (!userId || cartItems.length === 0) {
-      console.error('Checkout failed: Missing userId or cart items', { userId, cartItemsCount: cartItems.length })
+      console.error("Checkout failed: Missing userId or cart items", {
+        userId,
+        cartItemsCount: cartItems.length,
+      })
       return
     }
-    
+
     setCheckoutLoading(true)
     try {
-      console.log('Creating order from cart...', { 
-        userId, 
-        itemsCount: cartItems.length,
-        shippingAddress 
-      })
-      
-      // Create order from cart
-      const order = await OrderService.createOrder(
+      console.log("Creating order from cart...", {
         userId,
-        cartItems,
-        shippingAddress
-      )
-      
-      console.log('Order creation result:', order)
-      
+        itemsCount: cartItems.length,
+        shippingAddress,
+      })
+
+      // Create order from cart
+      const order = await OrderService.createOrder(userId, cartItems, shippingAddress)
+
+      console.log("Order creation result:", order)
+
       if (!order) {
-        throw new Error('Failed to create order - order is null')
+        throw new Error("Failed to create order - order is null")
       }
 
-      console.log('Creating Stripe checkout session for order:', order.id)
+      console.log("Creating Stripe checkout session for order:", order.id)
 
       // Create Stripe checkout session
-      const response = await fetch('/api/stripe/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: order.id,
-          items: cartItems.map(item => ({
+          items: cartItems.map((item) => ({
             name: item.productName,
             price: item.price,
             quantity: item.quantity,
             image: item.productImage,
             productId: item.productId,
-            shopId: item.shopId
+            shopId: item.shopId,
           })),
           totalAmount: order.totalAmount,
-          shippingAddress
-        })
+          shippingAddress,
+        }),
       })
 
-      console.log('Stripe API response status:', response.status)
+      console.log("Stripe API response status:", response.status)
       const responseData = await response.json()
-      console.log('Stripe API response:', responseData)
+      console.log("Stripe API response:", responseData)
 
       const { checkoutUrl, error } = responseData
-      
+
       if (error) {
         throw new Error(error)
       }
 
       // Redirect to Stripe checkout
       if (checkoutUrl) {
-        console.log('Redirecting to Stripe checkout:', checkoutUrl)
+        console.log("Redirecting to Stripe checkout:", checkoutUrl)
         window.location.href = checkoutUrl
       } else {
-        throw new Error('No checkout URL received from Stripe')
+        throw new Error("No checkout URL received from Stripe")
       }
     } catch (error: any) {
-      console.error('Error during checkout:', error)
+      console.error("Error during checkout:", error)
       // You could add a toast notification here
       alert(`Checkout failed: ${error.message}`)
     } finally {
@@ -570,24 +659,24 @@ export function ShopView() {
     setIsLoading(true)
     try {
       const shopData: CreateShopData = {
-        name: formData.get('name') as string,
-        description: formData.get('description') as string,
-        shop_type: formData.get('shopType') as string,
-        contact_email: formData.get('contactEmail') as string,
-        contact_phone: formData.get('contactPhone') as string || undefined,
-        paypal_email: formData.get('paypalEmail') as string || undefined,
-        bitcoin_address: formData.get('bitcoinAddress') as string || undefined,
-        address_street: formData.get('addressStreet') as string || undefined,
-        address_city: formData.get('addressCity') as string || undefined,
-        address_state: formData.get('addressState') as string || undefined,
-        address_country: formData.get('addressCountry') as string || undefined,
-        address_postal_code: formData.get('addressPostalCode') as string || undefined,
-        return_policy: formData.get('returnPolicy') as string || undefined,
-        return_policy_days: parseInt(formData.get('returnPolicyDays') as string) || 14,
-        shipping_policy: formData.get('shippingPolicy') as string || undefined,
-        processing_time: formData.get('processingTime') as string || '1-3 business days',
-        free_shipping_threshold: formData.get('freeShippingThreshold') 
-          ? parseFloat(formData.get('freeShippingThreshold') as string) 
+        name: formData.get("name") as string,
+        description: formData.get("description") as string,
+        shop_type: formData.get("shopType") as string,
+        contact_email: formData.get("contactEmail") as string,
+        contact_phone: (formData.get("contactPhone") as string) || undefined,
+        paypal_email: (formData.get("paypalEmail") as string) || undefined,
+        bitcoin_address: (formData.get("bitcoinAddress") as string) || undefined,
+        address_street: (formData.get("addressStreet") as string) || undefined,
+        address_city: (formData.get("addressCity") as string) || undefined,
+        address_state: (formData.get("addressState") as string) || undefined,
+        address_country: (formData.get("addressCountry") as string) || undefined,
+        address_postal_code: (formData.get("addressPostalCode") as string) || undefined,
+        return_policy: (formData.get("returnPolicy") as string) || undefined,
+        return_policy_days: parseInt(formData.get("returnPolicyDays") as string) || 14,
+        shipping_policy: (formData.get("shippingPolicy") as string) || undefined,
+        processing_time: (formData.get("processingTime") as string) || "1-3 business days",
+        free_shipping_threshold: formData.get("freeShippingThreshold")
+          ? parseFloat(formData.get("freeShippingThreshold") as string)
           : undefined,
       }
 
@@ -597,7 +686,7 @@ export function ShopView() {
         setShowCreateShop(false)
       }
     } catch (error) {
-      console.error('Error creating shop:', error)
+      console.error("Error creating shop:", error)
     } finally {
       setIsLoading(false)
     }
@@ -609,24 +698,24 @@ export function ShopView() {
     setIsLoading(true)
     try {
       const updates: Partial<Shop> = {
-        name: formData.get('name') as string,
-        description: formData.get('description') as string,
-        shop_type: formData.get('shopType') as string,
-        contact_email: formData.get('contactEmail') as string,
-        contact_phone: formData.get('contactPhone') as string || undefined,
-        paypal_email: formData.get('paypalEmail') as string || undefined,
-        bitcoin_address: formData.get('bitcoinAddress') as string || undefined,
-        address_street: formData.get('addressStreet') as string || undefined,
-        address_city: formData.get('addressCity') as string || undefined,
-        address_state: formData.get('addressState') as string || undefined,
-        address_country: formData.get('addressCountry') as string || undefined,
-        address_postal_code: formData.get('addressPostalCode') as string || undefined,
-        return_policy: formData.get('returnPolicy') as string || undefined,
-        return_policy_days: parseInt(formData.get('returnPolicyDays') as string) || 14,
-        shipping_policy: formData.get('shippingPolicy') as string || undefined,
-        processing_time: formData.get('processingTime') as string || '1-3 business days',
-        free_shipping_threshold: formData.get('freeShippingThreshold') 
-          ? parseFloat(formData.get('freeShippingThreshold') as string) 
+        name: formData.get("name") as string,
+        description: formData.get("description") as string,
+        shop_type: formData.get("shopType") as string,
+        contact_email: formData.get("contactEmail") as string,
+        contact_phone: (formData.get("contactPhone") as string) || undefined,
+        paypal_email: (formData.get("paypalEmail") as string) || undefined,
+        bitcoin_address: (formData.get("bitcoinAddress") as string) || undefined,
+        address_street: (formData.get("addressStreet") as string) || undefined,
+        address_city: (formData.get("addressCity") as string) || undefined,
+        address_state: (formData.get("addressState") as string) || undefined,
+        address_country: (formData.get("addressCountry") as string) || undefined,
+        address_postal_code: (formData.get("addressPostalCode") as string) || undefined,
+        return_policy: (formData.get("returnPolicy") as string) || undefined,
+        return_policy_days: parseInt(formData.get("returnPolicyDays") as string) || 14,
+        shipping_policy: (formData.get("shippingPolicy") as string) || undefined,
+        processing_time: (formData.get("processingTime") as string) || "1-3 business days",
+        free_shipping_threshold: formData.get("freeShippingThreshold")
+          ? parseFloat(formData.get("freeShippingThreshold") as string)
           : undefined,
       }
 
@@ -636,7 +725,7 @@ export function ShopView() {
         setShowEditShop(false)
       }
     } catch (error) {
-      console.error('Error updating shop:', error)
+      console.error("Error updating shop:", error)
     } finally {
       setIsLoading(false)
     }
@@ -644,7 +733,7 @@ export function ShopView() {
 
   const deleteProduct = (productId: string) => {
     // TODO: Implement product deletion
-    console.log('Delete product:', productId)
+    console.log("Delete product:", productId)
   }
 
   const handleViewProduct = (productId: string) => {
@@ -657,21 +746,21 @@ export function ShopView() {
     try {
       // Fetch active shops first to get their names
       const { data: shopsData, error: shopsError } = await supabase
-        .from('shops')
-        .select('id, name, logo_url')
-        .eq('status', 'active')
+        .from("shops")
+        .select("id, name, logo_url")
+        .eq("status", "active")
 
       if (shopsError) throw shopsError
 
       // Create a map of shop_id to shop data
-      const shopMap = new Map(shopsData?.map(s => [s.id, s]) || [])
+      const shopMap = new Map(shopsData?.map((s) => [s.id, s]) || [])
 
       // Fetch active products
       const { data: products, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
         .limit(50)
 
       if (error) throw error
@@ -681,22 +770,24 @@ export function ShopView() {
         return {
           id: p.uuid || p.id,
           name: p.name,
-          description: p.description || '',
-          images: (p.images || []).map((img: string) => getMediaUrl(STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, img) || img),
+          description: p.description || "",
+          images: (p.images || []).map(
+            (img: string) => getMediaUrl(STORAGE_CONFIG.BUCKETS.SHOP_IMAGES, img) || img
+          ),
           price: p.base_price,
-          currency: 'USD',
-          category: p.category_name || 'Other',
-          seller: shop?.name || 'Unknown Shop',
+          currency: "USD",
+          category: p.category_name || "Other",
+          seller: shop?.name || "Unknown Shop",
           rating: p.rating || 0,
           reviews: p.total_reviews || 0,
           inStock: true,
-          shop_id: p.shop_id
+          shop_id: p.shop_id,
         }
       })
 
       setAllProducts(formattedProducts)
     } catch (error) {
-      console.error('Error loading products:', error)
+      console.error("Error loading products:", error)
     } finally {
       setShopProductsLoading(false)
     }
@@ -708,20 +799,17 @@ export function ShopView() {
     try {
       // Randomize which criteria to use for featured shops
       const criteria = Math.random()
-      let query = supabase
-        .from('shops')
-        .select('*')
-        .eq('status', 'active')
+      let query = supabase.from("shops").select("*").eq("status", "active")
 
       if (criteria < 0.33) {
         // 33% chance: Best rated shops
-        query = query.order('rating', { ascending: false })
+        query = query.order("rating", { ascending: false })
       } else if (criteria < 0.66) {
         // 33% chance: Most sales
-        query = query.order('total_sales', { ascending: false })
+        query = query.order("total_sales", { ascending: false })
       } else {
         // 34% chance: Recently updated (new items or activity)
-        query = query.order('updated_at', { ascending: false })
+        query = query.order("updated_at", { ascending: false })
       }
 
       const { data: shops, error } = await query.limit(5)
@@ -732,7 +820,7 @@ export function ShopView() {
       const shuffled = (shops || []).sort(() => Math.random() - 0.5)
       setFeaturedShops(shuffled as Shop[])
     } catch (error) {
-      console.error('Error loading featured shops:', error)
+      console.error("Error loading featured shops:", error)
     } finally {
       setFeaturedShopsLoading(false)
     }
@@ -744,32 +832,32 @@ export function ShopView() {
     setShopProductsLoading(true)
     try {
       const { data: products, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('shop_id', shop.id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
+        .from("products")
+        .select("*")
+        .eq("shop_id", shop.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
 
       if (error) throw error
 
       const formattedProducts: Product[] = (products || []).map((p: any) => ({
         id: p.uuid || p.id,
         name: p.name,
-        description: p.description || '',
-        images: p.images || ['/placeholder.svg'],
+        description: p.description || "",
+        images: p.images || ["/placeholder.svg"],
         price: p.base_price,
-        currency: 'USD',
-        category: p.category_name || 'Other',
+        currency: "USD",
+        category: p.category_name || "Other",
         seller: shop.name,
         rating: p.rating || 0,
         reviews: p.total_reviews || 0,
         inStock: true,
-        shop_id: p.shop_id
+        shop_id: p.shop_id,
       }))
 
       setAllProducts(formattedProducts)
     } catch (error) {
-      console.error('Error loading shop products:', error)
+      console.error("Error loading shop products:", error)
     } finally {
       setShopProductsLoading(false)
     }
@@ -778,17 +866,17 @@ export function ShopView() {
   // Helper functions for orders
   const getStatusIcon = (status: OrderStatus) => {
     switch (status) {
-      case 'pending':
+      case "pending":
         return <Clock className="w-4 h-4" />
-      case 'confirmed':
+      case "confirmed":
         return <CheckCircle className="w-4 h-4" />
-      case 'processing':
+      case "processing":
         return <Package className="w-4 h-4" />
-      case 'shipped':
+      case "shipped":
         return <Truck className="w-4 h-4" />
-      case 'delivered':
+      case "delivered":
         return <CheckCircle className="w-4 h-4" />
-      case 'cancelled':
+      case "cancelled":
         return <X className="w-4 h-4" />
       default:
         return <Clock className="w-4 h-4" />
@@ -797,30 +885,30 @@ export function ShopView() {
 
   const getStatusColor = (status: OrderStatus) => {
     switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'confirmed':
-        return 'bg-blue-100 text-blue-800'
-      case 'processing':
-        return 'bg-purple-100 text-purple-800'
-      case 'shipped':
-        return 'bg-indigo-100 text-indigo-800'
-      case 'delivered':
-        return 'bg-green-100 text-green-800'
-      case 'cancelled':
-        return 'bg-red-100 text-red-800'
+      case "pending":
+        return "bg-yellow-100 text-yellow-800"
+      case "confirmed":
+        return "bg-blue-100 text-blue-800"
+      case "processing":
+        return "bg-purple-100 text-purple-800"
+      case "shipped":
+        return "bg-indigo-100 text-indigo-800"
+      case "delivered":
+        return "bg-green-100 text-green-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
       default:
-        return 'bg-gray-100 text-gray-800'
+        return "bg-gray-100 text-gray-800"
     }
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     })
   }
 
@@ -838,11 +926,12 @@ export function ShopView() {
 
     // Simulate API delay
     setTimeout(() => {
-      const results = SHOP_PRODUCTS.filter(product =>
-        product.name.toLowerCase().includes(term.toLowerCase()) ||
-        product.description.toLowerCase().includes(term.toLowerCase()) ||
-        product.seller.toLowerCase().includes(term.toLowerCase()) ||
-        product.category.toLowerCase().includes(term.toLowerCase())
+      const results = SHOP_PRODUCTS.filter(
+        (product) =>
+          product.name.toLowerCase().includes(term.toLowerCase()) ||
+          product.description.toLowerCase().includes(term.toLowerCase()) ||
+          product.seller.toLowerCase().includes(term.toLowerCase()) ||
+          product.category.toLowerCase().includes(term.toLowerCase())
       )
 
       setSearchResults(results)
@@ -860,7 +949,7 @@ export function ShopView() {
       return allProducts
     }
 
-    return allProducts.filter(product => product.category === selectedCategory)
+    return allProducts.filter((product) => product.category === selectedCategory)
   }
 
   // Render Categories Tab Content
@@ -904,8 +993,10 @@ export function ShopView() {
             >
               <Card className="relative overflow-hidden border-pink-200/30 hover:border-pink-300/50 transition-all duration-300 h-full">
                 {/* Background Gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-50 group-hover:opacity-70 transition-opacity duration-300`} />
-                
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-50 group-hover:opacity-70 transition-opacity duration-300`}
+                />
+
                 {/* Islamic Pattern Overlay */}
                 <div className="absolute inset-0 opacity-5">
                   <svg className="w-full h-full" viewBox="0 0 100 100" fill="none">
@@ -932,9 +1023,11 @@ export function ShopView() {
                   >
                     {category.icon}
                   </motion.div>
-                  <h3 className="font-bold text-slate-800 font-display text-sm mb-1">{category.label}</h3>
+                  <h3 className="font-bold text-slate-800 font-display text-sm mb-1">
+                    {category.label}
+                  </h3>
                   <p className="text-xs text-slate-500 font-queensides">Explore items</p>
-                  
+
                   {/* Hover Arrow */}
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
@@ -942,8 +1035,18 @@ export function ShopView() {
                     className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <div className="w-8 h-8 bg-white/80 rounded-full flex items-center justify-center shadow-lg">
-                      <svg className="w-4 h-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-4 h-4 text-pink-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </div>
                   </motion.div>
@@ -959,7 +1062,7 @@ export function ShopView() {
   // Render Shop Tab Content (Browse Products)
   const renderShopTab = () => {
     const displayProducts = getDisplayProducts()
-    
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -1001,7 +1104,8 @@ export function ShopView() {
                 "Searching..."
               ) : (
                 <>
-                  Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchTerm}"
+                  Found {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "
+                  {searchTerm}"
                   {searchResults.length === 0 && (
                     <span className="block mt-1 text-slate-500">
                       Try searching for wedding dress, hijab, thobe, or calligraphy
@@ -1024,7 +1128,11 @@ export function ShopView() {
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100">
                   {selectedShop.logo_url ? (
-                    <img src={selectedShop.logo_url} alt={selectedShop.name} className="w-full h-full object-cover" />
+                    <img
+                      src={selectedShop.logo_url}
+                      alt={selectedShop.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Store className="w-6 h-6 text-pink-400" />
@@ -1033,7 +1141,9 @@ export function ShopView() {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 font-display">{selectedShop.name}</h3>
-                  <p className="text-sm text-slate-500 font-queensides">Showing products from this shop</p>
+                  <p className="text-sm text-slate-500 font-queensides">
+                    Showing products from this shop
+                  </p>
                 </div>
               </div>
               <Button
@@ -1052,7 +1162,6 @@ export function ShopView() {
           </motion.div>
         )}
 
-
         {/* Products Grid */}
         {shopProductsLoading ? (
           <div className="grid grid-cols-2 gap-4">
@@ -1068,11 +1177,11 @@ export function ShopView() {
             ))}
           </div>
         ) : (
-        <div className="grid grid-cols-2 gap-4">
-          {displayProducts.map((product, index) => (
-            <ProductCard key={product.id} product={product} index={index} />
-          ))}
-        </div>
+          <div className="grid grid-cols-2 gap-4">
+            {displayProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} index={index} />
+            ))}
+          </div>
         )}
 
         {/* No Results */}
@@ -1085,7 +1194,9 @@ export function ShopView() {
             <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-slate-400" />
             </div>
-            <h3 className="text-lg font-bold text-slate-700 font-display mb-2">No products found</h3>
+            <h3 className="text-lg font-bold text-slate-700 font-display mb-2">
+              No products found
+            </h3>
             <p className="text-slate-600 font-queensides mb-4">
               Try adjusting your search terms or browse by category
             </p>
@@ -1142,7 +1253,7 @@ export function ShopView() {
                 </Badge>
               </div>
             </div>
-            
+
             {featuredShopsLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -1170,11 +1281,17 @@ export function ShopView() {
                     className="cursor-pointer"
                     onClick={() => loadShopProducts(shop)}
                   >
-                    <Card className={`overflow-hidden border-pink-200/30 hover:border-pink-300/50 transition-all duration-300 ${selectedShop?.id === shop.id ? 'ring-2 ring-pink-400 shadow-lg' : ''}`}>
+                    <Card
+                      className={`overflow-hidden border-pink-200/30 hover:border-pink-300/50 transition-all duration-300 ${selectedShop?.id === shop.id ? "ring-2 ring-pink-400 shadow-lg" : ""}`}
+                    >
                       <div className="flex items-center p-4">
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100 flex-shrink-0">
                           {shop.logo_url ? (
-                            <img src={shop.logo_url} alt={shop.name} className="w-full h-full object-cover" />
+                            <img
+                              src={shop.logo_url}
+                              alt={shop.name}
+                              className="w-full h-full object-cover"
+                            />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <Store className="w-8 h-8 text-pink-300" />
@@ -1183,18 +1300,26 @@ export function ShopView() {
                         </div>
                         <div className="ml-4 flex-1">
                           <h4 className="font-bold text-slate-800 font-display">{shop.name}</h4>
-                          <p className="text-sm text-slate-500 font-queensides">{shop.shop_type || 'General Store'}</p>
+                          <p className="text-sm text-slate-500 font-queensides">
+                            {shop.shop_type || "General Store"}
+                          </p>
                           <div className="flex items-center gap-3 mt-1">
                             <div className="flex items-center gap-1">
                               <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                              <span className="text-xs text-slate-600">{(shop.rating || 0).toFixed(1)}</span>
+                              <span className="text-xs text-slate-600">
+                                {(shop.rating || 0).toFixed(1)}
+                              </span>
                             </div>
                             <span className="text-xs text-slate-400">•</span>
-                            <span className="text-xs text-slate-500">{shop.total_sales || 0} sales</span>
+                            <span className="text-xs text-slate-500">
+                              {shop.total_sales || 0} sales
+                            </span>
                             {shop.total_products !== undefined && (
                               <>
                                 <span className="text-xs text-slate-400">•</span>
-                                <span className="text-xs text-slate-500">{shop.total_products} items</span>
+                                <span className="text-xs text-slate-500">
+                                  {shop.total_products} items
+                                </span>
                               </>
                             )}
                           </div>
@@ -1210,12 +1335,14 @@ export function ShopView() {
                     </Card>
                   </motion.div>
                 ))}
-                
+
                 {featuredShops.length === 0 && !featuredShopsLoading && (
                   <Card className="p-6 text-center border-pink-200/30">
                     <Store className="w-12 h-12 text-pink-300 mx-auto mb-3" />
                     <p className="text-slate-600 font-queensides">No featured shops available</p>
-                    <p className="text-sm text-slate-500 font-queensides mt-1">Check back later for curated shops</p>
+                    <p className="text-sm text-slate-500 font-queensides mt-1">
+                      Check back later for curated shops
+                    </p>
                   </Card>
                 )}
               </div>
@@ -1236,14 +1363,22 @@ export function ShopView() {
     if (isWished) {
       const success = await WishlistService.removeFromWishlist(userId, productId)
       if (success) {
-        setWishlistIds(prev => { const next = new Set(prev); next.delete(productId); return next })
+        setWishlistIds((prev) => {
+          const next = new Set(prev)
+          next.delete(productId)
+          return next
+        })
         toast({ title: "Removed from wishlist", duration: 3000 })
       }
     } else {
       const success = await WishlistService.addToWishlist(userId, productId)
       if (success) {
-        setWishlistIds(prev => new Set(prev).add(productId))
-        toast({ title: "Added to wishlist", description: "You can find it in your wishlist", duration: 3000 })
+        setWishlistIds((prev) => new Set(prev).add(productId))
+        toast({
+          title: "Added to wishlist",
+          description: "You can find it in your wishlist",
+          duration: 3000,
+        })
       }
     }
   }
@@ -1254,10 +1389,16 @@ export function ShopView() {
     if (navigator.share) {
       try {
         await navigator.share({ title: productName, url })
-      } catch { /* user cancelled */ }
+      } catch {
+        /* user cancelled */
+      }
     } else {
       await navigator.clipboard.writeText(url)
-      toast({ title: "Link copied!", description: "Product link copied to clipboard", duration: 3000 })
+      toast({
+        title: "Link copied!",
+        description: "Product link copied to clipboard",
+        duration: 3000,
+      })
     }
   }
 
@@ -1266,7 +1407,8 @@ export function ShopView() {
     const [addingToCart, setAddingToCart] = useState(false)
     const [showSheet, setShowSheet] = useState(false)
 
-    const hasOptions = (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)
+    const hasOptions =
+      (product.sizes && product.sizes.length > 0) || (product.colors && product.colors.length > 0)
     const isWished = wishlistIds.has(product.id)
 
     const handleAddToCart = async () => {
@@ -1285,7 +1427,7 @@ export function ShopView() {
           toast({ title: "Added to cart!", description: product.name, duration: 3000 })
         }
       } catch (error) {
-        console.error('Error adding to cart:', error)
+        console.error("Error adding to cart:", error)
         toast({ title: "Failed to add to cart", variant: "destructive", duration: 5000 })
       } finally {
         setAddingToCart(false)
@@ -1295,13 +1437,18 @@ export function ShopView() {
     const handleSheetConfirm = async (qty: number, size?: string, color?: string) => {
       setAddingToCart(true)
       try {
-        const success = await CartService.addToCart(userId!, { productId: product.id, quantity: qty, selectedSize: size, selectedColor: color })
+        const success = await CartService.addToCart(userId!, {
+          productId: product.id,
+          quantity: qty,
+          selectedSize: size,
+          selectedColor: color,
+        })
         if (success) {
           setShowSheet(false)
           toast({ title: "Added to cart!", description: `${qty}x ${product.name}`, duration: 3000 })
         }
       } catch (error) {
-        console.error('Error adding to cart:', error)
+        console.error("Error adding to cart:", error)
         toast({ title: "Failed to add to cart", variant: "destructive", duration: 5000 })
       } finally {
         setAddingToCart(false)
@@ -1310,152 +1457,170 @@ export function ShopView() {
 
     return (
       <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.1 }}
-        className="group"
-      >
-        <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-pink-200/50 hover:border-pink-300/60">
-          {/* Product Image - clickable */}
-          <div
-            className="relative aspect-square overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100 cursor-pointer"
-            onClick={() => handleViewProduct(product.id)}
-          >
-            <img
-              src={product.images[0] ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}` : `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`}
-              alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement
-                target.src = `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`
-              }}
-            />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.1 }}
+          className="group"
+        >
+          <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-pink-200/50 hover:border-pink-300/60">
+            {/* Product Image - clickable */}
+            <div
+              className="relative aspect-square overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100 cursor-pointer"
+              onClick={() => handleViewProduct(product.id)}
+            >
+              <img
+                src={
+                  product.images[0]
+                    ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}`
+                    : `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`
+                }
+                alt={product.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.src = `https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400&h=400&fit=crop`
+                }}
+              />
 
-            {/* Quick Actions */}
-            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300" onClick={(e) => e.stopPropagation()}>
-              <div className="flex flex-col gap-1">
-                <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => toggleWishlist(product.id)}
-                  className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                  title={isWished ? "Remove from wishlist" : "Add to wishlist"}
-                >
-                  <Heart className={`w-4 h-4 ${isWished ? "text-pink-500 fill-pink-500" : "text-slate-600"}`} />
-                </motion.button>
-                <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => shareProduct(product.id, product.name)}
-                  className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                  title="Share product"
-                >
-                  <Share2 className="w-4 h-4 text-slate-600" />
-                </motion.button>
-                {(product as any).video && (
-                  <motion.button 
+              {/* Quick Actions */}
+              <div
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex flex-col gap-1">
+                  <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    onClick={() => setVideoModalUrl((product as any).video)}
+                    onClick={() => toggleWishlist(product.id)}
                     className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-                    title="Watch video"
+                    title={isWished ? "Remove from wishlist" : "Add to wishlist"}
                   >
-                    <Play className="w-4 h-4 text-slate-600" />
+                    <Heart
+                      className={`w-4 h-4 ${isWished ? "text-pink-500 fill-pink-500" : "text-slate-600"}`}
+                    />
                   </motion.button>
-                )}
-              </div>
-            </div>
-
-            {/* Price Badge */}
-            <div className="absolute bottom-2 left-2">
-              <div className="bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-lg">
-                <span className="text-sm font-bold text-pink-600 font-display">
-                  ${product.price}
-                </span>
-              </div>
-            </div>
-
-            {/* Multiple images indicator */}
-            {product.images && product.images.length > 1 && (
-              <div className="absolute bottom-2 right-2">
-                <div className="bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                  <span className="text-[10px] text-white font-medium">{product.images.length} photos</span>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => shareProduct(product.id, product.name)}
+                    className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                    title="Share product"
+                  >
+                    <Share2 className="w-4 h-4 text-slate-600" />
+                  </motion.button>
+                  {(product as any).video && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setVideoModalUrl((product as any).video)}
+                      className="w-8 h-8 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                      title="Watch video"
+                    >
+                      <Play className="w-4 h-4 text-slate-600" />
+                    </motion.button>
+                  )}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Product Info */}
-          <div className="p-4">
-            <h3 className="font-semibold text-slate-800 font-queensides mb-1 line-clamp-1">
-              {product.name}
-            </h3>
-            <p className="text-sm text-slate-600 font-queensides mb-2 line-clamp-2">
-              {product.description}
-            </p>
-
-            {/* Seller and Rating */}
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-slate-500 font-queensides">
-                by {product.seller}
-              </span>
-              <div className="flex items-center space-x-1">
-                <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                <span className="text-xs text-slate-600 font-queensides">
-                  {product.rating}
-                </span>
+              {/* Price Badge */}
+              <div className="absolute bottom-2 left-2">
+                <div className="bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg shadow-lg">
+                  <span className="text-sm font-bold text-pink-600 font-display">
+                    ${product.price}
+                  </span>
+                </div>
               </div>
+
+              {/* Multiple images indicator */}
+              {product.images && product.images.length > 1 && (
+                <div className="absolute bottom-2 right-2">
+                  <div className="bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] text-white font-medium">
+                      {product.images.length} photos
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Add to Cart Button */}
-            <Button
-              onClick={handleAddToCart}
-              disabled={addingToCart}
-              className="w-full bg-gradient-to-r from-pink-400 to-rose-500 text-white font-semibold py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              {addingToCart ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Adding...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <ShoppingBag className="w-4 h-4" />
-                  {hasOptions ? "Select Options" : "Add to Cart"}
-                </span>
-              )}
-            </Button>
-          </div>
-        </Card>
-      </motion.div>
+            {/* Product Info */}
+            <div className="p-4">
+              <h3 className="font-semibold text-slate-800 font-queensides mb-1 line-clamp-1">
+                {product.name}
+              </h3>
+              <p className="text-sm text-slate-600 font-queensides mb-2 line-clamp-2">
+                {product.description}
+              </p>
 
-      {/* Add to Cart Sheet */}
-      <AddToCartSheet
-        product={product}
-        isOpen={showSheet}
-        onClose={() => setShowSheet(false)}
-        onConfirm={handleSheetConfirm}
-        loading={addingToCart}
-      />
+              {/* Seller and Rating */}
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-slate-500 font-queensides">by {product.seller}</span>
+                <div className="flex items-center space-x-1">
+                  <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                  <span className="text-xs text-slate-600 font-queensides">{product.rating}</span>
+                </div>
+              </div>
+
+              {/* Add to Cart Button */}
+              <Button
+                onClick={handleAddToCart}
+                disabled={addingToCart}
+                className="w-full bg-gradient-to-r from-pink-400 to-rose-500 text-white font-semibold py-2 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                {addingToCart ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Adding...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4" />
+                    {hasOptions ? "Select Options" : "Add to Cart"}
+                  </span>
+                )}
+              </Button>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Add to Cart Sheet */}
+        <AddToCartSheet
+          product={product}
+          isOpen={showSheet}
+          onClose={() => setShowSheet(false)}
+          onConfirm={handleSheetConfirm}
+          loading={addingToCart}
+        />
       </>
     )
   }
 
   // Order Card Component
-  const OrderCard = ({ order, index, isReceived, onUpdateStatus }: {
-    order: Order; 
-    index: number;
-    isReceived: boolean;
-    onUpdateStatus?: (orderId: string, status: OrderStatus, trackingNumber?: string, message?: string, shippedBy?: string) => void;
+  const OrderCard = ({
+    order,
+    index,
+    isReceived,
+    onUpdateStatus,
+  }: {
+    order: Order
+    index: number
+    isReceived: boolean
+    onUpdateStatus?: (
+      orderId: string,
+      status: OrderStatus,
+      trackingNumber?: string,
+      message?: string,
+      shippedBy?: string
+    ) => void
   }) => {
     const [showDetails, setShowDetails] = useState(false)
     const [trackingInput, setTrackingInput] = useState(order.tracking_number || "")
     const [messageInput, setMessageInput] = useState("")
-      
+
     // Ensure items is always an array (defensive coding)
     const orderItems = Array.isArray(order.items) ? order.items : []
-    
+
     // Debug logging
     useEffect(() => {
       if (showDetails) {
@@ -1465,7 +1630,7 @@ export function ShopView() {
           itemsType: typeof order.items,
           itemsIsArray: Array.isArray(order.items),
           itemsCount: orderItems.length,
-          items: order.items
+          items: order.items,
         })
       }
     }, [showDetails, order.id, order.order_number, order.items, orderItems.length])
@@ -1475,7 +1640,7 @@ export function ShopView() {
       processing: "bg-purple-100 text-purple-800 border-purple-200",
       shipped: "bg-indigo-100 text-indigo-800 border-indigo-200",
       delivered: "bg-green-100 text-green-800 border-green-200",
-      cancelled: "bg-red-100 text-red-800 border-red-200"
+      cancelled: "bg-red-100 text-red-800 border-red-200",
     }
 
     const statusIcons: Record<OrderStatus, React.ReactNode> = {
@@ -1484,10 +1649,11 @@ export function ShopView() {
       processing: <Package className="w-4 h-4" />,
       shipped: <Truck className="w-4 h-4" />,
       delivered: <CheckCircle className="w-4 h-4" />,
-      cancelled: <X className="w-4 h-4" />
+      cancelled: <X className="w-4 h-4" />,
     }
 
-    const canUpdateStatus = isReceived && onUpdateStatus && ["pending", "confirmed", "processing"].includes(order.status)
+    const canUpdateStatus =
+      isReceived && onUpdateStatus && ["pending", "confirmed", "processing"].includes(order.status)
 
     return (
       <motion.div
@@ -1497,18 +1663,19 @@ export function ShopView() {
       >
         <Card className="overflow-hidden border-pink-200/50 hover:border-pink-300/60 transition-all duration-300">
           {/* Order Header */}
-          <div 
-            className="p-4 cursor-pointer"
-            onClick={() => setShowDetails(!showDetails)}
-          >
+          <div className="p-4 cursor-pointer" onClick={() => setShowDetails(!showDetails)}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-100 to-rose-100 flex items-center justify-center">
                   <Package className="w-6 h-6 text-pink-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-slate-800 font-display">{order.order_number}</h4>
-                  <p className="text-sm text-slate-500 font-queensides">{formatDate(order.created_at)}</p>
+                  <h4 className="font-semibold text-slate-800 font-display">
+                    {order.order_number}
+                  </h4>
+                  <p className="text-sm text-slate-500 font-queensides">
+                    {formatDate(order.created_at)}
+                  </p>
                 </div>
               </div>
               <div className="text-right">
@@ -1543,19 +1710,22 @@ export function ShopView() {
                       try {
                         // Extra safety - ensure orderItems exists and is array
                         const safeItems = Array.isArray(orderItems) ? orderItems : []
-                        console.log('[OrderCard] Rendering items, count:', safeItems.length)
-                        
+                        console.log("[OrderCard] Rendering items, count:", safeItems.length)
+
                         if (safeItems.length > 0) {
                           return safeItems.map((item: any, idx: number) => {
                             // Use product_name as primary, variant_title as fallback
-                            const displayName = item?.product_name || item?.variant_title || 'Unknown Item'
+                            const displayName =
+                              item?.product_name || item?.variant_title || "Unknown Item"
                             const displayPrice = parseFloat(item?.unit_price || 0)
-                            const orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            }) : 'N/A'
-                            
+                            const orderDate = order.created_at
+                              ? new Date(order.created_at).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                })
+                              : "N/A"
+
                             return (
                               <motion.div
                                 key={idx}
@@ -1563,13 +1733,20 @@ export function ShopView() {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: idx * 0.1 }}
                                 className="flex items-start gap-3 p-3 bg-white rounded-xl border border-pink-100 hover:border-pink-200 hover:shadow-sm transition-all cursor-pointer"
-                                onClick={() => item?.product_id && router.push(`/shop/item?id=${item.product_id}`)}
+                                onClick={() =>
+                                  item?.product_id &&
+                                  router.push(`/shop/item?id=${item.product_id}`)
+                                }
                               >
                                 {/* Product Image */}
                                 <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-pink-50 to-rose-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                   {item?.product_image ? (
-                                    <img 
-                                      src={item.product_image.startsWith('http') ? item.product_image : `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${item.product_image}`}
+                                    <img
+                                      src={
+                                        item.product_image.startsWith("http")
+                                          ? item.product_image
+                                          : `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${item.product_image}`
+                                      }
                                       alt={displayName}
                                       className="w-full h-full object-cover"
                                     />
@@ -1577,19 +1754,25 @@ export function ShopView() {
                                     <Package className="w-8 h-8 text-pink-300" />
                                   )}
                                 </div>
-                                
+
                                 {/* Item Details */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2 mb-1">
-                                    <h6 className="text-sm font-semibold text-slate-800 truncate">{displayName}</h6>
-                                    <span className="text-sm font-bold text-pink-600 whitespace-nowrap">${displayPrice.toFixed(2)}</span>
+                                    <h6 className="text-sm font-semibold text-slate-800 truncate">
+                                      {displayName}
+                                    </h6>
+                                    <span className="text-sm font-bold text-pink-600 whitespace-nowrap">
+                                      ${displayPrice.toFixed(2)}
+                                    </span>
                                   </div>
-                                  
+
                                   {/* Variant Info */}
-                                  {item?.variant_title && item.variant_title !== 'Standard' && (
-                                    <p className="text-xs text-slate-500 mb-1">{item.variant_title}</p>
+                                  {item?.variant_title && item.variant_title !== "Standard" && (
+                                    <p className="text-xs text-slate-500 mb-1">
+                                      {item.variant_title}
+                                    </p>
                                   )}
-                                  
+
                                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                                     <span className="flex items-center gap-1">
                                       <ShoppingBag className="w-3 h-3" />
@@ -1600,14 +1783,16 @@ export function ShopView() {
                                       {orderDate}
                                     </span>
                                   </div>
-                                  
+
                                   {/* Tracking & Delivery Info */}
                                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mt-2 pt-2 border-t border-slate-100">
                                     {order.tracking_number ? (
                                       <span className="flex items-center gap-1 text-blue-600">
                                         <Truck className="w-3 h-3" />
                                         {order.shipped_by && (
-                                          <span className="font-semibold uppercase">{order.shipped_by}:</span>
+                                          <span className="font-semibold uppercase">
+                                            {order.shipped_by}:
+                                          </span>
                                         )}
                                         Tracking: {order.tracking_number}
                                       </span>
@@ -1635,7 +1820,7 @@ export function ShopView() {
                           )
                         }
                       } catch (err) {
-                        console.error('[OrderCard] Error rendering items:', err)
+                        console.error("[OrderCard] Error rendering items:", err)
                         return (
                           <div className="p-4 text-center text-sm text-red-500 bg-red-50 rounded-lg">
                             <AlertCircle className="w-8 h-8 mx-auto mb-2" />
@@ -1672,18 +1857,26 @@ export function ShopView() {
                   {/* Shop Owner Actions */}
                   {canUpdateStatus && (
                     <div className="space-y-3 pt-3 border-t border-pink-100">
-                      <h5 className="font-semibold text-slate-700 font-display text-sm">Update Order</h5>
-                      
+                      <h5 className="font-semibold text-slate-700 font-display text-sm">
+                        Update Order
+                      </h5>
+
                       {/* Shipping Carrier Selection */}
-                      {(order.status === 'pending' || order.status === 'confirmed' || order.status === 'processing') && (
+                      {(order.status === "pending" ||
+                        order.status === "confirmed" ||
+                        order.status === "processing") && (
                         <div>
-                          <Label className="text-xs text-slate-600 font-queensides">Shipping Carrier</Label>
+                          <Label className="text-xs text-slate-600 font-queensides">
+                            Shipping Carrier
+                          </Label>
                           <select
                             id={`shipped_by_${order.id}`}
                             className="mt-1 w-full px-3 py-2 border border-pink-200/50 rounded-lg bg-white text-sm"
                             defaultValue=""
                           >
-                            <option value="" disabled>Select carrier</option>
+                            <option value="" disabled>
+                              Select carrier
+                            </option>
                             <option value="ups">UPS</option>
                             <option value="usps">USPS</option>
                             <option value="fedex">FedEx</option>
@@ -1692,10 +1885,12 @@ export function ShopView() {
                           </select>
                         </div>
                       )}
-                      
+
                       {/* Tracking Number Input */}
                       <div>
-                        <Label className="text-xs text-slate-600 font-queensides">Tracking Number {canUpdateStatus ? '(required for shipping)' : ''}</Label>
+                        <Label className="text-xs text-slate-600 font-queensides">
+                          Tracking Number {canUpdateStatus ? "(required for shipping)" : ""}
+                        </Label>
                         <Input
                           value={trackingInput}
                           onChange={(e) => setTrackingInput(e.target.value)}
@@ -1706,7 +1901,9 @@ export function ShopView() {
 
                       {/* Custom Message */}
                       <div>
-                        <Label className="text-xs text-slate-600 font-queensides">Message to Customer (optional)</Label>
+                        <Label className="text-xs text-slate-600 font-queensides">
+                          Message to Customer (optional)
+                        </Label>
                         <Textarea
                           value={messageInput}
                           onChange={(e) => setMessageInput(e.target.value)}
@@ -1720,8 +1917,16 @@ export function ShopView() {
                         {order.status === "pending" && (
                           <Button
                             onClick={() => {
-                              const shippedByEl = document.getElementById(`shipped_by_${order.id}`) as HTMLSelectElement
-                              onUpdateStatus(order.id, "processing", trackingInput, messageInput, shippedByEl?.value || undefined)
+                              const shippedByEl = document.getElementById(
+                                `shipped_by_${order.id}`
+                              ) as HTMLSelectElement
+                              onUpdateStatus(
+                                order.id,
+                                "processing",
+                                trackingInput,
+                                messageInput,
+                                shippedByEl?.value || undefined
+                              )
                             }}
                             className="bg-blue-500 hover:bg-blue-600 text-white text-sm"
                           >
@@ -1732,8 +1937,16 @@ export function ShopView() {
                         {order.status === "confirmed" && (
                           <Button
                             onClick={() => {
-                              const shippedByEl = document.getElementById(`shipped_by_${order.id}`) as HTMLSelectElement
-                              onUpdateStatus(order.id, "processing", trackingInput, messageInput, shippedByEl?.value || undefined)
+                              const shippedByEl = document.getElementById(
+                                `shipped_by_${order.id}`
+                              ) as HTMLSelectElement
+                              onUpdateStatus(
+                                order.id,
+                                "processing",
+                                trackingInput,
+                                messageInput,
+                                shippedByEl?.value || undefined
+                              )
                             }}
                             className="bg-purple-500 hover:bg-purple-600 text-white text-sm"
                           >
@@ -1744,8 +1957,16 @@ export function ShopView() {
                         {order.status === "processing" && (
                           <Button
                             onClick={() => {
-                              const shippedByEl = document.getElementById(`shipped_by_${order.id}`) as HTMLSelectElement
-                              onUpdateStatus(order.id, "shipped", trackingInput, messageInput, shippedByEl?.value || undefined)
+                              const shippedByEl = document.getElementById(
+                                `shipped_by_${order.id}`
+                              ) as HTMLSelectElement
+                              onUpdateStatus(
+                                order.id,
+                                "shipped",
+                                trackingInput,
+                                messageInput,
+                                shippedByEl?.value || undefined
+                              )
                             }}
                             className="bg-indigo-500 hover:bg-indigo-600 text-white text-sm"
                           >
@@ -1756,7 +1977,9 @@ export function ShopView() {
                         {["pending", "confirmed", "processing"].includes(order.status) && (
                           <Button
                             variant="outline"
-                            onClick={() => onUpdateStatus(order.id, "cancelled", trackingInput, messageInput)}
+                            onClick={() =>
+                              onUpdateStatus(order.id, "cancelled", trackingInput, messageInput)
+                            }
                             className="border-red-200 text-red-600 hover:bg-red-50 text-sm"
                           >
                             <X className="w-4 h-4 mr-1" />
@@ -1764,10 +1987,11 @@ export function ShopView() {
                           </Button>
                         )}
                       </div>
-                      
+
                       {/* Help text */}
                       <p className="text-xs text-slate-500 italic">
-                        💡 Tip: Adding a tracking number will automatically mark the order as shipped.
+                        💡 Tip: Adding a tracking number will automatically mark the order as
+                        shipped.
                       </p>
                     </div>
                   )}
@@ -1777,14 +2001,11 @@ export function ShopView() {
           </AnimatePresence>
 
           {/* Expand/Collapse Indicator */}
-          <div 
+          <div
             className="px-4 py-2 bg-pink-50/30 border-t border-pink-100 cursor-pointer flex items-center justify-center"
             onClick={() => setShowDetails(!showDetails)}
           >
-            <motion.div
-              animate={{ rotate: showDetails ? 180 : 0 }}
-              transition={{ duration: 0.2 }}
-            >
+            <motion.div animate={{ rotate: showDetails ? 180 : 0 }} transition={{ duration: 0.2 }}>
               <ChevronDown className="w-5 h-5 text-pink-400" />
             </motion.div>
           </div>
@@ -1794,17 +2015,28 @@ export function ShopView() {
   }
 
   // Handle order status update
-  const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, trackingNumber?: string, message?: string, shippedBy?: string) => {
+  const handleUpdateOrderStatus = async (
+    orderId: string,
+    status: OrderStatus,
+    trackingNumber?: string,
+    message?: string,
+    shippedBy?: string
+  ) => {
     try {
-      console.log('[handleUpdateOrderStatus] Updating order:', { orderId, status, trackingNumber, shippedBy })
-      
+      console.log("[handleUpdateOrderStatus] Updating order:", {
+        orderId,
+        status,
+        trackingNumber,
+        shippedBy,
+      })
+
       const updates: any = { status }
       if (trackingNumber) updates.tracking_number = trackingNumber
       if (message) updates.shop_message = message
       if (shippedBy) updates.shipped_by = shippedBy
-      
+
       // If status is 'shipped' and no tracking number, show error
-      if (status === 'shipped' && !trackingNumber) {
+      if (status === "shipped" && !trackingNumber) {
         toast({
           title: "Tracking Number Required",
           description: "Please provide a tracking number before marking as shipped.",
@@ -1812,26 +2044,23 @@ export function ShopView() {
         })
         return
       }
-      
+
       // If tracking number is provided, auto-update to 'shipped'
-      if (trackingNumber && !['cancelled', 'delivered'].includes(status)) {
-        updates.status = 'shipped'
+      if (trackingNumber && !["cancelled", "delivered"].includes(status)) {
+        updates.status = "shipped"
       }
-      
-      console.log('[handleUpdateOrderStatus] Applying updates:', updates)
-      
-      const { error } = await supabase
-        .from('orders')
-        .update(updates)
-        .eq('id', orderId)
+
+      console.log("[handleUpdateOrderStatus] Applying updates:", updates)
+
+      const { error } = await supabase.from("orders").update(updates).eq("id", orderId)
 
       if (error) {
-        console.error('[handleUpdateOrderStatus] Error:', error)
+        console.error("[handleUpdateOrderStatus] Error:", error)
         throw error
       }
 
-      console.log('[handleUpdateOrderStatus] Order updated successfully')
-      
+      console.log("[handleUpdateOrderStatus] Order updated successfully")
+
       toast({
         title: "Order Updated",
         description: `Order status changed to ${status}.`,
@@ -1840,7 +2069,7 @@ export function ShopView() {
       // Refresh orders
       loadOrders()
     } catch (error) {
-      console.error('Error updating order:', error)
+      console.error("Error updating order:", error)
       toast({
         title: "Update Failed",
         description: "Failed to update order. Please try again.",
@@ -1875,13 +2104,17 @@ export function ShopView() {
               >
                 <Store className="w-10 h-10 text-pink-600" />
               </motion.div>
-              <h3 className="text-2xl font-bold text-pink-800 font-display mb-4">Sign In Required</h3>
-              <p className="text-pink-700 font-queensides leading-relaxed">Please sign in to review your orders</p>
-              
+              <h3 className="text-2xl font-bold text-pink-800 font-display mb-4">
+                Sign In Required
+              </h3>
+              <p className="text-pink-700 font-queensides leading-relaxed">
+                Please sign in to review your orders
+              </p>
+
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/auth/login')}
+                onClick={() => router.push("/auth/login")}
                 className="mt-6 relative overflow-hidden bg-gradient-to-r from-pink-400 via-rose-400 to-pink-500 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <span className="relative z-10">Sign In</span>
@@ -1997,11 +2230,13 @@ export function ShopView() {
                           className="w-20 h-20 rounded-xl object-cover bg-gradient-to-br from-pink-100 to-rose-100"
                         />
                         <div className="flex-1">
-                          <h4 className="font-semibold text-slate-800 font-queensides">{item.productName}</h4>
+                          <h4 className="font-semibold text-slate-800 font-queensides">
+                            {item.productName}
+                          </h4>
                           <p className="text-sm text-slate-500 font-queensides">{item.shopName}</p>
                           {(item.selectedSize || item.selectedColor) && (
                             <p className="text-xs text-slate-400 mt-1">
-                              {[item.selectedSize, item.selectedColor].filter(Boolean).join(' • ')}
+                              {[item.selectedSize, item.selectedColor].filter(Boolean).join(" • ")}
                             </p>
                           )}
                           <div className="flex items-center justify-between mt-2">
@@ -2047,33 +2282,43 @@ export function ShopView() {
                         ${CartService.getCartTotal(cartItems).toFixed(2)}
                       </span>
                     </div>
-                    
+
                     {/* Shipping Address Form */}
                     <div className="space-y-3 pt-4 border-t border-pink-200/50">
-                      <h4 className="font-semibold text-slate-800 font-display">Delivery Address</h4>
+                      <h4 className="font-semibold text-slate-800 font-display">
+                        Delivery Address
+                      </h4>
                       <Input
                         placeholder="Full Name"
                         value={shippingAddress.name}
-                        onChange={(e) => setShippingAddress({...shippingAddress, name: e.target.value})}
+                        onChange={(e) =>
+                          setShippingAddress({ ...shippingAddress, name: e.target.value })
+                        }
                         className="border-pink-200/50"
                       />
                       <Input
                         placeholder="Street Address"
                         value={shippingAddress.street}
-                        onChange={(e) => setShippingAddress({...shippingAddress, street: e.target.value})}
+                        onChange={(e) =>
+                          setShippingAddress({ ...shippingAddress, street: e.target.value })
+                        }
                         className="border-pink-200/50"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <Input
                           placeholder="City"
                           value={shippingAddress.city}
-                          onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
+                          onChange={(e) =>
+                            setShippingAddress({ ...shippingAddress, city: e.target.value })
+                          }
                           className="border-pink-200/50"
                         />
                         <Input
                           placeholder="State"
                           value={shippingAddress.state}
-                          onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
+                          onChange={(e) =>
+                            setShippingAddress({ ...shippingAddress, state: e.target.value })
+                          }
                           className="border-pink-200/50"
                         />
                       </div>
@@ -2081,13 +2326,17 @@ export function ShopView() {
                         <Input
                           placeholder="Postal Code"
                           value={shippingAddress.postalCode}
-                          onChange={(e) => setShippingAddress({...shippingAddress, postalCode: e.target.value})}
+                          onChange={(e) =>
+                            setShippingAddress({ ...shippingAddress, postalCode: e.target.value })
+                          }
                           className="border-pink-200/50"
                         />
                         <Input
                           placeholder="Phone"
                           value={shippingAddress.phone}
-                          onChange={(e) => setShippingAddress({...shippingAddress, phone: e.target.value})}
+                          onChange={(e) =>
+                            setShippingAddress({ ...shippingAddress, phone: e.target.value })
+                          }
                           className="border-pink-200/50"
                         />
                       </div>
@@ -2122,8 +2371,12 @@ export function ShopView() {
                 <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <ShoppingBag className="w-8 h-8 text-pink-400" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-700 font-display mb-2">Your Cart is Empty</h3>
-                <p className="text-slate-600 font-queensides mb-4">Add items to your cart to get started</p>
+                <h3 className="text-lg font-bold text-slate-700 font-display mb-2">
+                  Your Cart is Empty
+                </h3>
+                <p className="text-slate-600 font-queensides mb-4">
+                  Add items to your cart to get started
+                </p>
                 <Button
                   onClick={() => setActiveTab("shop")}
                   className="font-queensides bg-gradient-to-r from-pink-400 to-rose-500 text-white"
@@ -2137,68 +2390,71 @@ export function ShopView() {
         )}
 
         {/* Orders List */}
-        {ordersView !== "cart" && (ordersLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="p-4 border-pink-200/30">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-pink-100/50 to-rose-100/50 animate-pulse" />
-                  <div className="flex-1 space-y-2">
-                    <div className="h-4 bg-pink-100/50 rounded w-32 animate-pulse" />
-                    <div className="h-3 bg-pink-100/50 rounded w-24 animate-pulse" />
-                    <div className="h-3 bg-pink-100/50 rounded w-20 animate-pulse" />
+        {ordersView !== "cart" &&
+          (ordersLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="p-4 border-pink-200/30">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-pink-100/50 to-rose-100/50 animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-pink-100/50 rounded w-32 animate-pulse" />
+                      <div className="h-3 bg-pink-100/50 rounded w-24 animate-pulse" />
+                      <div className="h-3 bg-pink-100/50 rounded w-20 animate-pulse" />
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        ) : displayOrders.length > 0 ? (
-          <div className="space-y-4">
-            {displayOrders.map((order, index) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                index={index}
-                isReceived={ordersView === "received"}
-                onUpdateStatus={ordersView === "received" ? handleUpdateOrderStatus : undefined}
-              />
-            ))}
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-12"
-          >
-            <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Package className="w-8 h-8 text-pink-400" />
+                </Card>
+              ))}
             </div>
-            <h3 className="text-lg font-bold text-slate-700 font-display mb-2">
-              No {ordersView === "received" ? "Received" : "Placed"} Orders
-            </h3>
-            <p className="text-slate-600 font-queensides mb-4">
-              {ordersView === "received"
-                ? "Orders from your shop will appear here"
-                : "Your purchase history will appear here"}
-            </p>
-            <Button
-              onClick={() => ordersView === "received" ? router.push("/shop/add") : setActiveTab("shop")}
-              className="font-queensides bg-gradient-to-r from-pink-400 to-rose-500 text-white"
+          ) : displayOrders.length > 0 ? (
+            <div className="space-y-4">
+              {displayOrders.map((order, index) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  index={index}
+                  isReceived={ordersView === "received"}
+                  onUpdateStatus={ordersView === "received" ? handleUpdateOrderStatus : undefined}
+                />
+              ))}
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center py-12"
             >
-              {ordersView === "received" ? (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Products
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="w-4 h-4 mr-2" />
-                  Browse Shop
-                </>
-              )}
-            </Button>
-          </motion.div>
-        ))}
+              <div className="w-16 h-16 bg-gradient-to-br from-pink-100 to-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Package className="w-8 h-8 text-pink-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-700 font-display mb-2">
+                No {ordersView === "received" ? "Received" : "Placed"} Orders
+              </h3>
+              <p className="text-slate-600 font-queensides mb-4">
+                {ordersView === "received"
+                  ? "Orders from your shop will appear here"
+                  : "Your purchase history will appear here"}
+              </p>
+              <Button
+                onClick={() =>
+                  ordersView === "received" ? router.push("/shop/add") : setActiveTab("shop")
+                }
+                className="font-queensides bg-gradient-to-r from-pink-400 to-rose-500 text-white"
+              >
+                {ordersView === "received" ? (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Products
+                  </>
+                ) : (
+                  <>
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                    Browse Shop
+                  </>
+                )}
+              </Button>
+            </motion.div>
+          ))}
       </motion.div>
     )
   }
@@ -2229,13 +2485,17 @@ export function ShopView() {
               >
                 <Store className="w-10 h-10 text-pink-600" />
               </motion.div>
-              <h3 className="text-2xl font-bold text-pink-800 font-display mb-4">Sign In Required</h3>
-              <p className="text-pink-700 font-queensides leading-relaxed">Please sign in to manage your shop and start your Islamic business journey</p>
-              
+              <h3 className="text-2xl font-bold text-pink-800 font-display mb-4">
+                Sign In Required
+              </h3>
+              <p className="text-pink-700 font-queensides leading-relaxed">
+                Please sign in to manage your shop and start your Islamic business journey
+              </p>
+
               <motion.button
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => router.push('/auth/login')}
+                onClick={() => router.push("/auth/login")}
                 className="mt-6 relative overflow-hidden bg-gradient-to-r from-pink-400 via-rose-400 to-pink-500 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <span className="relative z-10">Sign In</span>
@@ -2279,12 +2539,15 @@ export function ShopView() {
                 <HeartHandshake className="w-10 h-10 text-pink-600" />
               </motion.div>
 
-              <h3 className="text-3xl font-bold text-slate-800 mb-4 font-display">Create Your Shop</h3>
+              <h3 className="text-3xl font-bold text-slate-800 mb-4 font-display">
+                Create Your Shop
+              </h3>
               <p className="text-lg text-slate-600 font-queensides leading-relaxed mb-6 max-w-sm mx-auto">
                 Start your Islamic business journey on Samaa marketplace.
                 <span className="font-semibold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
                   Share your beautiful products
-                </span> with the Muslim community.
+                </span>{" "}
+                with the Muslim community.
               </p>
 
               <div className="space-y-4 mb-6">
@@ -2294,7 +2557,9 @@ export function ShopView() {
                       <div className="w-8 h-8 bg-gradient-to-r from-pink-400 to-rose-500 rounded-full flex items-center justify-center">
                         <Store className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-sm font-queensides text-slate-700 font-semibold">Setup shop profile</span>
+                      <span className="text-sm font-queensides text-slate-700 font-semibold">
+                        Setup shop profile
+                      </span>
                     </div>
                   </div>
 
@@ -2303,7 +2568,9 @@ export function ShopView() {
                       <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
                         <Plus className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-sm font-queensides text-slate-700 font-semibold">Add your products</span>
+                      <span className="text-sm font-queensides text-slate-700 font-semibold">
+                        Add your products
+                      </span>
                     </div>
                   </div>
 
@@ -2312,7 +2579,9 @@ export function ShopView() {
                       <div className="w-8 h-8 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full flex items-center justify-center">
                         <Truck className="w-4 h-4 text-white" />
                       </div>
-                      <span className="text-sm font-queensides text-slate-700 font-semibold">Start selling</span>
+                      <span className="text-sm font-queensides text-slate-700 font-semibold">
+                        Start selling
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2363,16 +2632,22 @@ export function ShopView() {
                   <div className="flex items-center space-x-3 mb-2">
                     <div className="w-14 h-14 bg-gradient-to-br from-pink-100 to-rose-100 rounded-2xl flex items-center justify-center border border-pink-200/50">
                       {userShop.logo_url ? (
-                        <img src={userShop.logo_url} alt={userShop.name} className="w-12 h-12 rounded-xl object-cover" />
+                        <img
+                          src={userShop.logo_url}
+                          alt={userShop.name}
+                          className="w-12 h-12 rounded-xl object-cover"
+                        />
                       ) : (
                         <Store className="w-7 h-7 text-pink-600" />
                       )}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-800 font-display">{userShop.name}</h2>
+                      <h2 className="text-2xl font-bold text-slate-800 font-display">
+                        {userShop.name}
+                      </h2>
                       <div className="flex items-center gap-2">
                         <Badge className="bg-gradient-to-r from-pink-400 to-rose-500 text-white border-0">
-                          {userShop.status === 'active' ? 'Active' : 'Pending'}
+                          {userShop.status === "active" ? "Active" : "Pending"}
                         </Badge>
                         {userShop.verified && (
                           <Badge className="bg-gradient-to-r from-emerald-400 to-teal-500 text-white border-0">
@@ -2383,17 +2658,19 @@ export function ShopView() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-slate-600 font-queensides leading-relaxed mt-3">{userShop.description}</p>
-                  
+                  <p className="text-slate-600 font-queensides leading-relaxed mt-3">
+                    {userShop.description}
+                  </p>
+
                   {/* Shop Type & Contact Info */}
                   <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-slate-500">
                     {userShop.shop_type && (
                       <div className="flex items-center gap-1">
                         <span className="text-lg">
-                          {SHOP_CATEGORIES.find(c => c.value === userShop.shop_type)?.icon}
+                          {SHOP_CATEGORIES.find((c) => c.value === userShop.shop_type)?.icon}
                         </span>
                         <span className="font-queensides capitalize">
-                          {SHOP_CATEGORIES.find(c => c.value === userShop.shop_type)?.label}
+                          {SHOP_CATEGORIES.find((c) => c.value === userShop.shop_type)?.label}
                         </span>
                       </div>
                     )}
@@ -2425,19 +2702,27 @@ export function ShopView() {
               {/* Shop Stats */}
               <div className="grid grid-cols-4 gap-4 mb-4">
                 <div className="text-center p-4 bg-white/60 rounded-xl border border-pink-100/50">
-                  <div className="text-2xl font-bold text-pink-600 font-display">{shopProducts.length}</div>
+                  <div className="text-2xl font-bold text-pink-600 font-display">
+                    {shopProducts.length}
+                  </div>
                   <div className="text-xs text-slate-600 font-queensides">Products</div>
                 </div>
                 <div className="text-center p-4 bg-white/60 rounded-xl border border-rose-100/50">
-                  <div className="text-2xl font-bold text-rose-600 font-display">{userShop.total_sales || 0}</div>
+                  <div className="text-2xl font-bold text-rose-600 font-display">
+                    {userShop.total_sales || 0}
+                  </div>
                   <div className="text-xs text-slate-600 font-queensides">Sales</div>
                 </div>
                 <div className="text-center p-4 bg-white/60 rounded-xl border border-purple-100/50">
-                  <div className="text-2xl font-bold text-purple-600 font-display">{userShop.rating?.toFixed(1) || '0.0'}</div>
+                  <div className="text-2xl font-bold text-purple-600 font-display">
+                    {userShop.rating?.toFixed(1) || "0.0"}
+                  </div>
                   <div className="text-xs text-slate-600 font-queensides">Rating</div>
                 </div>
                 <div className="text-center p-4 bg-white/60 rounded-xl border border-emerald-100/50">
-                  <div className="text-2xl font-bold text-emerald-600 font-display">{userShop.total_reviews || 0}</div>
+                  <div className="text-2xl font-bold text-emerald-600 font-display">
+                    {userShop.total_reviews || 0}
+                  </div>
                   <div className="text-xs text-slate-600 font-queensides">Reviews</div>
                 </div>
               </div>
@@ -2492,7 +2777,9 @@ export function ShopView() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-700">PayPal</p>
-                      <p className="text-xs text-slate-500 font-queensides">{userShop.paypal_email}</p>
+                      <p className="text-xs text-slate-500 font-queensides">
+                        {userShop.paypal_email}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -2504,7 +2791,8 @@ export function ShopView() {
                     <div>
                       <p className="text-sm font-medium text-slate-700">Bitcoin</p>
                       <p className="text-xs text-slate-500 font-queensides truncate max-w-[200px]">
-                        {userShop.bitcoin_address.slice(0, 12)}...{userShop.bitcoin_address.slice(-8)}
+                        {userShop.bitcoin_address.slice(0, 12)}...
+                        {userShop.bitcoin_address.slice(-8)}
                       </p>
                     </div>
                   </div>
@@ -2541,7 +2829,11 @@ export function ShopView() {
                   <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 border-pink-200/50 hover:border-pink-300/60">
                     <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-pink-100 to-rose-100">
                       <img
-                        src={product.images?.[0] ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}` : "/placeholder.svg"}
+                        src={
+                          product.images?.[0]
+                            ? `https://qwnukvbeoglvynyrhuey.supabase.co/storage/v1/object/public/shop-images/${product.images[0]}`
+                            : "/placeholder.svg"
+                        }
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
@@ -2572,7 +2864,9 @@ export function ShopView() {
                       </div>
                     </div>
                     <div className="p-4">
-                      <h4 className="font-semibold text-slate-800 font-queensides line-clamp-1">{product.name}</h4>
+                      <h4 className="font-semibold text-slate-800 font-queensides line-clamp-1">
+                        {product.name}
+                      </h4>
                       <p className="text-lg font-bold text-pink-600 font-display mt-1">
                         ${product.price}
                       </p>
@@ -2585,7 +2879,9 @@ export function ShopView() {
             <Card className="p-8 text-center border-pink-200/50 bg-gradient-to-br from-pink-50/30 to-rose-50/30">
               <Package className="w-12 h-12 text-pink-300 mx-auto mb-4" />
               <h3 className="font-bold text-slate-700 font-display mb-2">No Products Yet</h3>
-              <p className="text-slate-600 font-queensides mb-4">Add your first product to start selling</p>
+              <p className="text-slate-600 font-queensides mb-4">
+                Add your first product to start selling
+              </p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -2611,7 +2907,10 @@ export function ShopView() {
         {/* Header */}
         <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-pink-100/50">
           <div className="flex items-center justify-between p-4">
-            <button onClick={() => router.back()} className="p-2 hover:bg-pink-50 rounded-xl transition-colors">
+            <button
+              onClick={() => router.back()}
+              className="p-2 hover:bg-pink-50 rounded-xl transition-colors"
+            >
               <ArrowLeft className="w-6 h-6 text-pink-600" />
             </button>
             <div className="text-center">
@@ -2701,8 +3000,8 @@ export function ShopView() {
 
         {/* Create Shop Modal */}
         {showCreateShop && (
-          <CreateShopModal 
-            onClose={() => setShowCreateShop(false)} 
+          <CreateShopModal
+            onClose={() => setShowCreateShop(false)}
             onSubmit={createShop}
             isLoading={isLoading}
           />
@@ -2710,9 +3009,9 @@ export function ShopView() {
 
         {/* Edit Shop Modal */}
         {showEditShop && userShop && (
-          <EditShopModal 
+          <EditShopModal
             shop={userShop}
-            onClose={() => setShowEditShop(false)} 
+            onClose={() => setShowEditShop(false)}
             onSubmit={updateShop}
             isLoading={isLoading}
           />
@@ -2750,11 +3049,11 @@ export function ShopView() {
 }
 
 // Create Shop Modal Component
-function CreateShopModal({ 
-  onClose, 
-  onSubmit, 
-  isLoading 
-}: { 
+function CreateShopModal({
+  onClose,
+  onSubmit,
+  isLoading,
+}: {
   onClose: () => void
   onSubmit: (formData: FormData) => void
   isLoading: boolean
@@ -2781,7 +3080,9 @@ function CreateShopModal({
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-800 font-display">Create Your Shop</h3>
-                <p className="text-sm text-slate-500 font-queensides">Start your Islamic business journey</p>
+                <p className="text-sm text-slate-500 font-queensides">
+                  Start your Islamic business journey
+                </p>
               </div>
             </div>
             <button
@@ -2799,9 +3100,11 @@ function CreateShopModal({
                 <Sparkles className="w-4 h-4 text-pink-500" />
                 Basic Information
               </h4>
-              
+
               <div>
-                <Label htmlFor="shop-name" className="font-queensides text-slate-700">Shop Name *</Label>
+                <Label htmlFor="shop-name" className="font-queensides text-slate-700">
+                  Shop Name *
+                </Label>
                 <Input
                   id="shop-name"
                   name="name"
@@ -2812,7 +3115,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="shop-description" className="font-queensides text-slate-700">Description *</Label>
+                <Label htmlFor="shop-description" className="font-queensides text-slate-700">
+                  Description *
+                </Label>
                 <Textarea
                   id="shop-description"
                   name="description"
@@ -2824,7 +3129,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="shop-type" className="font-queensides text-slate-700">Shop Category *</Label>
+                <Label htmlFor="shop-type" className="font-queensides text-slate-700">
+                  Shop Category *
+                </Label>
                 <select
                   id="shop-type"
                   name="shopType"
@@ -2832,7 +3139,7 @@ function CreateShopModal({
                   className="w-full mt-1 px-4 py-2 rounded-lg border border-pink-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 bg-white"
                 >
                   <option value="">Select a category</option>
-                  {SHOP_CATEGORIES.map(cat => (
+                  {SHOP_CATEGORIES.map((cat) => (
                     <option key={cat.value} value={cat.value}>
                       {cat.icon} {cat.label}
                     </option>
@@ -2847,9 +3154,11 @@ function CreateShopModal({
                 <Mail className="w-4 h-4 text-pink-500" />
                 Contact Information
               </h4>
-              
+
               <div>
-                <Label htmlFor="contact-email" className="font-queensides text-slate-700">Contact Email *</Label>
+                <Label htmlFor="contact-email" className="font-queensides text-slate-700">
+                  Contact Email *
+                </Label>
                 <Input
                   id="contact-email"
                   name="contactEmail"
@@ -2861,7 +3170,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="contact-phone" className="font-queensides text-slate-700">Contact Phone</Label>
+                <Label htmlFor="contact-phone" className="font-queensides text-slate-700">
+                  Contact Phone
+                </Label>
                 <Input
                   id="contact-phone"
                   name="contactPhone"
@@ -2878,9 +3189,11 @@ function CreateShopModal({
                 <MapPin className="w-4 h-4 text-pink-500" />
                 Business Address
               </h4>
-              
+
               <div>
-                <Label htmlFor="address-street" className="font-queensides text-slate-700">Street Address</Label>
+                <Label htmlFor="address-street" className="font-queensides text-slate-700">
+                  Street Address
+                </Label>
                 <Input
                   id="address-street"
                   name="addressStreet"
@@ -2891,7 +3204,9 @@ function CreateShopModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="address-city" className="font-queensides text-slate-700">City</Label>
+                  <Label htmlFor="address-city" className="font-queensides text-slate-700">
+                    City
+                  </Label>
                   <Input
                     id="address-city"
                     name="addressCity"
@@ -2900,7 +3215,9 @@ function CreateShopModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="address-state" className="font-queensides text-slate-700">State/Province</Label>
+                  <Label htmlFor="address-state" className="font-queensides text-slate-700">
+                    State/Province
+                  </Label>
                   <Input
                     id="address-state"
                     name="addressState"
@@ -2912,7 +3229,9 @@ function CreateShopModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="address-country" className="font-queensides text-slate-700">Country</Label>
+                  <Label htmlFor="address-country" className="font-queensides text-slate-700">
+                    Country
+                  </Label>
                   <Input
                     id="address-country"
                     name="addressCountry"
@@ -2921,7 +3240,9 @@ function CreateShopModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="address-postal" className="font-queensides text-slate-700">Postal Code</Label>
+                  <Label htmlFor="address-postal" className="font-queensides text-slate-700">
+                    Postal Code
+                  </Label>
                   <Input
                     id="address-postal"
                     name="addressPostalCode"
@@ -2938,9 +3259,11 @@ function CreateShopModal({
                 <Wallet className="w-4 h-4 text-pink-500" />
                 Payment Information (for payouts)
               </h4>
-              
+
               <div>
-                <Label htmlFor="paypal-email" className="font-queensides text-slate-700">PayPal Email</Label>
+                <Label htmlFor="paypal-email" className="font-queensides text-slate-700">
+                  PayPal Email
+                </Label>
                 <Input
                   id="paypal-email"
                   name="paypalEmail"
@@ -2951,7 +3274,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="bitcoin-address" className="font-queensides text-slate-700">Bitcoin Address</Label>
+                <Label htmlFor="bitcoin-address" className="font-queensides text-slate-700">
+                  Bitcoin Address
+                </Label>
                 <Input
                   id="bitcoin-address"
                   name="bitcoinAddress"
@@ -2967,10 +3292,12 @@ function CreateShopModal({
                 <AlertCircle className="w-4 h-4 text-pink-500" />
                 Policies
               </h4>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="return-policy-days" className="font-queensides text-slate-700">Return Policy (days)</Label>
+                  <Label htmlFor="return-policy-days" className="font-queensides text-slate-700">
+                    Return Policy (days)
+                  </Label>
                   <Input
                     id="return-policy-days"
                     name="returnPolicyDays"
@@ -2981,7 +3308,9 @@ function CreateShopModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="processing-time" className="font-queensides text-slate-700">Processing Time</Label>
+                  <Label htmlFor="processing-time" className="font-queensides text-slate-700">
+                    Processing Time
+                  </Label>
                   <Input
                     id="processing-time"
                     name="processingTime"
@@ -2993,7 +3322,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="return-policy" className="font-queensides text-slate-700">Return Policy</Label>
+                <Label htmlFor="return-policy" className="font-queensides text-slate-700">
+                  Return Policy
+                </Label>
                 <Textarea
                   id="return-policy"
                   name="returnPolicy"
@@ -3004,7 +3335,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="shipping-policy" className="font-queensides text-slate-700">Shipping Policy</Label>
+                <Label htmlFor="shipping-policy" className="font-queensides text-slate-700">
+                  Shipping Policy
+                </Label>
                 <Textarea
                   id="shipping-policy"
                   name="shippingPolicy"
@@ -3015,7 +3348,9 @@ function CreateShopModal({
               </div>
 
               <div>
-                <Label htmlFor="free-shipping-threshold" className="font-queensides text-slate-700">Free Shipping Threshold ($)</Label>
+                <Label htmlFor="free-shipping-threshold" className="font-queensides text-slate-700">
+                  Free Shipping Threshold ($)
+                </Label>
                 <Input
                   id="free-shipping-threshold"
                   name="freeShippingThreshold"
@@ -3025,7 +3360,9 @@ function CreateShopModal({
                   placeholder="50.00"
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                 />
-                <p className="text-xs text-slate-500 mt-1 font-queensides">Leave empty for no free shipping</p>
+                <p className="text-xs text-slate-500 mt-1 font-queensides">
+                  Leave empty for no free shipping
+                </p>
               </div>
             </div>
 
@@ -3046,7 +3383,7 @@ function CreateShopModal({
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  'Create Shop'
+                  "Create Shop"
                 )}
               </Button>
             </div>
@@ -3058,12 +3395,12 @@ function CreateShopModal({
 }
 
 // Edit Shop Modal Component
-function EditShopModal({ 
-  shop, 
-  onClose, 
-  onSubmit, 
-  isLoading 
-}: { 
+function EditShopModal({
+  shop,
+  onClose,
+  onSubmit,
+  isLoading,
+}: {
   shop: Shop
   onClose: () => void
   onSubmit: (formData: FormData) => void
@@ -3091,7 +3428,9 @@ function EditShopModal({
               </div>
               <div>
                 <h3 className="text-xl font-bold text-slate-800 font-display">Edit Shop</h3>
-                <p className="text-sm text-slate-500 font-queensides">Update your shop information</p>
+                <p className="text-sm text-slate-500 font-queensides">
+                  Update your shop information
+                </p>
               </div>
             </div>
             <button
@@ -3109,9 +3448,11 @@ function EditShopModal({
                 <Sparkles className="w-4 h-4 text-pink-500" />
                 Basic Information
               </h4>
-              
+
               <div>
-                <Label htmlFor="edit-shop-name" className="font-queensides text-slate-700">Shop Name *</Label>
+                <Label htmlFor="edit-shop-name" className="font-queensides text-slate-700">
+                  Shop Name *
+                </Label>
                 <Input
                   id="edit-shop-name"
                   name="name"
@@ -3123,11 +3464,13 @@ function EditShopModal({
               </div>
 
               <div>
-                <Label htmlFor="edit-shop-description" className="font-queensides text-slate-700">Description *</Label>
+                <Label htmlFor="edit-shop-description" className="font-queensides text-slate-700">
+                  Description *
+                </Label>
                 <Textarea
                   id="edit-shop-description"
                   name="description"
-                  defaultValue={shop.description || ''}
+                  defaultValue={shop.description || ""}
                   placeholder="Describe what you sell..."
                   required
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
@@ -3136,7 +3479,9 @@ function EditShopModal({
               </div>
 
               <div>
-                <Label htmlFor="edit-shop-type" className="font-queensides text-slate-700">Shop Category *</Label>
+                <Label htmlFor="edit-shop-type" className="font-queensides text-slate-700">
+                  Shop Category *
+                </Label>
                 <select
                   id="edit-shop-type"
                   name="shopType"
@@ -3145,7 +3490,7 @@ function EditShopModal({
                   className="w-full mt-1 px-4 py-2 rounded-lg border border-pink-200 focus:border-pink-400 focus:ring-2 focus:ring-pink-400/20 bg-white"
                 >
                   <option value="">Select a category</option>
-                  {SHOP_CATEGORIES.map(cat => (
+                  {SHOP_CATEGORIES.map((cat) => (
                     <option key={cat.value} value={cat.value}>
                       {cat.icon} {cat.label}
                     </option>
@@ -3160,14 +3505,16 @@ function EditShopModal({
                 <Mail className="w-4 h-4 text-pink-500" />
                 Contact Information
               </h4>
-              
+
               <div>
-                <Label htmlFor="edit-contact-email" className="font-queensides text-slate-700">Contact Email *</Label>
+                <Label htmlFor="edit-contact-email" className="font-queensides text-slate-700">
+                  Contact Email *
+                </Label>
                 <Input
                   id="edit-contact-email"
                   name="contactEmail"
                   type="email"
-                  defaultValue={shop.contact_email || ''}
+                  defaultValue={shop.contact_email || ""}
                   placeholder="your@email.com"
                   required
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
@@ -3175,12 +3522,14 @@ function EditShopModal({
               </div>
 
               <div>
-                <Label htmlFor="edit-contact-phone" className="font-queensides text-slate-700">Contact Phone</Label>
+                <Label htmlFor="edit-contact-phone" className="font-queensides text-slate-700">
+                  Contact Phone
+                </Label>
                 <Input
                   id="edit-contact-phone"
                   name="contactPhone"
                   type="tel"
-                  defaultValue={shop.contact_phone || ''}
+                  defaultValue={shop.contact_phone || ""}
                   placeholder="+1 (555) 123-4567"
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                 />
@@ -3193,13 +3542,15 @@ function EditShopModal({
                 <MapPin className="w-4 h-4 text-pink-500" />
                 Business Address
               </h4>
-              
+
               <div>
-                <Label htmlFor="edit-address-street" className="font-queensides text-slate-700">Street Address</Label>
+                <Label htmlFor="edit-address-street" className="font-queensides text-slate-700">
+                  Street Address
+                </Label>
                 <Input
                   id="edit-address-street"
                   name="addressStreet"
-                  defaultValue={shop.address_street || ''}
+                  defaultValue={shop.address_street || ""}
                   placeholder="123 Main Street"
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                 />
@@ -3207,21 +3558,25 @@ function EditShopModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-address-city" className="font-queensides text-slate-700">City</Label>
+                  <Label htmlFor="edit-address-city" className="font-queensides text-slate-700">
+                    City
+                  </Label>
                   <Input
                     id="edit-address-city"
                     name="addressCity"
-                    defaultValue={shop.address_city || ''}
+                    defaultValue={shop.address_city || ""}
                     placeholder="City"
                     className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-address-state" className="font-queensides text-slate-700">State/Province</Label>
+                  <Label htmlFor="edit-address-state" className="font-queensides text-slate-700">
+                    State/Province
+                  </Label>
                   <Input
                     id="edit-address-state"
                     name="addressState"
-                    defaultValue={shop.address_state || ''}
+                    defaultValue={shop.address_state || ""}
                     placeholder="State"
                     className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   />
@@ -3230,21 +3585,25 @@ function EditShopModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-address-country" className="font-queensides text-slate-700">Country</Label>
+                  <Label htmlFor="edit-address-country" className="font-queensides text-slate-700">
+                    Country
+                  </Label>
                   <Input
                     id="edit-address-country"
                     name="addressCountry"
-                    defaultValue={shop.address_country || ''}
+                    defaultValue={shop.address_country || ""}
                     placeholder="Country"
                     className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-address-postal" className="font-queensides text-slate-700">Postal Code</Label>
+                  <Label htmlFor="edit-address-postal" className="font-queensides text-slate-700">
+                    Postal Code
+                  </Label>
                   <Input
                     id="edit-address-postal"
                     name="addressPostalCode"
-                    defaultValue={shop.address_postal_code || ''}
+                    defaultValue={shop.address_postal_code || ""}
                     placeholder="Postal Code"
                     className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   />
@@ -3258,25 +3617,29 @@ function EditShopModal({
                 <Wallet className="w-4 h-4 text-pink-500" />
                 Payment Information (for payouts)
               </h4>
-              
+
               <div>
-                <Label htmlFor="edit-paypal-email" className="font-queensides text-slate-700">PayPal Email</Label>
+                <Label htmlFor="edit-paypal-email" className="font-queensides text-slate-700">
+                  PayPal Email
+                </Label>
                 <Input
                   id="edit-paypal-email"
                   name="paypalEmail"
                   type="email"
-                  defaultValue={shop.paypal_email || ''}
+                  defaultValue={shop.paypal_email || ""}
                   placeholder="paypal@yourdomain.com"
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                 />
               </div>
 
               <div>
-                <Label htmlFor="edit-bitcoin-address" className="font-queensides text-slate-700">Bitcoin Address</Label>
+                <Label htmlFor="edit-bitcoin-address" className="font-queensides text-slate-700">
+                  Bitcoin Address
+                </Label>
                 <Input
                   id="edit-bitcoin-address"
                   name="bitcoinAddress"
-                  defaultValue={shop.bitcoin_address || ''}
+                  defaultValue={shop.bitcoin_address || ""}
                   placeholder="bc1..."
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                 />
@@ -3289,10 +3652,15 @@ function EditShopModal({
                 <AlertCircle className="w-4 h-4 text-pink-500" />
                 Policies
               </h4>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="edit-return-policy-days" className="font-queensides text-slate-700">Return Policy (days)</Label>
+                  <Label
+                    htmlFor="edit-return-policy-days"
+                    className="font-queensides text-slate-700"
+                  >
+                    Return Policy (days)
+                  </Label>
                   <Input
                     id="edit-return-policy-days"
                     name="returnPolicyDays"
@@ -3303,11 +3671,13 @@ function EditShopModal({
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-processing-time" className="font-queensides text-slate-700">Processing Time</Label>
+                  <Label htmlFor="edit-processing-time" className="font-queensides text-slate-700">
+                    Processing Time
+                  </Label>
                   <Input
                     id="edit-processing-time"
                     name="processingTime"
-                    defaultValue={shop.processing_time || '1-3 business days'}
+                    defaultValue={shop.processing_time || "1-3 business days"}
                     placeholder="1-3 business days"
                     className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   />
@@ -3315,11 +3685,13 @@ function EditShopModal({
               </div>
 
               <div>
-                <Label htmlFor="edit-return-policy" className="font-queensides text-slate-700">Return Policy</Label>
+                <Label htmlFor="edit-return-policy" className="font-queensides text-slate-700">
+                  Return Policy
+                </Label>
                 <Textarea
                   id="edit-return-policy"
                   name="returnPolicy"
-                  defaultValue={shop.return_policy || ''}
+                  defaultValue={shop.return_policy || ""}
                   placeholder="Describe your return and refund policy..."
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   rows={3}
@@ -3327,11 +3699,13 @@ function EditShopModal({
               </div>
 
               <div>
-                <Label htmlFor="edit-shipping-policy" className="font-queensides text-slate-700">Shipping Policy</Label>
+                <Label htmlFor="edit-shipping-policy" className="font-queensides text-slate-700">
+                  Shipping Policy
+                </Label>
                 <Textarea
                   id="edit-shipping-policy"
                   name="shippingPolicy"
-                  defaultValue={shop.shipping_policy || ''}
+                  defaultValue={shop.shipping_policy || ""}
                   placeholder="Describe your shipping policy, costs, and delivery times..."
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                   rows={3}
@@ -3339,18 +3713,25 @@ function EditShopModal({
               </div>
 
               <div>
-                <Label htmlFor="edit-free-shipping-threshold" className="font-queensides text-slate-700">Free Shipping Threshold ($)</Label>
+                <Label
+                  htmlFor="edit-free-shipping-threshold"
+                  className="font-queensides text-slate-700"
+                >
+                  Free Shipping Threshold ($)
+                </Label>
                 <Input
                   id="edit-free-shipping-threshold"
                   name="freeShippingThreshold"
                   type="number"
                   min="0"
                   step="0.01"
-                  defaultValue={shop.free_shipping_threshold || ''}
+                  defaultValue={shop.free_shipping_threshold || ""}
                   placeholder="50.00"
                   className="mt-1 border-pink-200 focus:border-pink-400 focus:ring-pink-400/20"
                 />
-                <p className="text-xs text-slate-500 mt-1 font-queensides">Leave empty for no free shipping</p>
+                <p className="text-xs text-slate-500 mt-1 font-queensides">
+                  Leave empty for no free shipping
+                </p>
               </div>
             </div>
 
@@ -3371,7 +3752,7 @@ function EditShopModal({
                 {isLoading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  'Update Shop'
+                  "Update Shop"
                 )}
               </Button>
             </div>
