@@ -1,7 +1,5 @@
 import * as bitcoin from "bitcoinjs-lib"
-import { createRequire } from "module"
-const require = createRequire(import.meta.url)
-const ecc = require("tiny-secp256k1")
+import ecc from "./noble-ecc"
 import { BIP32Factory, BIP32Interface } from "bip32"
 import { ECPairFactory } from "ecpair"
 import { encrypt, decrypt } from "./encryption"
